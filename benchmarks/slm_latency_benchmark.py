@@ -2,7 +2,7 @@
 """Local SLM latency benchmark for MindSense.
 
 Supports:
-- Ollama local HTTP API: python3 slm_latency_benchmark.py --provider ollama --model llama3.2:3b
+- Ollama local HTTP API: python3 slm_latency_benchmark.py --provider ollama --model phi4-mini:3.8b
 - OpenAI-compatible local API: python3 slm_latency_benchmark.py --provider openai-compatible --model MODEL --url http://127.0.0.1:8000/v1/chat/completions
 - CLI command: python3 slm_latency_benchmark.py --provider cli --cmd "llama-cli -m model.gguf -p {prompt} -n 128"
 """
@@ -149,11 +149,11 @@ def environment() -> dict[str, Any]:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run a local SLM latency benchmark.")
     parser.add_argument("--provider", choices=["ollama", "openai-compatible", "cli"], default="ollama")
-    parser.add_argument("--model", default="llama3.2:3b")
+    parser.add_argument("--model", default="phi4-mini:3.8b")
     parser.add_argument("--url", default="http://127.0.0.1:11434/api/generate")
     parser.add_argument("--cmd", default="")
     parser.add_argument("--timeout", type=int, default=120)
-    parser.add_argument("--out", default="Work/benchmarks/slm_latency_results.json")
+    parser.add_argument("--out", default="benchmarks/slm_latency_results.json")
     args = parser.parse_args()
 
     if args.provider == "cli" and not args.cmd:

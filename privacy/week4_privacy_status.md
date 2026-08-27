@@ -29,19 +29,19 @@ Evidence file:
 
 ## Next Action Needed
 
-Once the SLM Integration Lead chooses the local model and deployment stack, install or start that runtime on the benchmark machine and re-run:
+Once the SLM runtime is installed or started on the benchmark machine, re-run the locked local model from `build-reference.md`:
 
 ```sh
-python3 Work/benchmarks/slm_latency_benchmark.py --provider ollama --model llama3.2:3b
+python3 benchmarks/slm_latency_benchmark.py --provider ollama --model phi4-mini:3.8b
 ```
 
 If the team uses a different local stack, use one of:
 
 ```sh
-python3 Work/benchmarks/slm_latency_benchmark.py --provider openai-compatible --model MODEL --url http://127.0.0.1:8000/v1/chat/completions
-python3 Work/benchmarks/slm_latency_benchmark.py --provider cli --cmd "llama-cli -m model.gguf -p {prompt} -n 128"
+python3 benchmarks/slm_latency_benchmark.py --provider openai-compatible --model MODEL --url http://127.0.0.1:8000/v1/chat/completions
+python3 benchmarks/slm_latency_benchmark.py --provider cli --cmd "llama-cli -m model.gguf -p {prompt} -n 128"
 ```
 
 ## Proposed Team Update
 
-Privacy architecture draft and dependency PR rule are ready. Initial dependency audit found no app dependency stack in the workspace yet. SLM latency benchmark harness is ready and was run locally, but latency could not be measured because no local SLM runtime is installed/running on this machine. Re-run after the SLM stack is selected and available.
+Privacy architecture draft and dependency PR rule are ready. Initial dependency audit found no app dependency stack in the workspace yet. CES was downloaded locally into the gitignored `dataset/` folder and was not committed. SLM latency benchmark harness is ready and was run locally, but latency could not be measured because no local SLM runtime is installed/running on this machine. Re-run after the locked Ollama `phi4-mini:3.8b` stack is available.
