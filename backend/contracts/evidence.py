@@ -57,9 +57,24 @@ class ResponseMode(str, Enum):
 
 
 class EligibilityStatus(str, Enum):
-    ELIGIBLE = "eligible"
+    """FIXED 2026-08-29 — this was binary (eligible/ineligible) when Moe
+    Tanaka's real, locked Week 4 spec
+    (weekly_update/week4/Week4_Statistical_Analysis_Deliverable.md Section 5)
+    defines THREE states per feature, not two: State A (no data at all),
+    State B (partial history — a value can be shown, but no comparison),
+    State C (full history — comparison allowed). The old binary enum had no
+    way to represent State B, which would have forced backend/statistics/
+    to either wrongly mark a partial-history participant ELIGIBLE (letting
+    a premature comparison through) or wrongly mark them INELIGIBLE (hiding
+    a descriptive value the real spec says should be shown). See
+    backend/statistics/eligibility.py's ColdStartState -> EligibilityStatus
+    mapping (to_eligibility_status) for the single place this
+    correspondence is defined."""
+
     INELIGIBLE_INSUFFICIENT_WINDOW = "ineligible_insufficient_window"
     INELIGIBLE_INSUFFICIENT_BASELINE = "ineligible_insufficient_baseline"
+    PARTIAL_DESCRIPTIVE_ONLY = "partial_descriptive_only"  # Moe's State B
+    ELIGIBLE = "eligible"  # Moe's State C
 
 
 class EvidenceStrength(str, Enum):
@@ -162,8 +177,11 @@ class EvidencePacket(BaseModel):
     baseline: PersonalBaseline
     evidence: StatisticalEvidence | None = Field(
         default=None,
-        description="None when baseline.eligibility_status is not ELIGIBLE — "
-        "there is nothing statistically valid to report yet.",
+        description="None unless baseline.eligibility_status == ELIGIBLE "
+        "(Moe's State C). PARTIAL_DESCRIPTIVE_ONLY (State B) still carries a "
+        "real FeatureWindow.value to describe, but MUST NOT carry "
+        "StatisticalEvidence — that's what 'no comparison, descriptive only' "
+        "means structurally in this contract.",
     )
     uncertainty: UncertaintyReasons
     claim_policy: ClaimPolicy

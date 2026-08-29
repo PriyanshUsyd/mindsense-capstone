@@ -15,6 +15,15 @@ def _read(relpath: str) -> str:
     return (REPO_ROOT / relpath).read_text(encoding="utf-8")
 
 
+def _read_unwrapped(relpath: str) -> str:
+    """Same as _read but strips markdown blockquote markers and collapses
+    line-wrapping whitespace to single spaces, for substring checks against
+    prose that's hand-wrapped across multiple lines (and/or inside a `>`
+    blockquote) in the source markdown/docstring."""
+    lines = [line.lstrip(">").strip() for line in _read(relpath).splitlines()]
+    return " ".join(" ".join(lines).split())
+
+
 # --- build-reference.md Section 8 folders actually exist ---------------------
 
 EXPECTED_DIRS = [
@@ -74,10 +83,20 @@ def test_yuktha_real_privacy_work_is_referenced_from_docs_privacy_readme():
 
 
 def test_chonghao_real_evaluation_plan_is_referenced_from_the_flagged_conflict_notes():
-    taxonomy_text = _read("docs/evaluation/adversarial-taxonomy.md")
     threshold_text = _read("docs/evaluation/pass-threshold.md")
-    assert "evaluation_plan_v0.1.md" in taxonomy_text
     assert "evaluation_plan_v0.1.md" in threshold_text
+
+
+def test_archived_taxonomy_draft_exists_and_evaluation_plan_points_to_it():
+    """2026-08-29: adversarial-taxonomy.md was archived once Chonghao's real
+    5-category taxonomy became the working version. Confirms the archive
+    exists and his real file references it (not a silently vanished file)."""
+    archived_path = REPO_ROOT / "docs/evaluation/archive/adversarial-taxonomy-ai-draft-SUPERSEDED.md"
+    assert archived_path.is_file()
+    assert not (REPO_ROOT / "docs/evaluation/adversarial-taxonomy.md").exists()
+
+    plan_text = _read("backend/evaluation/evaluation_plan_v0.1.md")
+    assert "adversarial-taxonomy-ai-draft-SUPERSEDED.md" in plan_text
 
 
 def test_honghao_reconciliation_note_is_referenced_from_ces_reverification_doc():
@@ -90,6 +109,84 @@ def test_repository_structure_status_documents_the_branch_discovery():
     assert "honglin/docs-week4" in text
     assert "yuktha/privacy-week4" in text
     assert "8dd9113" in text
+
+
+def test_honghao_real_script_is_referenced_from_repo_structure_status():
+    text = _read("docs/repository-structure-status.md")
+    assert "ces_eligibility.py" in text
+
+
+def test_honghao_real_script_is_referenced_from_proposal_outline():
+    text = _read("docs/proposal/outline.md")
+    assert "ces_eligibility.py" in text
+
+
+def test_ces_eligibility_script_flags_pending_confirmation():
+    """Item 3's exact required flag text — checked (whitespace-normalized,
+    since the docstring hand-wraps across lines) so a future edit can't
+    silently drop the caveat."""
+    text = _read_unwrapped("backend/data_pipeline/ces_eligibility.py")
+    assert "RECONSTRUCTED METHODOLOGY MATCHING DATA PIPELINE LEAD'S REPORTED FIGURE" in text
+    assert "DATA PIPELINE LEAD TO CONFIRM THIS MATCHES HIS ACTUAL PROCESS" in text
+
+
+def test_proposal_outline_flags_week4_time_constraint():
+    text = _read("docs/proposal/outline.md")
+    assert "Built due to Week 4 time constraints" in text
+
+
+def test_repository_structure_status_flags_week4_time_constraint():
+    text = _read("docs/repository-structure-status.md")
+    assert "Built due to Week 4 time constraints" in text
+
+
+def test_evaluation_plan_flags_provisional_status_verbatim():
+    """Item 1's exact required note text (whitespace-normalized, since the
+    banner hand-wraps across lines in the source markdown)."""
+    text = _read_unwrapped("backend/evaluation/evaluation_plan_v0.1.md")
+    assert "Provisional" in text and "based on Chonghao's real Week 4 branch" in text
+    assert "Final confirmation needed from Evaluation Design Lead before Week 5" in text
+    assert "pre-registered pass-threshold rule" in text
+
+
+def test_safety_gate_module_is_importable_and_self_documented():
+    """backend/slm/safety_gate.py is new production code (2026-08-29) — must
+    not be an orphaned file nobody's aware of. Its own module docstring is
+    the reference point for now (no separate doc file exists yet)."""
+    from backend.slm import safety_gate  # noqa: F401 — import-succeeds is the assertion
+
+    module_text = _read("backend/slm/safety_gate.py")
+    assert "deterministic safety gate" in module_text.lower()
+
+
+def test_requirements_txt_lists_every_package_actually_imported_by_tests():
+    """pyyaml and pytest-socket are both genuinely used now (SLM template
+    tests, network-egress tests) — confirm they're declared, not just
+    happening to be installed in this one environment."""
+    text = _read("requirements.txt")
+    assert "pyyaml" in text
+    assert "pytest-socket" in text
+
+
+def test_eligibility_status_enum_has_no_orphaned_values():
+    """Every EligibilityStatus value the contract defines must actually be
+    reachable from Moe's real classify_state() via to_eligibility_status()
+    — otherwise the contract has grown a value nothing can ever produce."""
+    from backend.contracts.evidence import EligibilityStatus
+    from backend.statistics.eligibility import ColdStartState, to_eligibility_status
+
+    reachable = {to_eligibility_status(s) for s in ColdStartState}
+    assert reachable == {
+        EligibilityStatus.INELIGIBLE_INSUFFICIENT_WINDOW,
+        EligibilityStatus.PARTIAL_DESCRIPTIVE_ONLY,
+        EligibilityStatus.ELIGIBLE,
+    }
+    # INELIGIBLE_INSUFFICIENT_BASELINE is intentionally not reachable from
+    # classify_state() alone — it's reserved for a baseline-specific
+    # ineligibility a caller determines separately (e.g. enough calendar
+    # days/sensor-days per State B, but zero prior baseline windows to
+    # average). Documented here rather than silently unexplained.
+    assert EligibilityStatus.INELIGIBLE_INSUFFICIENT_BASELINE not in reachable
 
 
 # --- No stray top-level junk from this pass ----------------------------------

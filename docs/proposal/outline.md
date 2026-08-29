@@ -1,66 +1,146 @@
-# Group Proposal Report — Outline (DRAFT)
+# Group Proposal Report — Outline
 
-**Status: DRAFT, built to fill a Week 4 gap on 2026-08-29** (Weekly_Plan.md:
-"Begin the Proposal outline" — Honglin Lu, Docs & Report Lead). Due Week 5
-(Sep 6). This is a skeleton to work from, not content — Honglin owns the
-actual writing.
+> **Built due to Week 4 time constraints — Documentation Lead to review,
+> revise, and take ownership.** No commit from Honglin Lu exists anywhere
+> for this task as of 2026-08-29 (see `docs/repository-structure-status.md`
+> for the branch-discovery detail). This is a substantially fleshed-out
+> outline, not finished prose — Honglin owns the actual writing, due
+> Week 5 (Sep 6) per Weekly_Plan.md.
 
-## Proposed sections
+Sections map directly onto `Client_Specs.md`'s "Proposed System" (5
+components) and "Expected Outcomes" (8 deliverables), with pointers to
+what's actually real on `main` as of 2026-08-29 for each.
 
-1. **Introduction & Problem Statement**
-   - The client (Tianyi Zhang) and coordinators (Sara Mumtaz, Dr Muhammad
-     Farhan) — see `Client_Specs.md`.
-   - Why digital phenotyping + a local SLM, framed around the client's
-     actual spec, not a generic pitch.
+## 1. Introduction & Problem Statement
 
-2. **Dataset**
-   - CES, why it was chosen over the client's WHO-5 example (PHQ-4
-     substitution — `build-reference.md` Section 2), platform split caveat,
-     locked 2-feature Tier 1 set and why (`build-reference.md` Section 2).
-   - Reference the independent re-verification:
-     `docs/data-pipeline/ces-reverification.md`.
+- Client: Tianyi Zhang. Coordinators: Sara Mumtaz, Dr Muhammad Farhan
+  (`Client_Specs.md` header info via `build-reference.md` Section 1).
+- Restate the client's framing directly: *"a privacy-preserving
+  conversational AI assistant for personalised digital mental health"*
+  (`Client_Specs.md` Introduction) — a chatbot that explains a person's own
+  behavioural patterns against their own baseline, not a diagnostic tool.
+- State plainly, early: this is explicitly **non-diagnostic** and
+  **local-only** — both are constraints the client's spec sets up
+  ("avoiding unsupported causal or diagnostic conclusions"), not choices
+  the team added independently.
 
-3. **System Architecture**
-   - The 8-role structure and how contracts (not direct cross-role imports)
-     keep the team's work independent — `build-reference.md` Section 8.
-   - Evidence contract as the load-bearing interface between Statistics and
-     SLM: `backend/contracts/evidence.py`.
-   - Locked technology stack table — `build-reference.md` Section 3.
+## 2. Dataset (Client_Specs.md doesn't name one — this is the team's choice, justify it)
 
-4. **Statistical Approach**
-   - The mixed-effects model, person-mean-centring, eligibility rule,
-     three-state cold-start policy —
-     `docs/statistics/model-and-coldstart-spec.md`.
+- **College Experience Study (CES)**, chosen over the client's illustrative
+  WHO-5 example because CES gives weekly, repeated-measures data at the
+  density this project needs (`build-reference.md` Section 2) — the client's
+  own spec explicitly allows this ("depending on data availability").
+- PHQ-4 substituted for WHO-5 — flag this explicitly to the client/graders
+  as a deliberate, documented substitution, not an oversight.
+- The platform-split constraint (188 iOS / 32 Android) and why it locks the
+  Tier 1 feature set to exactly two features (GPS distance, unlock
+  count/duration) — both map directly onto `Client_Specs.md`'s "mobility and
+  distance travelled" and "screen time and unlock frequency" examples under
+  "Digital Phenotyping Pipeline."
+- **Real artifact to cite:** `docs/data-pipeline/ces-reverification.md` and
+  `backend/data_pipeline/ces_eligibility.py` — 97.3% of the 220-participant
+  cohort is eligible under the real, locked sufficiency gate. Flag clearly
+  in the report that this number is independently corroborated but still
+  pending Honghao's own confirmation of his exact original method (see that
+  doc for the full reconciliation).
 
-5. **SLM Integration & Safety**
-   - Ollama + phi4-mini:3.8b, schema-constrained generation, the claim
-     policy, the two fallback templates, the deterministic safety gate —
-     `skills/slm-ollama.md`, `backend/slm/`.
+## 3. System Architecture — mapped to Client_Specs.md's 5 components
 
-6. **Privacy Architecture**
-   - What "nothing leaves the device" means precisely —
-     `docs/privacy/architecture-principles.md`.
+| Client_Specs.md component | This project's implementation | Real Week 4 artifact |
+|---|---|---|
+| 1. Digital Phenotyping Pipeline | Trailing-window feature aggregation, structural-missingness tracking (never zero-imputed) | `skills/data-pipeline-ces.md`; Honghao's pipeline code is Week 5 scope |
+| 2. Mental Health & Wellbeing Integration | Mixed-effects model (LMM), person-mean-centring, within/between (Mundlak) specification | Moe's real, locked spec: `weekly_update/week4/Week4_Statistical_Analysis_Deliverable.md` |
+| 3. Local Small Language Model | Ollama + phi4-mini:3.8b, schema-constrained JSON, temperature=0, two fallback templates | `backend/slm/model_manifest.yaml`, `backend/slm/prompts/` |
+| 4. Human evaluation | Rubric mapped to the client's 10 named criteria, adversarial suite, held-out set | Chonghao's real plan: `backend/evaluation/evaluation_plan_v0.1.md` (provisional — flagged conflict with an earlier AI-drafted threshold, see `docs/evaluation/pass-threshold.md`) |
+| 5. Conversational Interface | React + TypeScript (Vite), 7 mutually-exclusive chat states | `docs/ui/chat-states-design.md`, `frontend/` (scaffold builds clean) |
 
-7. **Evaluation Plan**
-   - The client's 10 named criteria (`build-reference.md` Section 9), the
-     adversarial taxonomy and pre-registered threshold, the held-out set
-     discipline — `docs/evaluation/`.
+- The shared evidence contract (`backend/contracts/evidence.py`) is the
+  load-bearing interface between components 2 and 3 — describe it as the
+  mechanism that lets 6 of the 8 roles build independently in parallel
+  (`build-reference.md` Section 8's "no role edits another role's internal
+  code" rule).
+- Locked technology stack table — `build-reference.md` Section 3 — explain
+  the scikit-learn exclusion and the raw-sqlite3-over-ORM choice; both read
+  as deliberate, reasoned decisions in the report, not omissions.
 
-8. **Timeline & Risk**
-   - Weekly plan summary (Week 4 → Week 12), the specific risks already
-     surfaced (fine-tuning/cloud-GPU conflict, PHQ-4 vs. WHO-5 substitution,
-     platform feature availability) — see `build-reference.md`'s decisions
-     log and Section 2.
+## 4. Statistical Approach
 
-9. **AI Acknowledgement Statement**
-   - Required per Weekly_Plan.md Week 5 — describe where AI tools were used
-     across the project (including, honestly, this Week 4 gap-fill pass).
+- Present Moe's real model as locked: LMM with person-level random
+  intercept **and** random slope, Mundlak within/between centring,
+  Holm-Bonferroni (confirmatory) + Benjamini-Hochberg FDR (exploratory)
+  multiple-comparison control.
+- The three-state cold-start policy (State A: no data / State B: partial,
+  descriptive-only / State C: full, comparative) — this is what keeps the
+  system from asserting a baseline comparison it can't actually support,
+  directly serving `Client_Specs.md`'s requirement to "calculate changes
+  relative to each individual's historical baseline."
+- Evidence-strength banding (weak/moderate/strong) — ties the system's
+  confidence language to real statistical output rather than a
+  hand-waved label.
 
-## What's still open
+## 5. SLM Integration & Safety
 
-- Actual prose for every section above is Honglin's Week 5 focus per
-  Weekly_Plan.md ("Compile the Group Proposal Report — primary focus this
-  week").
-- Section 8 (Timeline & Risk) should be reviewed against whatever the real
-  Week 4 cross-check found — see the top-level status report Priyansh
-  produced on 2026-08-29 for the current per-person state.
+- Ollama + phi4-mini:3.8b, why local (`Client_Specs.md` Local SLM section:
+  *"avoiding the need to send personal sensing information to external
+  language-model services"*).
+- The permitted/prohibited claim system — walk through the exact structured
+  example from `Client_Specs.md` ("Current behaviour... Current
+  wellbeing... Historical relationship... Evidence strength...
+  Interpretation") and show how the evidence contract implements that shape.
+- Two fallback templates, the deterministic safety gate, and why crisis
+  wording is rule-based rather than model-generated — this is a direct
+  answer to the client's "avoiding unsupported causal or diagnostic
+  conclusions" requirement, made concrete.
+- **Flag in the report itself:** the crisis-aware template's helpline
+  content is still a reviewed-pending placeholder as of Week 4 — state this
+  honestly rather than implying it's finished.
+
+## 6. Privacy Architecture
+
+- What "nothing leaves the device" means precisely (network calls,
+  telemetry, logs, dependencies) — Yuktha's real work:
+  `privacy/privacy_architecture_principles.md`,
+  `privacy/dependency_privacy_checklist.md`.
+- Note honestly: the real-machine SLM latency benchmark has been attempted
+  twice (once by Yuktha, once independently) and both times found no Ollama
+  installed on the machine being used — flag this as a genuine open risk
+  for the report's Timeline & Risk section, not something to gloss over.
+
+## 7. Evaluation Plan
+
+- The client's 10 named criteria (`Client_Specs.md` "Human evaluation"
+  section, reproduced in `build-reference.md` Section 9) — the rubric must
+  map directly to these.
+- Chonghao's real, provisional evaluation plan (5 categories, 8-10 dev
+  questions, provisional pass targets) — state plainly in the report that
+  the taxonomy is provisional and the pass-threshold numbers are still
+  being reconciled against an earlier draft, pending his Week 5 sign-off.
+- The held-out set discipline (20-30 prompts, untouched until Week 11) —
+  explain *why* this matters for the report's credibility, not just that
+  it exists.
+
+## 8. Timeline & Risk
+
+- Weekly plan summary, Week 4 → Week 12.
+- Name the real risks already surfaced, honestly:
+  1. PHQ-4/WHO-5 substitution (needs client confirmation).
+  2. Fine-tuning vs. cloud-GPU conflict (`build-reference.md` decisions log)
+     — the client's spec names Kaggle/Colab GPU hours, which conflicts with
+     the local-only privacy claim unless training data is purely synthetic.
+  3. SLM latency is still unverified on any real machine as of Week 4.
+  4. The evaluation taxonomy/threshold reconciliation between Chonghao's
+     real plan and an earlier draft is still open.
+  5. Honglin's own Docs Week 4 task (this outline, the repo-structure
+     confirmation) has no commit from him yet as of this outline being
+     written — a process risk worth naming plainly in a report about a
+     project that's supposed to demonstrate good process.
+
+## 9. AI Acknowledgement Statement
+
+- Required per Weekly_Plan.md Week 5.
+- Describe honestly where AI tools were used, including this Week 4
+  gap-fill/reconciliation pass — the real teammate branches that were
+  merged in, the AI-drafted placeholders that were built and later
+  superseded, and the reconstructed CES eligibility script pending
+  Honghao's confirmation. This kind of transparency is exactly what an AI
+  Acknowledgement statement is for.
