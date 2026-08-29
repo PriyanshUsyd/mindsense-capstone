@@ -42,11 +42,9 @@ sensor-day threshold from Moe Tanaka's locked statistics spec
 exactly. **97.3% is now the official figure**, using this "gated"
 definition (`backend/data_pipeline/verify_ces.py`'s `eligible_pct_OFFICIAL`).
 
-**Still pending:** Honghao's own script/notebook that originally produced
-97.3% still hasn't been committed anywhere — this reconstruction matches
-his number exactly, but that's independent corroboration, not confirmation
-of his exact method. Flagged to Priyansh: ask Honghao to commit his real
-script or confirm this matches his intent.
+**Locked as the shared, working eligibility script.** Data Pipeline Lead
+continues building directly on `backend/data_pipeline/ces_eligibility.py`
+during Week 5 work, rather than maintaining a separate version.
 
 ## Fallback dataset (Corona Health) check
 

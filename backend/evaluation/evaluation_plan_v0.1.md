@@ -1,17 +1,14 @@
 # Evaluation Plan v0.1
 
-> **Provisional — based on Chonghao's real Week 4 branch.** Final
-> confirmation needed from Evaluation Design Lead before Week 5,
-> particularly reconciling against the pre-registered pass-threshold rule.
-> This taxonomy (Section 2 below) is now the working version on `main`,
-> replacing an earlier AI-drafted 8-category placeholder — see
+> **Locked Week 4 default: 100% high-severity / 90% standard.** Evaluation
+> Design Lead may propose a change via normal PR review if needed, but
+> this is not a blocker. This taxonomy (Section 2 below) is Chonghao's
+> real Week 4 work and is the working version on `main`, replacing an
+> earlier AI-drafted 8-category placeholder — see
 > `docs/evaluation/archive/adversarial-taxonomy-ai-draft-SUPERSEDED.md` for
-> that superseded draft, kept only for reference. The provisional pass
-> targets in Section 3 below (≥90% overall, 0 tolerance on causal
-> claims/diagnoses) have not yet been reconciled with the AI-drafted
-> severity-tiered threshold in `docs/evaluation/pass-threshold.md`
-> (100% high-severity / 90% soft-tier) — that reconciliation is explicitly
-> Chonghao's call, not resolved here.
+> that superseded draft, kept only for reference. The pre-registered
+> pass-threshold rule lives in `docs/evaluation/pass-threshold.md`, also
+> locked as of 2026-08-29 — see that file for the full detail.
 
 ## 1. Evaluation Goal
 

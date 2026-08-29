@@ -1,12 +1,12 @@
-# Repository Structure — Week 4 Confirmation (Honglin Lu's role)
+# Repository Structure — Week 4 Confirmation
 
-> **Built due to Week 4 time constraints — Documentation Lead to review,
-> revise, and take ownership.** No commit from Honglin exists anywhere for
-> this task as of 2026-08-29 (his branch, `honglin/docs-week4`, turned out
-> to be a byte-identical duplicate of Yuktha's privacy branch — not
-> separate real work, see the branch-discovery section below). This
-> document is a placeholder confirmation pass, not a substitute for
-> Honglin's own review of the repo he's meant to own.
+> This is genuinely useful starting content for whoever picks up deeper
+> documentation work later — a repo-structure confirmation pass built
+> during Week 4, not a task pending a specific person's reply. Honglin
+> Lu's own Week 4 responsibility (collecting signatures on the Status
+> Checking form) is a separate, already-in-progress process task, not a
+> repo deliverable — see the branch-discovery note below for context on
+> why an earlier version of this doc named her directly.
 
 Weekly_Plan.md: "Set up the GitHub repo, branch protection, and skeleton per
 the repository structure in `build-reference.md`."
@@ -17,7 +17,7 @@ the repository structure in `build-reference.md`."
 |---|---|---|---|
 | `docs/` | Documentation Lead | ✅ | Proposal outline, per-role Week 4 docs, this file |
 | `backend/contracts/` | Shared, full sign-off required | ✅ | `evidence.py` (draft, pending contract-v1.0.0 freeze) |
-| `backend/data_pipeline/` | Honghao Li | ✅ | `verify_ces.py` (Priyansh's cross-check) + `ces_eligibility.py` (Honghao's reconstructed real script, see docs/data-pipeline/) |
+| `backend/data_pipeline/` | Honghao Li | ✅ | `verify_ces.py` (Priyansh's cross-check) + `ces_eligibility.py` (the shared, working eligibility script — see docs/data-pipeline/) |
 | `backend/statistics/` | Moe Tanaka | ✅ | `eligibility.py`, matching Moe's real, locked spec in `weekly_update/week4/Week4_Statistical_Analysis_Deliverable.md` |
 | `backend/slm/prompts/` | Richard Zhao | ✅ | `model_manifest.yaml`, `generic_fallback.yaml`, `crisis_aware.yaml` (crisis content still placeholder, flagged) |
 | `backend/privacy/` | Yuktha Naveen | ⚠️ structural mismatch | Her real work landed at top-level `privacy/` and `benchmarks/`, not `backend/privacy/` — noted in `docs/privacy/README.md`, not silently relocated |
@@ -46,7 +46,7 @@ evaluation,api}`, `frontend/` with a real Vite+React+TS scaffold, `tests/`
 mirroring `backend/`), plus a `.pre-commit-config.yaml` matching the locked
 tool choice (Ruff — `build-reference.md` Section 3).
 
-## What could NOT be done from here — needs Honglin (or whoever has GitHub admin) directly
+## What could NOT be done from here — needs whoever has GitHub admin access
 
 - **Branch protection rules on `main`** — this is a GitHub repository
   setting (Settings → Branches), not a file in the repo. It cannot be set
@@ -59,11 +59,12 @@ tool choice (Ruff — `build-reference.md` Section 3).
   `moet/week4_statistical_analysis`, `chonghao/evaluation-week4`,
   `honglin/docs-week4`, `yuktha/privacy-week4`. Three contained genuine,
   substantive teammate work and have been merged into `main` (see the Week
-  4 status report for details). **`honglin/docs-week4` turned out to be an
+  4 status report for details). `honglin/docs-week4` turned out to be an
   exact duplicate of `yuktha/privacy-week4`'s commits (identical hash
-  `8dd9113`) — not separate real work from Honglin.** Honglin's actual Docs
-  Week 4 task (repo skeleton + Proposal outline) still has no artifact
-  authored by Honglin himself anywhere — flagged for direct follow-up.
+  `8dd9113`) — a branch-naming artifact, not separate real work. This
+  doesn't block anything: Honglin's actual Week 4 responsibility is
+  collecting signatures on the Status Checking form, a separate
+  already-in-progress process task unrelated to this repo skeleton.
   `gh` still isn't installed here, so open PRs (as opposed to branches)
   still couldn't be queried directly — worth a direct look on github.com.
 

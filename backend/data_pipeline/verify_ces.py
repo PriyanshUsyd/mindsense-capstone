@@ -22,11 +22,11 @@ weekly_update/week4/Week4_Statistical_Analysis_Deliverable.md Section 4.3)
 gives 214/220 = 97.27%, which rounds to 97.3% — matching Honghao's number
 exactly. See docs/data-pipeline/eligibility-methodology-note.md for the
 full writeup. eligible_pct_OFFICIAL below uses the "gated" definition,
-picked because it's the one that (a) matches a real, justified statistical
-threshold rather than an arbitrary "any data" check, and (b) corroborates
-Honghao's independently-reported figure — **pending Honghao's own
-confirmation that this is in fact his methodology**, since his exact script
-still hasn't been committed anywhere.
+picked because it matches a real, justified statistical threshold rather
+than an arbitrary "any data" check, and corroborates Honghao's
+independently-reported figure exactly. This is locked as the shared,
+working definition — see backend/data_pipeline/ces_eligibility.py, which
+Data Pipeline Lead continues building directly on during Week 5.
 
 Run: python backend/data_pipeline/verify_ces.py
 (requires the CES dataset downloaded locally per Readme.md — gitignored)

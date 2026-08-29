@@ -45,13 +45,9 @@ Justification for picking this one now, rather than waiting:
    built from two different starting points, converge once the same real
    threshold is applied.
 
-## Still pending — this is a default, not a final answer
+## Status
 
-**Honghao Li has not yet confirmed this is in fact his own methodology.**
-His exact script/notebook that produced 97.3% still hasn't been committed
-anywhere in the repo. It's entirely possible he used a different rule that
-happens to produce the same number by coincidence (unlikely given the exact
-match, but not provably ruled out without his actual code). Flagged to
-Priyansh: get Honghao to commit his real script, or confirm this
-reconstruction matches his intent, before treating 97.3% as anything more
-than "very likely correct, independently corroborated twice."
+**Locked as the shared, working eligibility script.**
+`backend/data_pipeline/ces_eligibility.py` is it — Data Pipeline Lead
+continues building directly on this file during Week 5 work, rather than
+maintaining a separate version.

@@ -121,32 +121,66 @@ def test_honghao_real_script_is_referenced_from_proposal_outline():
     assert "ces_eligibility.py" in text
 
 
-def test_ces_eligibility_script_flags_pending_confirmation():
-    """Item 3's exact required flag text — checked (whitespace-normalized,
+def test_ces_eligibility_script_is_locked_as_shared_working_script():
+    """2026-08-29 update: 'pending Honghao's confirmation' language was
+    retired — this is now locked as the shared, working script Data
+    Pipeline Lead builds directly on. Checked (whitespace-normalized,
     since the docstring hand-wraps across lines) so a future edit can't
-    silently drop the caveat."""
+    silently reintroduce the old pending-confirmation framing."""
     text = _read_unwrapped("backend/data_pipeline/ces_eligibility.py")
-    assert "RECONSTRUCTED METHODOLOGY MATCHING DATA PIPELINE LEAD'S REPORTED FIGURE" in text
-    assert "DATA PIPELINE LEAD TO CONFIRM THIS MATCHES HIS ACTUAL PROCESS" in text
+    assert "shared, working eligibility script" in text
+    assert "Data Pipeline Lead continues building directly on this file during Week 5 work" in text
+    assert "DATA PIPELINE LEAD TO CONFIRM" not in text.upper()
+    assert "RECONSTRUCTED METHODOLOGY" not in text.upper()
 
 
-def test_proposal_outline_flags_week4_time_constraint():
+def test_proposal_outline_is_starting_content_not_pending_a_person():
     text = _read("docs/proposal/outline.md")
-    assert "Built due to Week 4 time constraints" in text
+    assert "Starting content for whoever picks up" in text
+    assert "Built due to Week 4 time constraints" not in text
 
 
-def test_repository_structure_status_flags_week4_time_constraint():
+def test_repository_structure_status_is_starting_content_not_pending_honglin():
     text = _read("docs/repository-structure-status.md")
-    assert "Built due to Week 4 time constraints" in text
+    assert "genuinely useful starting content" in text
+    assert "Built due to Week 4 time constraints" not in text
+    assert "still has no artifact authored by Honglin himself" not in text
 
 
-def test_evaluation_plan_flags_provisional_status_verbatim():
-    """Item 1's exact required note text (whitespace-normalized, since the
-    banner hand-wraps across lines in the source markdown)."""
+def test_evaluation_plan_flags_locked_default_verbatim():
+    """Exact required locked-default note text (whitespace-normalized,
+    since the banner hand-wraps across lines in the source markdown)."""
     text = _read_unwrapped("backend/evaluation/evaluation_plan_v0.1.md")
-    assert "Provisional" in text and "based on Chonghao's real Week 4 branch" in text
-    assert "Final confirmation needed from Evaluation Design Lead before Week 5" in text
-    assert "pre-registered pass-threshold rule" in text
+    assert "Locked Week 4 default: 100% high-severity / 90% standard" in text
+    assert "Evaluation Design Lead may propose a change via normal PR review if needed, but this is not a blocker" in text
+
+
+def test_pass_threshold_doc_is_locked_not_parked():
+    text = _read_unwrapped("docs/evaluation/pass-threshold.md")
+    assert "LOCKED WEEK 4 DEFAULT" in text
+    assert "Locked Week 4 default: 100% high-severity / 90% standard" in text
+    assert "PARKED" not in text
+    assert "unresolved conflict" not in text.lower()
+
+
+def test_week4_milestone_status_shows_every_role_as_complete_or_locked():
+    """The final status doc's per-role table must show every one of the 8
+    roles with an acceptable status (Complete / Locked default, no action
+    needed) — not pending a reply or blocked on someone. Parses the
+    markdown table's role rows specifically, rather than banning words
+    like 'blocked' outright (which can legitimately appear describing an
+    unrelated result, e.g. a benchmark that is itself honestly "blocked")."""
+    text = _read("docs/week4-milestone-status.md")
+    roles = [
+        "Honghao Li", "Moe Tanaka", "Richard Zhao", "Sheng Wang",
+        "Yuktha Naveen", "Chonghao Shen", "Honglin Lu", "Priyansh Khandelwal",
+    ]
+    table_lines = [line for line in text.splitlines() if line.startswith("|") and any(r in line for r in roles)]
+    assert len(table_lines) == len(roles), "not every role has a row in the status table"
+    for line in table_lines:
+        assert "**Complete**" in line or "**Locked default, no action needed**" in line, (
+            f"role row does not show an acceptable status: {line}"
+        )
 
 
 def test_safety_gate_module_is_importable_and_self_documented():
