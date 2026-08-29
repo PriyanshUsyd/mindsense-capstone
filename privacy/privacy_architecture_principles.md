@@ -2,7 +2,7 @@
 
 Owner: Yuktha Naveen, Privacy and Security Lead  
 Status: Week 4 draft  
-Last updated: 2026-08-27
+Last verified: 2026-08-29
 
 ## Scope
 

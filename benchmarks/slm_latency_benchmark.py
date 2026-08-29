@@ -22,7 +22,6 @@ from typing import Any
 from urllib import request
 from urllib.error import URLError
 
-
 PROMPTS = [
     "Summarise this wellbeing evidence in one cautious sentence: sleep duration is lower than the user's baseline, activity is unchanged, and confidence is moderate.",
     "The user does not have enough baseline history. Write a brief response that avoids comparison claims.",
@@ -148,7 +147,9 @@ def environment() -> dict[str, Any]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run a local SLM latency benchmark.")
-    parser.add_argument("--provider", choices=["ollama", "openai-compatible", "cli"], default="ollama")
+    parser.add_argument(
+        "--provider", choices=["ollama", "openai-compatible", "cli"], default="ollama"
+    )
     parser.add_argument("--model", default="phi4-mini:3.8b")
     parser.add_argument("--url", default="http://127.0.0.1:11434/api/generate")
     parser.add_argument("--cmd", default="")
@@ -167,7 +168,13 @@ def main() -> int:
 
     try:
         result["benchmark"] = benchmark(args)
-    except (subprocess.SubprocessError, URLError, TimeoutError, OSError, ValueError) as exc:
+    except (
+        subprocess.SubprocessError,
+        URLError,
+        TimeoutError,
+        OSError,
+        ValueError,
+    ) as exc:
         result["status"] = "blocked"
         result["error"] = type(exc).__name__
         result["message"] = str(exc)
