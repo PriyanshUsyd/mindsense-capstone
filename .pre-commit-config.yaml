@@ -1,0 +1,10 @@
+# Per build-reference.md Section 3: Ruff replaces Black + isort + flake8.
+# STATUS: DRAFT, built to fill a Week 4 gap on 2026-08-29 (Honglin Lu's repo
+# skeleton task) — not yet run/verified in CI.
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.9
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format

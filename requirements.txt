@@ -1,0 +1,18 @@
+# Locked stack per build-reference.md Section 3. DRAFT — built to fill a
+# Week 4 gap (no requirements file existed); version pins below are
+# starting points, not verified against a real resolved environment yet.
+fastapi
+uvicorn[standard]
+pydantic>=2
+pandas
+numpy
+statsmodels
+pyyaml
+sqlite-utils  # optional convenience only; backend/db.py is still the only file allowed to import sqlite3 directly
+pytest
+pytest-asyncio
+pytest-socket
+ruff
+
+# Explicitly excluded per build-reference.md's decisions log — do not add:
+# scikit-learn

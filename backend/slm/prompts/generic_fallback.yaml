@@ -1,0 +1,37 @@
+# Generic fallback template — one of the two Week 4 required fallback
+# templates (build-reference.md Section 6, skills/slm-ollama.md).
+#
+# Used when: the model's draft output fails second-pass validation (an
+# evidence id doesn't exist in the packet, a claim id isn't approved by its
+# evidence item, a prohibited claim/phrase is present, or a "ready"
+# explanation is missing its uncertainty statement), OR the request is
+# out of scope for this app.
+#
+# This is NOT the crisis template — see crisis_aware.yaml for that. A
+# rule-based detector (built jointly with the Evaluation lead) decides which
+# of the two templates fires; the SLM never chooses between them itself.
+
+template_id: generic_fallback
+template_version: "1.0.0"
+response_mode: generic_fallback
+allowed_claim_ids:
+  - not_enough_data
+  - non_diagnostic_boundary
+prohibited_claim_ids:
+  - diagnosis
+  - causal_explanation
+  - treatment_or_crisis_advice
+  - risk_prediction
+
+text: >
+  I'm not able to give a confident answer to that right now. This app can
+  only describe patterns in your own tracked behaviour compared to your own
+  recent history — it doesn't diagnose conditions, explain causes, or give
+  treatment advice. If you'd like, try asking about one of your tracked
+  patterns (like your GPS movement or phone unlock activity) over a recent
+  time period.
+
+review_note: >
+  DRAFT — built to fill a Week 4 gap on 2026-08-29. Richard Zhao should
+  review and finalize wording; this is deliberately conservative and
+  non-diagnostic per the claim policy, but the exact phrasing is his call.
