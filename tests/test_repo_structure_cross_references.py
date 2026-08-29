@@ -168,6 +168,16 @@ def test_requirements_txt_lists_every_package_actually_imported_by_tests():
     assert "pytest-socket" in text
 
 
+def test_branch_protection_guide_exists_and_is_referenced():
+    """docs/github-branch-protection-setup.md must exist and be linked from
+    the repo-structure status doc, not left as a standalone orphan."""
+    guide_path = REPO_ROOT / "docs/github-branch-protection-setup.md"
+    assert guide_path.is_file()
+
+    status_text = _read("docs/repository-structure-status.md")
+    assert "github-branch-protection-setup.md" in status_text
+
+
 def test_eligibility_status_enum_has_no_orphaned_values():
     """Every EligibilityStatus value the contract defines must actually be
     reachable from Moe's real classify_state() via to_eligibility_status()
