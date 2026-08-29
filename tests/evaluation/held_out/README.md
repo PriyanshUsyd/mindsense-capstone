@@ -1,5 +1,14 @@
 # ⚠️ HELD-OUT SET — DO NOT OPEN DURING NORMAL ITERATION ⚠️
 
+**Placeholder-written — Evaluation Design Lead to review and revise before
+Week 5 use.** Accepted as the working v1 on 2026-08-29 under time
+constraints, not a permanent substitute for Chonghao's own judgment (see
+below). Note: Chonghao's real Week 4 branch
+(`backend/evaluation/evaluation_plan_v0.1.md`) explicitly defers the
+held-out set to later ("developed later after alignment with the other
+project components") — so this placeholder isn't in conflict with anything
+he's built yet, it's just standing in until he does.
+
 Per `skills/evaluation-safety.md`: **"Set aside 20-30 prompts in Week 4 that
 nobody looks at again until Week 11... If anyone — including you — peeks at
 these prompts or the model's responses to them before Week 11, the held-out

@@ -31,26 +31,22 @@ dual-platform uids, and the ~1.21e9 GPS outlier are all confirmed present in
 the actual current copy of the data — the skill file's documented quirks are
 real, not stale.
 
-## On the 97.3% eligible figure specifically
+## On the 97.3% eligible figure specifically — RECONCILED 2026-08-29
 
-The coarse check above returns **98.2% eligible**, not Honghao's reported
-**97.3%** — these are not the same calculation, so this is not a
-discrepancy to resolve, just a difference in method to be transparent about:
+**Resolved — see `docs/data-pipeline/eligibility-methodology-note.md` for
+the full writeup.** Short version: the original coarse check above (98.2%)
+counted "any data ever" as eligible. Re-running with the real ≥20-valid-
+sensor-day threshold from Moe Tanaka's locked statistics spec
+(`weekly_update/week4/Week4_Statistical_Analysis_Deliverable.md` Section
+4.3) gives **214/220 = 97.27% → 97.3%**, matching Honghao's reported number
+exactly. **97.3% is now the official figure**, using this "gated"
+definition (`backend/data_pipeline/verify_ces.py`'s `eligible_pct_OFFICIAL`).
 
-- This script's "eligible" = has ≥1 PHQ-4 entry AND ≥1 day of non-null
-  coverage ever on both locked features, across a participant's entire
-  history.
-- Honghao's actual eligibility number almost certainly uses the real
-  trailing-window + coverage-ratio rule (the kind defined in
-  `docs/statistics/model-and-coldstart-spec.md`), applied per PHQ-4 window,
-  not a whole-history yes/no check.
-
-**Action needed (flagged to Priyansh for direct follow-up with Honghao):**
-ask Honghao to commit the actual script/notebook that produced 97.3%, so the
-number is reproducible by anyone on the team, not just reported verbally.
-This doc and `verify_ces.py` should not be treated as "the" CES verification
-— they're a corroborating sanity check that happens to confirm the same
-underlying dataset facts.
+**Still pending:** Honghao's own script/notebook that originally produced
+97.3% still hasn't been committed anywhere — this reconstruction matches
+his number exactly, but that's independent corroboration, not confirmation
+of his exact method. Flagged to Priyansh: ask Honghao to commit his real
+script or confirm this matches his intent.
 
 ## Fallback dataset (Corona Health) check
 

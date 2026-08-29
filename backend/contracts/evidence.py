@@ -108,8 +108,8 @@ class FeatureWindow(BaseModel):
     window_start: date
     window_end: date
     value: float
-    observed_days: int
-    expected_days: int
+    observed_days: int = Field(ge=0)
+    expected_days: int = Field(gt=0)
     coverage_ratio: float = Field(ge=0.0, le=1.0)
     platform: Platform
     quality_flags: tuple[str, ...] = Field(default_factory=tuple)
@@ -120,7 +120,7 @@ class PersonalBaseline(BaseModel):
 
     method: str = Field(description='e.g. "trailing person-mean, N prior eligible windows"')
     value: float | None
-    n_baseline_observations: int
+    n_baseline_observations: int = Field(ge=0)
     eligibility_status: EligibilityStatus
     ineligible_reason: str | None = None
 
