@@ -23,11 +23,41 @@ tool choice (Ruff — `build-reference.md` Section 3).
   github.com/PriyanshUsyd/mindsense-capstone to configure it (e.g. require
   PR review before merge, require the CI check to pass).
 - **Confirming there are no other stray branches/PRs on GitHub itself:**
-  `git branch -a` here only shows `main` (local and `origin/main`), and the
-  `gh` CLI isn't installed on this machine, so PRs couldn't be queried
-  directly via the GitHub API from here. Worth a direct check on
-  github.com to be certain, especially if anyone has pushed a branch that
-  hasn't been fetched for some reason.
+  UPDATE 2026-08-29 (second pass): `git fetch --all` found 4 real remote
+  branches that a purely-local check had missed —
+  `moet/week4_statistical_analysis`, `chonghao/evaluation-week4`,
+  `honglin/docs-week4`, `yuktha/privacy-week4`. Three contained genuine,
+  substantive teammate work and have been merged into `main` (see the Week
+  4 status report for details). **`honglin/docs-week4` turned out to be an
+  exact duplicate of `yuktha/privacy-week4`'s commits (identical hash
+  `8dd9113`) — not separate real work from Honglin.** Honglin's actual Docs
+  Week 4 task (repo skeleton + Proposal outline) still has no artifact
+  authored by Honglin himself anywhere — flagged for direct follow-up.
+  `gh` still isn't installed here, so open PRs (as opposed to branches)
+  still couldn't be queried directly — worth a direct look on github.com.
+
+## GitHub branch-protection setup steps (for whoever has admin access)
+
+Cannot be done from this environment — these are GitHub web UI settings,
+not files. Numbered steps for whoever has admin on
+`github.com/PriyanshUsyd/mindsense-capstone`:
+
+1. Go to the repo on github.com → **Settings** → **Branches**.
+2. Under "Branch protection rules", click **Add branch protection rule** (or
+   "Add rule").
+3. Set **Branch name pattern** to `main`.
+4. Enable **Require a pull request before merging** (so nobody, including
+   admins, pushes straight to `main` again — this Week 4 pass itself pushed
+   directly to `main` twice, which branch protection would have blocked and
+   forced through a PR instead).
+5. Under that, enable **Require approvals** and set it to at least 1.
+6. Enable **Require status checks to pass before merging**, once CI exists
+   (there's no CI workflow file yet — a follow-up item, not blocking this
+   step).
+7. Enable **Require branches to be up to date before merging**.
+8. Consider enabling **Do not allow bypassing the above settings** so it
+   applies to repo admins too, not just other contributors.
+9. Save the rule.
 
 ## Files added toward the skeleton
 

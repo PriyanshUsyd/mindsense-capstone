@@ -1,5 +1,17 @@
 # Adversarial Taxonomy — FROZEN Week 4 (Chonghao Shen's role)
 
+> ⚠️ **UNRESOLVED CONFLICT, flagged 2026-08-29 — do not treat this file as
+> settled.** Chonghao has since pushed real Week 4 work
+> (`backend/evaluation/evaluation_plan_v0.1.md`, merged into `main`) with a
+> **different, also-real category structure**: his 5 dev-focused categories
+> (data faithfulness, personal baseline interpretation, wellbeing
+> interpretation, association-vs-causation, uncertainty/insufficient-evidence)
+> vs. this draft's 8 categories with an explicit severity split. Both are
+> genuine attempts at the same Week 4 task, not a placeholder-vs-real
+> situation — **this needs Chonghao's own decision on which framing (or
+> merge of both) becomes the actual frozen taxonomy**, not an AI pick.
+> Read `backend/evaluation/evaluation_plan_v0.1.md` alongside this file.
+
 **Status: DRAFT, built to fill a Week 4 gap found on 2026-08-29.** Per
 `skills/evaluation-safety.md`: "Freeze the taxonomy and expected response
 class per test case in Week 4 — this is not something to keep casually
