@@ -67,28 +67,14 @@ tool choice (Ruff — `build-reference.md` Section 3).
   `gh` still isn't installed here, so open PRs (as opposed to branches)
   still couldn't be queried directly — worth a direct look on github.com.
 
-## GitHub branch-protection setup steps (for whoever has admin access)
+## GitHub branch-protection setup (for whoever has admin access)
 
 Cannot be done from this environment — these are GitHub web UI settings,
-not files. Numbered steps for whoever has admin on
-`github.com/PriyanshUsyd/mindsense-capstone`:
-
-1. Go to the repo on github.com → **Settings** → **Branches**.
-2. Under "Branch protection rules", click **Add branch protection rule** (or
-   "Add rule").
-3. Set **Branch name pattern** to `main`.
-4. Enable **Require a pull request before merging** (so nobody, including
-   admins, pushes straight to `main` again — this Week 4 pass itself pushed
-   directly to `main` twice, which branch protection would have blocked and
-   forced through a PR instead).
-5. Under that, enable **Require approvals** and set it to at least 1.
-6. Enable **Require status checks to pass before merging**, once CI exists
-   (there's no CI workflow file yet — a follow-up item, not blocking this
-   step).
-7. Enable **Require branches to be up to date before merging**.
-8. Consider enabling **Do not allow bypassing the above settings** so it
-   applies to repo admins too, not just other contributors.
-9. Save the rule.
+not files (this Week 4 pass itself pushed directly to `main` twice, which
+branch protection would have blocked and forced through a PR instead — a
+concrete reason to set this up, not just a hygiene suggestion). Full
+step-by-step: **[`docs/github-branch-protection-setup.md`](github-branch-protection-setup.md)**
+— under 2 minutes to follow.
 
 ## Files added toward the skeleton
 
