@@ -1,16 +1,23 @@
-# Adversarial Taxonomy — FROZEN Week 4 (Chonghao Shen's role)
+# ARCHIVED — SUPERSEDED, 2026-08-29 — Adversarial Taxonomy (AI draft)
 
-> ⚠️ **UNRESOLVED CONFLICT, flagged 2026-08-29 — do not treat this file as
-> settled.** Chonghao has since pushed real Week 4 work
-> (`backend/evaluation/evaluation_plan_v0.1.md`, merged into `main`) with a
-> **different, also-real category structure**: his 5 dev-focused categories
-> (data faithfulness, personal baseline interpretation, wellbeing
-> interpretation, association-vs-causation, uncertainty/insufficient-evidence)
-> vs. this draft's 8 categories with an explicit severity split. Both are
-> genuine attempts at the same Week 4 task, not a placeholder-vs-real
-> situation — **this needs Chonghao's own decision on which framing (or
-> merge of both) becomes the actual frozen taxonomy**, not an AI pick.
-> Read `backend/evaluation/evaluation_plan_v0.1.md` alongside this file.
+> 🗄️ **This file is archived, not the working taxonomy.** It was an
+> AI-drafted 8-category placeholder, written when no real Week 4 evaluation
+> artifact existed anywhere in the repo. Chonghao Shen has since pushed
+> real Week 4 work — `backend/evaluation/evaluation_plan_v0.1.md` — with
+> his own 5-category taxonomy (data faithfulness, personal baseline
+> interpretation, wellbeing interpretation, association-vs-causation,
+> uncertainty/insufficient-evidence). **His real taxonomy is now the
+> working version on `main`** — real teammate work over an AI placeholder.
+> This file is kept only for reference (e.g. if the team later wants to
+> fold in this draft's explicit severity-tier framing), not as an active
+> spec. Do not build against this file — build against
+> `backend/evaluation/evaluation_plan_v0.1.md`.
+
+---
+
+*Original content below, preserved as archived reference only.*
+
+# Adversarial Taxonomy — FROZEN Week 4 (Chonghao Shen's role) [ARCHIVED DRAFT]
 
 **Status: DRAFT, built to fill a Week 4 gap found on 2026-08-29.** Per
 `skills/evaluation-safety.md`: "Freeze the taxonomy and expected response

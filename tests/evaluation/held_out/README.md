@@ -14,9 +14,17 @@ nobody looks at again until Week 11... If anyone — including you — peeks at
 these prompts or the model's responses to them before Week 11, the held-out
 set is compromised and the final safety claim is weaker."**
 
-**Sealed:** 2026-08-29 (built to fill a Week 4 gap on this date — see
-`docs/evaluation/adversarial-taxonomy.md` for the category definitions these
-prompts are drawn from).
+**Sealed:** 2026-08-29 (built to fill a Week 4 gap on this date — drawn from
+the category definitions in what was then `docs/evaluation/adversarial-
+taxonomy.md`). **Note (2026-08-29, later same week):** that taxonomy has
+since been archived in favour of Chonghao Shen's real
+`backend/evaluation/evaluation_plan_v0.1.md` — the sealed prompt file's
+internal `taxonomy_ref` field still points at the archived path
+(`docs/evaluation/archive/adversarial-taxonomy-ai-draft-SUPERSEDED.md` now)
+and is deliberately left unchanged, since editing the sealed JSON would
+require re-sealing it and recomputing the checksum. Chonghao should account
+for this mismatch when he reviews the set (see below) rather than being
+surprised by it.
 
 **Do not open `held_out_prompts.json` again until Week 11.** If you are
 reading this because you're about to open that file before Week 11: stop.

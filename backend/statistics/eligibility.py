@@ -18,6 +18,8 @@ from __future__ import annotations
 
 from enum import Enum
 
+from backend.contracts.evidence import EligibilityStatus
+
 # Moe's real §4.3 sufficiency gates (calendar days, valid sensor-days, EMAs).
 STATE_B_MIN_CALENDAR_DAYS = 7
 STATE_B_MIN_VALID_SENSOR_DAYS = 5
@@ -81,6 +83,22 @@ def is_historical_relationship_eligible(
         and ema_count >= HISTORICAL_MIN_EMAS
         and ema_span_days >= HISTORICAL_MIN_EMA_SPAN_DAYS
     )
+
+
+def to_eligibility_status(state: ColdStartState) -> EligibilityStatus:
+    """FIXED 2026-08-29 — the single place that connects Moe's three-state
+    ColdStartState (A/B/C) to the evidence contract's EligibilityStatus.
+    Before this fix, the contract only had a binary ELIGIBLE/INELIGIBLE
+    concept with no way to represent State B (partial history — a value
+    can be shown, but no comparison/StatisticalEvidence). Callers building
+    a PersonalBaseline for the evidence contract MUST go through this
+    function rather than hand-rolling the mapping, so the two modules can't
+    drift apart again silently."""
+    return {
+        ColdStartState.A_INSUFFICIENT_DATA: EligibilityStatus.INELIGIBLE_INSUFFICIENT_WINDOW,
+        ColdStartState.B_PARTIAL_HISTORY: EligibilityStatus.PARTIAL_DESCRIPTIVE_ONLY,
+        ColdStartState.C_FULL_HISTORY: EligibilityStatus.ELIGIBLE,
+    }[state]
 
 
 def is_eligible(coverage_ratio: float, n_prior_baseline_windows: int) -> tuple[bool, str | None]:
