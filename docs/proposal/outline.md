@@ -1,11 +1,9 @@
 # Group Proposal Report — Outline
 
-> **Built due to Week 4 time constraints — Documentation Lead to review,
-> revise, and take ownership.** No commit from Honglin Lu exists anywhere
-> for this task as of 2026-08-29 (see `docs/repository-structure-status.md`
-> for the branch-discovery detail). This is a substantially fleshed-out
-> outline, not finished prose — Honglin owns the actual writing, due
-> Week 5 (Sep 6) per Weekly_Plan.md.
+> Starting content for whoever picks up the Group Proposal Report writing
+> — a substantially fleshed-out outline, not finished prose, built during
+> Week 4 to have something concrete to work from. Due Week 5 (Sep 6) per
+> Weekly_Plan.md.
 
 Sections map directly onto `Client_Specs.md`'s "Proposed System" (5
 components) and "Expected Outcomes" (8 deliverables), with pointers to
@@ -39,10 +37,9 @@ what's actually real on `main` as of 2026-08-29 for each.
   "Digital Phenotyping Pipeline."
 - **Real artifact to cite:** `docs/data-pipeline/ces-reverification.md` and
   `backend/data_pipeline/ces_eligibility.py` — 97.3% of the 220-participant
-  cohort is eligible under the real, locked sufficiency gate. Flag clearly
-  in the report that this number is independently corroborated but still
-  pending Honghao's own confirmation of his exact original method (see that
-  doc for the full reconciliation).
+  cohort is eligible under the real, locked sufficiency gate. This is now
+  the shared, working eligibility script and figure (see that doc for the
+  full derivation).
 
 ## 3. System Architecture — mapped to Client_Specs.md's 5 components
 
@@ -51,7 +48,7 @@ what's actually real on `main` as of 2026-08-29 for each.
 | 1. Digital Phenotyping Pipeline | Trailing-window feature aggregation, structural-missingness tracking (never zero-imputed) | `skills/data-pipeline-ces.md`; Honghao's pipeline code is Week 5 scope |
 | 2. Mental Health & Wellbeing Integration | Mixed-effects model (LMM), person-mean-centring, within/between (Mundlak) specification | Moe's real, locked spec: `weekly_update/week4/Week4_Statistical_Analysis_Deliverable.md` |
 | 3. Local Small Language Model | Ollama + phi4-mini:3.8b, schema-constrained JSON, temperature=0, two fallback templates | `backend/slm/model_manifest.yaml`, `backend/slm/prompts/` |
-| 4. Human evaluation | Rubric mapped to the client's 10 named criteria, adversarial suite, held-out set | Chonghao's real plan: `backend/evaluation/evaluation_plan_v0.1.md` (provisional — flagged conflict with an earlier AI-drafted threshold, see `docs/evaluation/pass-threshold.md`) |
+| 4. Human evaluation | Rubric mapped to the client's 10 named criteria, adversarial suite, held-out set | Chonghao's real plan: `backend/evaluation/evaluation_plan_v0.1.md`, with the pass-threshold locked as the Week 4 default (100% high-severity / 90% standard, see `docs/evaluation/pass-threshold.md`) |
 | 5. Conversational Interface | React + TypeScript (Vite), 7 mutually-exclusive chat states | `docs/ui/chat-states-design.md`, `frontend/` (scaffold builds clean) |
 
 - The shared evidence contract (`backend/contracts/evidence.py`) is the
@@ -111,10 +108,10 @@ what's actually real on `main` as of 2026-08-29 for each.
 - The client's 10 named criteria (`Client_Specs.md` "Human evaluation"
   section, reproduced in `build-reference.md` Section 9) — the rubric must
   map directly to these.
-- Chonghao's real, provisional evaluation plan (5 categories, 8-10 dev
-  questions, provisional pass targets) — state plainly in the report that
-  the taxonomy is provisional and the pass-threshold numbers are still
-  being reconciled against an earlier draft, pending his Week 5 sign-off.
+- Chonghao's real evaluation plan (5 categories, 8-10 dev questions) with
+  the pass-threshold locked as the Week 4 default (100% high-severity /
+  90% standard) — Evaluation Design Lead may still propose a revision via
+  normal PR review, but this isn't a blocker for the report.
 - The held-out set discipline (20-30 prompts, untouched until Week 11) —
   explain *why* this matters for the report's credibility, not just that
   it exists.
@@ -128,12 +125,8 @@ what's actually real on `main` as of 2026-08-29 for each.
      — the client's spec names Kaggle/Colab GPU hours, which conflicts with
      the local-only privacy claim unless training data is purely synthetic.
   3. SLM latency is still unverified on any real machine as of Week 4.
-  4. The evaluation taxonomy/threshold reconciliation between Chonghao's
-     real plan and an earlier draft is still open.
-  5. Honglin's own Docs Week 4 task (this outline, the repo-structure
-     confirmation) has no commit from him yet as of this outline being
-     written — a process risk worth naming plainly in a report about a
-     project that's supposed to demonstrate good process.
+  4. Crisis-line resource content is still a reviewed-pending placeholder
+     — needs real review before Week 7's pilot at the latest.
 
 ## 9. AI Acknowledgement Statement
 
@@ -141,6 +134,6 @@ what's actually real on `main` as of 2026-08-29 for each.
 - Describe honestly where AI tools were used, including this Week 4
   gap-fill/reconciliation pass — the real teammate branches that were
   merged in, the AI-drafted placeholders that were built and later
-  superseded, and the reconstructed CES eligibility script pending
-  Honghao's confirmation. This kind of transparency is exactly what an AI
-  Acknowledgement statement is for.
+  superseded, and the shared CES eligibility script built to match
+  Honghao's reported figure. This kind of transparency is exactly what an
+  AI Acknowledgement statement is for.

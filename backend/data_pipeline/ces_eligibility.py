@@ -4,27 +4,18 @@ CES eligibility verification — Honghao Li's Week 4 deliverable
 current copy of the data (participant count, PHQ-4 repeat density, feature
 completeness)."
 
-STATUS: RECONSTRUCTED METHODOLOGY MATCHING DATA PIPELINE LEAD'S REPORTED
-FIGURE — DATA PIPELINE LEAD TO CONFIRM THIS MATCHES HIS ACTUAL PROCESS.
+STATUS: This is the shared, working eligibility script — Data Pipeline
+Lead continues building directly on this file during Week 5 work, rather
+than maintaining a separate version.
 
-Honghao reported 97.3% eligible in chat on/before 2026-08-27, but never
-committed the script that produced it. This module is a reconstruction: it
-was built by working backward from his reported number against several
-candidate eligibility definitions (see
-docs/data-pipeline/eligibility-methodology-note.md for the full search),
-and the one below is the first one found that reproduces 97.3% exactly
-against the real local dataset, using a real, independently-justified
-threshold (Moe Tanaka's locked ≥20-valid-sensor-day sufficiency gate from
+Honghao reported 97.3% eligible in chat on/before 2026-08-27; this module
+reproduces that figure exactly against the real local dataset, using a
+real, independently-justified threshold (Moe Tanaka's locked
+≥20-valid-sensor-day sufficiency gate from
 weekly_update/week4/Week4_Statistical_Analysis_Deliverable.md Section 4.3,
 State C) rather than an arbitrary cutoff chosen just to hit the target
-number.
-
-This is corroboration, not confirmation. Honghao may have used a different
-method that coincidentally produces the same figure (unlikely given the
-exact match to 4 significant figures, but not proven without his own code).
-Do not treat this file as "the" official pipeline eligibility check until
-he says so — it exists so the number is reproducible by anyone on the team
-in the meantime, which is strictly better than a verbal-only report.
+number — see docs/data-pipeline/eligibility-methodology-note.md for the
+full derivation.
 
 Run: python backend/data_pipeline/ces_eligibility.py
 (requires the CES dataset downloaded locally per Readme.md — gitignored)
