@@ -27,7 +27,14 @@ evidence items (e.g. multiple features per packet), this function's
 
 from __future__ import annotations
 
-from backend.contracts.evidence import AssistantDraft, EvidencePacket, ResponseMode
+import re
+
+from backend.contracts.evidence import (
+    AssistantDraft,
+    EligibilityStatus,
+    EvidencePacket,
+    ResponseMode,
+)
 
 
 class SafetyGateRejection(str):
@@ -40,12 +47,53 @@ UNKNOWN_EVIDENCE_ID = SafetyGateRejection("unknown_evidence_id_referenced")
 CLAIM_NOT_APPROVED = SafetyGateRejection("claim_not_approved")
 RESPONSE_MODE_NOT_PERMITTED = SafetyGateRejection("response_mode_not_permitted")
 MISSING_UNCERTAINTY_STATEMENT = SafetyGateRejection("missing_uncertainty_statement")
+EMPTY_RESPONSE_TEXT = SafetyGateRejection("empty_response_text")
+RESPONSE_TEXT_TOO_SHORT = SafetyGateRejection("response_text_too_short")
+PROHIBITED_PHRASE_DETECTED = SafetyGateRejection("prohibited_phrase_detected")
+ELIGIBILITY_TEXT_CONTRADICTION = SafetyGateRejection("eligibility_text_contradiction")
+REFUSAL_REFERENCES_EVIDENCE = SafetyGateRejection("refusal_references_evidence")
+INSUFFICIENT_HISTORY_DISCLOSURE_MISSING = SafetyGateRejection(
+    "insufficient_history_disclosure_missing"
+)
 
 # response modes that constitute a "ready" (non-fallback) explanation, per
 # skills/slm-ollama.md's requirement that these must carry an uncertainty
 # statement. Fallback/refusal modes are exempt — they don't explain
 # anything for uncertainty to attach to.
 _MODES_REQUIRING_UNCERTAINTY_STATEMENT = {ResponseMode.NORMAL, ResponseMode.UNCERTAINTY}
+_MODEL_EXPLANATION_MODES = {
+    ResponseMode.NORMAL,
+    ResponseMode.UNCERTAINTY,
+    ResponseMode.INSUFFICIENT_DATA,
+}
+
+# These deliberately target direct assertions, not isolated mental-health
+# words. Refusal/fallback text is deterministic or boundary-setting and is
+# excluded from this phrase-class scan.
+_PROHIBITED_ASSERTION_PATTERNS = (
+    re.compile(
+        r"\b(?:caused?|causes?|causing|impacted?|impacting|leads? to|"
+        r"result(?:s|ed)? in)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\byou (?:have|are|suffer from) (?:depression|anxiety|a mental "
+        r"illness|a mental health condition)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\byou should (?:start|stop|take|change) (?:medication|medicine|"
+        r"treatment|therapy)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(r"\byour (?:mental health )?risk (?:is|will be)\b", re.IGNORECASE),
+)
+
+_INSUFFICIENT_HISTORY_PATTERN = re.compile(
+    r"\bno data\b|\b(?:not enough|insufficient) (?:data|history)|"
+    r"\btoo early to (?:compare|tell|determine)\b",
+    re.IGNORECASE,
+)
 
 
 def validate_draft(
@@ -63,11 +111,37 @@ def validate_draft(
     if not set(draft.evidence_ids_referenced) <= valid_evidence_ids:
         return False, UNKNOWN_EVIDENCE_ID
 
+    if draft.response_mode == ResponseMode.REFUSAL and draft.evidence_ids_referenced:
+        return False, REFUSAL_REFERENCES_EVIDENCE
+
     if not set(draft.claim_ids_used) <= set(packet.claim_policy.approved_claim_ids):
         return False, CLAIM_NOT_APPROVED
 
     if draft.response_mode not in packet.claim_policy.permitted_response_modes:
         return False, RESPONSE_MODE_NOT_PERMITTED
+
+    if not draft.text.strip():
+        return False, EMPTY_RESPONSE_TEXT
+
+    if len(draft.text.strip()) < 20:
+        return False, RESPONSE_TEXT_TOO_SHORT
+
+    if (
+        packet.baseline.eligibility_status == EligibilityStatus.ELIGIBLE
+        and _INSUFFICIENT_HISTORY_PATTERN.search(draft.text)
+    ):
+        return False, ELIGIBILITY_TEXT_CONTRADICTION
+
+    if (
+        draft.response_mode == ResponseMode.INSUFFICIENT_DATA
+        and not _INSUFFICIENT_HISTORY_PATTERN.search(draft.text)
+    ):
+        return False, INSUFFICIENT_HISTORY_DISCLOSURE_MISSING
+
+    if draft.response_mode in _MODEL_EXPLANATION_MODES and any(
+        pattern.search(draft.text) for pattern in _PROHIBITED_ASSERTION_PATTERNS
+    ):
+        return False, PROHIBITED_PHRASE_DETECTED
 
     if (
         draft.response_mode in _MODES_REQUIRING_UNCERTAINTY_STATEMENT
