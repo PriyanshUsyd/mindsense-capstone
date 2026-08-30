@@ -1,10 +1,10 @@
-# Skill: SLM Integration (Ollama + Phi-4 Mini)
+# Skill: SLM Integration (Ollama + Pinned Local Candidates)
 
 Applies to: SLM Integration Lead primarily.
 
-## The model
+## The model candidates
 
-Ollama + `phi4-mini:3.8b`, pinned exactly — never use a floating `latest` tag in any release script. Record the pinned tag in a documented model manifest. All calls go through `backend/slm/client.py`, the only file in the whole backend allowed to talk to the local Ollama daemon (bound to loopback only — this is enforced by the Privacy lead's network-audit test).
+Ollama is the confirmed local runtime. `phi4-mini:3.8b` is the pinned baseline and `qwen3:4b` is the pinned challenger; the final model has not been selected. Never use a floating `latest` tag in any release script. Record every evaluated tag and selection status in the documented model manifest. All calls go through `backend/slm/client.py`, the only file in the whole backend allowed to talk to the local Ollama daemon (bound to loopback only — this is enforced by the Privacy lead's network-audit test).
 
 ## Schema-constrained output, not free-form chat
 

@@ -57,7 +57,7 @@ CES sensing data is hourly/daily; PHQ-4 is weekly. These must not be joined naiv
 | Data handling | pandas + NumPy | CES's wide daily/hourly CSVs; direct, transparent aggregation, no ML pipeline needed |
 | Statistical engine | statsmodels (MixedLM) | Fixed random-intercept mixed-effects model, see Section 4 |
 | scikit-learn | Explicitly excluded | No model training, no train/test split, no cross-validation happens anywhere in this pipeline. Do not add it to the production environment. |
-| Local SLM | Ollama + phi4-mini:3.8b | 2.5GB model, 128K context, runs locally on a normal laptop, MIT license, supports schema-constrained JSON output |
+| Local SLM | Ollama + pinned Phi-4 Mini / Qwen3 candidates; final selection pending | Both `phi4-mini:3.8b` and `qwen3:4b` run locally and support the comparison workflow. The final model must be chosen from expanded, fixed safety and quality evaluation rather than treated as decided by the earlier Phi default. |
 | Frontend | React + TypeScript (Vite) | One UI lead works against generated types from the OpenAPI contract while 6 others build backend in parallel; keeps all 7 chat screen-states visually consistent as reusable components |
 | Charts | Apache ECharts | Native calendar-heatmap coordinate system, exact fit for daily/weekly personal trend visualisation. Chart.js was rejected: no native calendar heatmap, would need an unmaintained plugin. |
 | Local storage | Python standard library sqlite3 (raw, not an ORM) | Schema is small (3-4 tables); a single guarded db.py wrapper module owns all SQL; Pydantic already handles type safety at the API boundary |
@@ -123,7 +123,7 @@ Example of a prohibited statement: "Your phone use caused your anxiety." / "You 
 ## 6. Local SLM — Deployment Details
 
 - Model call pattern: schema-constrained output using the response model's JSON schema, temperature=0 — deterministic output, not free-form generation
-- Pin the exact model tag (phi4-mini:3.8b) in a documented model manifest. Do not use a floating "latest" tag in any release script
+- Pin every evaluated model tag in the documented model manifest. The current baseline is `phi4-mini:3.8b` and the current challenger is `qwen3:4b`; the final selection is still pending. Do not use a floating `latest` tag in any release script
 - Two fallback templates, not one: a generic refusal, and a separate crisis-aware template with real, reviewed helpline/support-resource content — drafted in Week 4, not improvised later
 - Deterministic safety gate: every draft response is validated a second time before becoming a response. It is rejected/rewritten to the safe fallback unless every evidence ID in the draft exists in the input packet, every claim ID is approved by its referenced evidence item, no prohibited claim or phrase is present, and every "ready" explanation includes an uncertainty statement
 - Crisis wording is never a model inference. A rule-based detector triggers the pre-approved deterministic crisis-support message — this is safer and auditable, consistent with the project's non-diagnostic scope

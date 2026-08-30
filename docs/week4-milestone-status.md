@@ -10,7 +10,7 @@ revise later via normal PR review, not a blocker.
 |---|---|---|---|
 | Data Pipeline Lead | Honghao Li | **Complete** | CES re-verified against the real dataset; 97.3% eligible, reproducible via `backend/data_pipeline/ces_eligibility.py` — the shared, working eligibility script going forward. |
 | Statistical Analysis Lead | Moe Tanaka | **Complete** | Real, locked model spec: `weekly_update/week4/Week4_Statistical_Analysis_Deliverable.md` — named model, multiple-comparison control, 28-day/56-day baseline windows, three-state cold-start policy. |
-| SLM Integration Lead | Richard Zhao | **Locked default, no action needed** | Ollama + phi4-mini:3.8b confirmed (`backend/slm/model_manifest.yaml`); both fallback templates drafted (`backend/slm/prompts/`). Crisis-line content is a locked Week 4 starting draft — real review still due before Week 7's pilot, not a Week 4 blocker. |
+| SLM Integration Lead | Richard Zhao | **Complete** | Ollama is confirmed as the local stack. `phi4-mini:3.8b` and `qwen3:4b` are pinned and compared; retaining the final choice as `comparison_pending` is the role owner's explicit decision, not missing implementation (`backend/slm/model_manifest.yaml`). Both Week 4 fallback drafts exist; the crisis template is Australia-specific and resource-verified. Client/Evaluation approval remains a pre-participant release gate. |
 | Conversational Interface Lead | Sheng Wang | **Locked default, no action needed** | 7 chat states designed (`docs/ui/chat-states-design.md`); Vite+React+TS scaffold built and building clean (`npm run build`). |
 | Privacy & Security Lead | Yuktha Naveen | **Complete** | Real, locked privacy architecture, dependency checklist, and PR template (`privacy/`); latency benchmark harness built and run — result is honestly "blocked, no Ollama installed," which is itself the correct, complete Week 4 answer to "run the benchmark." |
 | Evaluation Design Lead | Chonghao Shen | **Complete** | Real taxonomy (`backend/evaluation/evaluation_plan_v0.1.md`) is the working version; adversarial suite pass-threshold locked at 100% high-severity / 90% standard (`docs/evaluation/pass-threshold.md`); held-out set sealed (`tests/evaluation/held_out/`). |
@@ -27,9 +27,13 @@ revise later via normal PR review, not a blocker.
 - **CES eligibility definition:** ≥20 valid sensor-days on both locked
   features + ≥1 PHQ-4 entry → 97.3% eligible
   (`backend/data_pipeline/ces_eligibility.py`).
-- **Crisis-line resource content:** placeholder US/Australia resources,
-  locked as the Week 4 starting draft — real review still due before
-  Week 7's pilot.
+- **SLM selection:** Ollama is locked as the local runtime. Phi-4 Mini is
+  the baseline and Qwen3 the challenger; the final model remains open until
+  expanded fixed evaluation and team sign-off.
+- **Crisis-line resource content:** Australia-specific resources were
+  checked against the official Lifeline Australia and Suicide Call Back
+  Service pages on 2026-08-30. The wording remains a resource-verified draft
+  pending client/Evaluation approval before the Week 7 pilot.
 
 ## Repository state
 
@@ -43,6 +47,8 @@ revise later via normal PR review, not a blocker.
   item, owned by whoever has GitHub admin access, not gated on any
   teammate's reply.
 
-**Bottom line: Week 4 is done.** Everything above is either genuinely
-complete or a locked, working default that unblocks Week 5 — nothing is
-sitting in a "waiting to hear back" state.
+**Bottom line: Week 4 is complete under the current agreed scope and Week 5
+can proceed.** The final-model decision is deliberately recorded as pending,
+and participant-facing crisis wording still requires the planned release
+review. Those are explicit downstream decision/release gates, not missing
+Week 4 implementation.

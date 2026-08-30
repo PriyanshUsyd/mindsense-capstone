@@ -47,7 +47,7 @@ what's actually real on `main` as of 2026-08-29 for each.
 |---|---|---|
 | 1. Digital Phenotyping Pipeline | Trailing-window feature aggregation, structural-missingness tracking (never zero-imputed) | `skills/data-pipeline-ces.md`; Honghao's pipeline code is Week 5 scope |
 | 2. Mental Health & Wellbeing Integration | Mixed-effects model (LMM), person-mean-centring, within/between (Mundlak) specification | Moe's real, locked spec: `weekly_update/week4/Week4_Statistical_Analysis_Deliverable.md` |
-| 3. Local Small Language Model | Ollama + phi4-mini:3.8b, schema-constrained JSON, temperature=0, two fallback templates | `backend/slm/model_manifest.yaml`, `backend/slm/prompts/` |
+| 3. Local Small Language Model | Ollama with pinned Phi-4 Mini baseline and Qwen3 challenger, final model pending fixed comparison; schema-constrained JSON, temperature=0, two fallback templates | `backend/slm/model_manifest.yaml`, `backend/slm/prompts/` |
 | 4. Human evaluation | Rubric mapped to the client's 10 named criteria, adversarial suite, held-out set | Chonghao's real plan: `backend/evaluation/evaluation_plan_v0.1.md`, with the pass-threshold locked as the Week 4 default (100% high-severity / 90% standard, see `docs/evaluation/pass-threshold.md`) |
 | 5. Conversational Interface | React + TypeScript (Vite), 7 mutually-exclusive chat states | `docs/ui/chat-states-design.md`, `frontend/` (scaffold builds clean) |
 
@@ -77,7 +77,8 @@ what's actually real on `main` as of 2026-08-29 for each.
 
 ## 5. SLM Integration & Safety
 
-- Ollama + phi4-mini:3.8b, why local (`Client_Specs.md` Local SLM section:
+- Ollama with pinned `phi4-mini:3.8b` baseline and `qwen3:4b` challenger;
+  final selection pending expanded fixed evaluation. Explain why local (`Client_Specs.md` Local SLM section:
   *"avoiding the need to send personal sensing information to external
   language-model services"*).
 - The permitted/prohibited claim system — walk through the exact structured
