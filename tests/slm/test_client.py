@@ -1,3 +1,4 @@
+import json
 from typing import Any
 
 import pytest
@@ -67,6 +68,11 @@ def test_payload_is_schema_constrained_and_deterministic(
     assert payload["options"] == {"temperature": 0, "seed": 42}
     assert payload["format"] == AssistantDraft.model_json_schema()
     assert eligible_packet.identity.packet_id in payload["messages"][1]["content"]
+    user_payload = json.loads(payload["messages"][1]["content"])
+    assert user_payload["allowed_evidence_ids"] == [
+        eligible_packet.identity.packet_id,
+        eligible_packet.feature_window.feature_id,
+    ]
 
 
 def test_invalid_model_content_is_rejected(eligible_packet: EvidencePacket):
