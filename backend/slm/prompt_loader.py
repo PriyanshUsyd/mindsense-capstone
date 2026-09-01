@@ -98,6 +98,9 @@ DEFAULT_GENERIC_FALLBACK = (
 DEFAULT_CRISIS_FALLBACK = (
     Path(__file__).resolve().parent / "prompts" / "crisis_aware.yaml"
 )
+DEFAULT_INSUFFICIENT_DATA_TEMPLATE = (
+    Path(__file__).resolve().parent / "prompts" / "insufficient_data.yaml"
+)
 
 
 def load_evidence_prompt(
