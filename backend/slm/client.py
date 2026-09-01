@@ -157,6 +157,10 @@ class OllamaClient:
         user_content = json.dumps(
             {
                 "question": clean_question,
+                "allowed_evidence_ids": [
+                    packet.identity.packet_id,
+                    packet.feature_window.feature_id,
+                ],
                 "evidence_packet": packet.model_dump(mode="json"),
             },
             ensure_ascii=False,

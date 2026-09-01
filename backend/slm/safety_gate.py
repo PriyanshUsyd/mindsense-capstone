@@ -47,6 +47,7 @@ UNKNOWN_EVIDENCE_ID = SafetyGateRejection("unknown_evidence_id_referenced")
 CLAIM_NOT_APPROVED = SafetyGateRejection("claim_not_approved")
 RESPONSE_MODE_NOT_PERMITTED = SafetyGateRejection("response_mode_not_permitted")
 MISSING_UNCERTAINTY_STATEMENT = SafetyGateRejection("missing_uncertainty_statement")
+UNCERTAINTY_TEXT_MISSING = SafetyGateRejection("uncertainty_text_missing")
 EMPTY_RESPONSE_TEXT = SafetyGateRejection("empty_response_text")
 RESPONSE_TEXT_TOO_SHORT = SafetyGateRejection("response_text_too_short")
 PROHIBITED_PHRASE_DETECTED = SafetyGateRejection("prohibited_phrase_detected")
@@ -86,12 +87,27 @@ _PROHIBITED_ASSERTION_PATTERNS = (
         r"treatment|therapy)\b",
         re.IGNORECASE,
     ),
+    re.compile(
+        r"\b(?:consult|speak|talk) (?:with |to )?(?:a |your )?"
+        r"(?:doctor|healthcare professional|clinician|therapist)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\bseek (?:medical|clinical|professional) (?:advice|help|care)\b",
+        re.IGNORECASE,
+    ),
     re.compile(r"\byour (?:mental health )?risk (?:is|will be)\b", re.IGNORECASE),
 )
 
 _INSUFFICIENT_HISTORY_PATTERN = re.compile(
     r"\bno data\b|\b(?:not enough|insufficient) (?:data|history)|"
     r"\btoo early to (?:compare|tell|determine)\b",
+    re.IGNORECASE,
+)
+
+_UNCERTAINTY_DISCLOSURE_PATTERN = re.compile(
+    r"\buncertain(?:ty)?\b|\bcautious(?:ly)?\b|\blimited evidence\b|"
+    r"\bshould be interpreted with caution\b|\bmay not reflect\b",
     re.IGNORECASE,
 )
 
@@ -134,8 +150,9 @@ def validate_draft(
 
     if (
         draft.response_mode == ResponseMode.INSUFFICIENT_DATA
-        and not _INSUFFICIENT_HISTORY_PATTERN.search(draft.text)
-    ):
+        or packet.baseline.eligibility_status
+        == EligibilityStatus.PARTIAL_DESCRIPTIVE_ONLY
+    ) and not _INSUFFICIENT_HISTORY_PATTERN.search(draft.text):
         return False, INSUFFICIENT_HISTORY_DISCLOSURE_MISSING
 
     if draft.response_mode in _MODEL_EXPLANATION_MODES and any(
@@ -148,5 +165,11 @@ def validate_draft(
         and not draft.includes_uncertainty_statement
     ):
         return False, MISSING_UNCERTAINTY_STATEMENT
+
+    if (
+        draft.response_mode in _MODES_REQUIRING_UNCERTAINTY_STATEMENT
+        and not _UNCERTAINTY_DISCLOSURE_PATTERN.search(draft.text)
+    ):
+        return False, UNCERTAINTY_TEXT_MISSING
 
     return True, None
