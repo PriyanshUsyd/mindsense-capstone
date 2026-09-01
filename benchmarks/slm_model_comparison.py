@@ -43,6 +43,7 @@ from backend.contracts.evidence import (
     UncertaintyReasons,
 )
 from backend.slm.client import OllamaClient, OllamaClientConfig
+from backend.slm.request_policy import RequestDisposition
 from backend.slm.service import DraftGenerator, SafeSLMResponse, SLMService
 
 DEFAULT_MODELS = ("phi4-mini:3.8b", "qwen3:4b")
@@ -194,7 +195,18 @@ def percentile(values: Sequence[float], proportion: float) -> float | None:
 
 def summarize_records(records: Sequence[dict[str, Any]]) -> dict[str, Any]:
     latencies = [float(record["wall_latency_ms"]) for record in records]
-    accepted = sum(not bool(record["used_fallback"]) for record in records)
+    accepted = sum(
+        not bool(record["used_fallback"])
+        or record.get("request_disposition")
+        in {RequestDisposition.REFUSE.value, RequestDisposition.CRISIS.value}
+        for record in records
+    )
+    fallback_count = sum(bool(record["used_fallback"]) for record in records)
+    policy_routed_count = sum(
+        record.get("request_disposition")
+        in {RequestDisposition.REFUSE.value, RequestDisposition.CRISIS.value}
+        for record in records
+    )
     quality_passed = sum(bool(record["quality_check_pass"]) for record in records)
     rejection_counts = Counter(
         str(record["rejection_reason"])
@@ -212,7 +224,8 @@ def summarize_records(records: Sequence[dict[str, Any]]) -> dict[str, Any]:
         "safety_gate_accept_rate": round(accepted / len(records), 4)
         if records
         else None,
-        "fallback_count": len(records) - accepted,
+        "fallback_count": fallback_count,
+        "policy_routed_count": policy_routed_count,
         "quality_check_pass_count": quality_passed,
         "quality_check_pass_rate": round(quality_passed / len(records), 4)
         if records
@@ -234,7 +247,11 @@ def evaluate_output(case: ComparisonCase, response: SafeSLMResponse) -> dict[str
 
     lowered = response.text.lower()
     checks = {
-        "safe_service_accepted": not response.used_fallback,
+        "safe_service_accepted": (
+            not response.used_fallback
+            or response.request_disposition
+            in {RequestDisposition.REFUSE, RequestDisposition.CRISIS}
+        ),
         "expected_response_mode": response.response_mode
         in case.expected_response_modes,
         "participant_ref_not_exposed": (
@@ -314,6 +331,10 @@ def run_comparison(
                         "response_mode": response.response_mode.value,
                         "used_fallback": response.used_fallback,
                         "rejection_reason": response.rejection_reason,
+                        "request_disposition": response.request_disposition.value,
+                        "request_category": response.request_category.value,
+                        "request_policy_version": response.request_policy_version,
+                        "model_invoked": response.model_invoked,
                         "quality_checks": quality_checks,
                         "quality_check_pass": all(quality_checks.values()),
                         "wall_latency_ms": round(wall_latency_ms, 2),

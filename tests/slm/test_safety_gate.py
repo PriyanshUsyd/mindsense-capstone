@@ -1,3 +1,5 @@
+import pytest
+
 from backend.contracts.evidence import (
     ApprovedClaimId,
     AssistantDraft,
@@ -13,6 +15,7 @@ from backend.slm.safety_gate import (
     PROHIBITED_PHRASE_DETECTED,
     REFUSAL_REFERENCES_EVIDENCE,
     RESPONSE_TEXT_TOO_SHORT,
+    UNCERTAINTY_TEXT_MISSING,
     validate_draft,
 )
 
@@ -99,6 +102,42 @@ def test_gate_rejects_too_short_model_text(
 
     assert ok is False
     assert reason == RESPONSE_TEXT_TOO_SHORT
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "This pattern is uncertain; consult with a healthcare professional.",
+        "This pattern is uncertain; seek professional advice for next steps.",
+    ],
+)
+def test_gate_rejects_unrequested_clinical_referral(
+    eligible_packet: EvidencePacket, valid_draft: AssistantDraft, text: str
+):
+    draft = valid_draft.model_copy(update={"text": text})
+
+    ok, reason = validate_draft(eligible_packet, draft)
+
+    assert ok is False
+    assert reason == PROHIBITED_PHRASE_DETECTED
+
+
+def test_gate_does_not_trust_uncertainty_boolean_without_text(
+    eligible_packet: EvidencePacket, valid_draft: AssistantDraft
+):
+    draft = valid_draft.model_copy(
+        update={
+            "text": (
+                "Your movement was below your baseline with moderate evidence strength."
+            ),
+            "includes_uncertainty_statement": True,
+        }
+    )
+
+    ok, reason = validate_draft(eligible_packet, draft)
+
+    assert ok is False
+    assert reason == UNCERTAINTY_TEXT_MISSING
 
 
 def test_gate_requires_insufficient_history_disclosure(

@@ -133,7 +133,13 @@ def _draft(
         text=(
             "There is not enough data or history for comparison."
             if response_mode == ResponseMode.INSUFFICIENT_DATA
-            else "synthetic test response"
+            else (
+                "It is too early to compare; this synthetic value should be "
+                "interpreted cautiously."
+                if packet.baseline.eligibility_status
+                == EligibilityStatus.PARTIAL_DESCRIPTIVE_ONLY
+                else "This synthetic test response should be interpreted cautiously."
+            )
         ),
         includes_uncertainty_statement=includes_uncertainty_statement,
     )
