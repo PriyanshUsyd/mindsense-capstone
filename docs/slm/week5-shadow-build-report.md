@@ -24,9 +24,21 @@ external model API.
 | Crisis/self-harm language | Australia-specific `crisis_aware_fallback` | No |
 | Public prohibited-request development subset | 16/16 passed | No |
 
-The 16/16 result meets the pre-registered 100% high-severity threshold for
-this provisional public development subset. It is **not** Chonghao's final
-suite, a joint human judgment result, or the Week 11 held-out evaluation.
+The 16/16 result comprises 14 registered high-severity cases and two privacy
+extensions; report those groups separately. It is **not** Chonghao's confirmed
+Week 5 suite, a joint human judgment result, or the Week 11 held-out evaluation.
+
+### Evaluation-alignment amendment
+
+The [evaluation alignment](week5-evaluation-alignment.md) now explicitly uses
+Chonghao's existing eight-question plan. Six questions run; PHQ-4 comparison
+and positive behavioural-wellbeing association remain uncovered pending a
+shared contract extension. Policy 0.1.1 fixes the exact Q5 diagnosis question;
+Prompt 0.4.8 requires feature-specific numerical baseline comparisons. Earlier
+incomplete model outputs are preserved alongside the final 6/6 developer
+checks, 14/14 high-severity and 2/2 privacy extension checks. All human ratings
+remain blank. These changes form part of the Week 5 PR #2 amendment, not
+a claim of completed joint acceptance.
 
 ## Implementation
 
@@ -43,7 +55,7 @@ suite, a joint human judgment result, or the Week 11 held-out evaluation.
 - `python -m backend.slm.shadow_cli` provides the UI-independent executable
   path. It accepts a validated packet file and question and prints the audited
   response JSON.
-- Prompt `evidence_explainer` is now v0.4.3. The payload exposes the exact
+- Prompt `evidence_explainer` is now v0.4.8 (earlier `0cf49cf` snapshot: v0.4.3). The payload exposes the exact
   allowed evidence IDs, and the prompt requires an explicit uncertainty
   sentence and prohibits unsolicited clinical referral language.
 - The deterministic output gate now verifies the uncertainty text itself; it
@@ -52,6 +64,13 @@ suite, a joint human judgment result, or the Week 11 held-out evaluation.
   insufficient-history disclosure.
 
 No new Python dependency was added.
+
+The [output-grounding amendment](week5-output-grounding.md) closes the two
+additional audit gaps in the runtime gate: invented/misbound values and State B
+comparisons hidden behind disclaimers. Grounding 0.1.1 binds values, feature,
+units and claims to a bounded English grammar; unsupported wording falls back.
+This deliberately limits conversational variety and is not a universal semantic
+validator. Model-selected refusal cannot bypass the service-owned safety route.
 
 ### 4 September delivery hardening
 
@@ -127,6 +146,18 @@ Phi remains the baseline and Qwen remains the challenger.
 
 ## Verification
 
+Current amendment: **265 passed, 8 skipped**, no failures/deselections,
+reconfirmed before publication on 4 September. All 26 Python files in the
+complete Week 5 delta pass Ruff/format. The suite includes 65 new
+output-grounding regressions. Real Phi alignment checks
+pass for all six executable source questions; the other two are not scored.
+Four-path smoke remains 4/4 and the Phi eligible/State B/refusal regression
+remains 3/3. Full results and the initial unsuccessful content checks are
+linked from the output-grounding amendment, including strict-gate failures at
+Prompt 0.4.6/0.4.7 and the current 0.4.8 run. No Qwen rerun or final selection is claimed.
+
+The following is the earlier published `0cf49cf` verification record:
+
 - Full repository pytest: 179 passed, 8 skipped, zero failures and no
   deselections after restoring the canonical LF working copy.
 - Focused SLM/evidence-flow suite: 95 passed. The eight full-suite skips are
@@ -152,8 +183,9 @@ Phi remains the baseline and Qwen remains the challenger.
    does not edit `backend/api/`.
 2. Sheng should integrate the UI through the agreed API, not by depending on
    SLM internals.
-3. Chonghao and Richard still need to run Chonghao's final non-held-out Week 5
-   suite together and record 2–3 human-judgment disagreements.
+3. Chonghao and Richard still need to confirm and run the non-held-out Week 5
+   suite based on his existing plan and record genuine judgments/disagreements;
+   do not invent 2–3 examples if no disagreements occur.
 4. The crisis trigger taxonomy and participant-facing wording need Evaluation,
    client, and applicable study-governance approval before any human pilot.
 5. Moe/Priyansh should confirm the cold-start/evidence contract and versioning
