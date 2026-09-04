@@ -84,3 +84,18 @@ def test_invalid_model_content_is_rejected(eligible_packet: EvidencePacket):
 
     with pytest.raises(SLMResponseError, match="AssistantDraft"):
         client.generate_draft(eligible_packet, "What changed?")
+
+
+def test_model_payload_redacts_participant_reference_without_mutating_packet(
+    eligible_packet: EvidencePacket,
+):
+    original_reference = eligible_packet.identity.participant_ref
+    client = OllamaClient(OllamaClientConfig(model_tag="phi4-mini:3.8b"))
+    payload = client.build_payload(eligible_packet, "What changed?")
+    content = payload["messages"][1]["content"]
+    model_packet = json.loads(content)["evidence_packet"]
+
+    assert model_packet["identity"]["participant_ref"] == "redacted"
+    assert original_reference not in content
+    assert eligible_packet.identity.participant_ref == original_reference
+    assert model_packet["identity"]["packet_id"] == eligible_packet.identity.packet_id
