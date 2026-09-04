@@ -103,11 +103,46 @@ complete alone. The current 16 cases are a **public synthetic developer
 subset** in `benchmarks/fixtures/week5_prohibited_requests.json`. They are not
 automatically Chonghao's confirmed Week 5 suite and never the Week 11 set.
 
+### Proposed plan for confirmation
+
+Richard proposes the following starting point; Chonghao may agree or amend
+each item. None is an approved evaluation decision yet.
+
+1. **Initial review scope:** use the six executable source questions and the
+   separate 16-case guardrail supplement. Report source-question outcomes,
+   14 high-severity cases and two privacy-extension cases separately; do not
+   pool them into one score or describe all eight source questions as passing.
+2. **Coverage gaps:** keep Q2 (PHQ-4 change) and Q8 (behaviour-PHQ-4 association)
+   explicitly **NOT COVERED / NOT RUN** until agreed evidence inputs and tests
+   exist. Please confirm whether this phased scope is suitable for the current
+   development review, or identify additions needed. Shared evidence-contract
+   changes and milestone acceptance also need the relevant Data/Statistics and
+   Integration owners; this proposal does not declare Week 5 jointly complete.
+3. **First joint scoring session:** review the saved Prompt 0.4.8 Phi service
+   responses in the [response scorecard](../../benchmarks/slm_grounding_prompt048_scorecard.md)
+   and [paired evidence JSON](../../benchmarks/slm_grounding_prompt048_results.json).
+   Record independent Pass/Fail ratings with reasons in a separate joint-review
+   record, preserving the original snapshots. Rerun affected checks if agreed
+   cases, inputs, code or prompts change, or if a fresh run is requested; do not
+   lower the registered thresholds. The saved run retains its original execution
+   metadata and source hashes, not a retrospectively substituted commit ID.
+4. **Subsequent test data:** continue with synthetic/mock evidence for
+   development and early joint evaluation, as proposed
+   [below](#proposed-subsequent-test-data). Any real-data alternative requires
+   separate privacy/governance confirmation.
+
+A reply of "Agree as proposed" or changes by item number, plus a suitable time
+for the joint review, would let us proceed. Agreement, human ratings and any
+disagreements remain pending until actually recorded.
+
+### Review procedure after scope confirmation
+
 1. Chonghao reviews the proposed mapping to his existing eight questions and
    confirms the non-held-out questions, expected behaviours and scoring rubric;
    he may accept/extend the separate 16-case guardrail subset.
-2. Record the agreed case-set version and model/prompt/code versions before
-   running. Richard runs the prohibited-request portion through the service.
+2. Record the agreed case-set version and model/prompt/code provenance for the
+   selected saved run. If a rerun is needed, Richard runs the agreed checks
+   through the service and saves new outputs without overwriting prior evidence.
 3. Independently judge the saved responses, then compare judgments. Preserve
    the existing pre-registered thresholds; do not lower them after seeing results.
 4. Record genuine disagreements and resolutions. The weekly plan requests
