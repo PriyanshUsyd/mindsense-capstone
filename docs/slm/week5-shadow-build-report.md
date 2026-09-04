@@ -1,8 +1,11 @@
 # Week 5 SLM Shadow Build Report
 
-**Owner:** Richard Zhao — SLM Integration Lead  
-**Date:** 1 September 2026 (Australia/Sydney)  
-**Branch:** `Rz-week5` (local only; not pushed)  
+**Owner:** Richard Zhao — SLM Integration
+
+**Last verified:** 4 September 2026 (Australia/Sydney)
+
+**Branch:** `Rz-week5`; depends on the unchanged Week 4 PR #1
+
 **Model status:** `comparison_pending` — Phi baseline, Qwen challenger
 
 ## Scope and current status
@@ -49,6 +52,26 @@ suite, a joint human judgment result, or the Week 11 held-out evaluation.
   insufficient-history disclosure.
 
 No new Python dependency was added.
+
+### 4 September delivery hardening
+
+- The transport rejects redirects as well as non-loopback endpoints and
+  disables environment proxies. Synthetic loopback-server tests cover HTTP
+  301, 302, 303, 307, and 308 without following the redirect.
+- The model payload replaces `identity.participant_ref` with `redacted`
+  without modifying the service's original evidence packet. Free-text
+  questions and other contract identifiers still require caller-side
+  minimisation; this is not a general anonymisation system.
+- `benchmarks/slm_shadow_smoke.py` provides a reproducible four-path smoke
+  command; its tests detect an unavailable model rather than counting a
+  generic fallback as a successful real-model explanation.
+- The Windows working copy of the sealed file was restored byte-for-byte
+  from the already-sealed Git blob after checking both hashes. No prompt,
+  recorded checksum, test logic, or Week 4 commit was changed.
+- A separate [privacy spot-check](week5-dependency-privacy-review.md) and
+  [integration/evaluation handoff](week5-integration-evaluation-handoff.md)
+  accompany this Week 5 delivery. They do not claim retrospective approval
+  of PR #1, which remains unchanged.
 
 ## Reproducible local evidence
 
@@ -104,14 +127,23 @@ Phi remains the baseline and Qwen remains the challenger.
 
 ## Verification
 
-- Focused SLM plus evidence-flow suite: 85 passed.
-- Full repository pytest: 168 passed, 8 skipped; the sole raw run failure is
-  the already documented Windows CRLF checksum mismatch for the sealed prompt
-  file. The sealed prompts were not used for model evaluation.
+- Full repository pytest: 179 passed, 8 skipped, zero failures and no
+  deselections after restoring the canonical LF working copy.
+- Focused SLM/evidence-flow suite: 95 passed. The eight full-suite skips are
+  five real-CES integration checks (dataset absent from this checkout) and
+  three frontend checks (npm/dependencies unavailable to the test process).
+  They are not completed data/UI integration tests.
+- Four-path real Phi smoke: 4/4 passed on 4 September. The evidence case
+  returned `normal`; the contract also permits `uncertainty`, so an eligible
+  reply is not required to repeat identical text or mode on every run.
+- Replay with `python -m benchmarks.slm_shadow_smoke`; the committed snapshot
+  is `benchmarks/slm_shadow_smoke_results.json`. It uses only the public
+  synthetic fixtures, not CES or sealed prompts.
 - Ruff passes on every changed Python file. A repository-wide Ruff scan still
   reports 10 pre-existing findings in Data/contract/frontend/statistics test
   files outside this SLM change.
-- `git diff --check` passes.
+- Complete Week 5 whitespace validation against `7d33de4` passes, rather
+  than checking only an empty uncommitted diff.
 
 ## Remaining team-owned acceptance
 
@@ -127,4 +159,3 @@ Phi remains the baseline and Qwen remains the challenger.
 5. Moe/Priyansh should confirm the cold-start/evidence contract and versioning
    process. The fixtures here are synthetic contract consumers, not real
    statistical output.
-
