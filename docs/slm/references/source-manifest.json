@@ -1,0 +1,96 @@
+{
+  "checked_on": "2026-09-04",
+  "sources": [
+    {
+      "id": "geng2023",
+      "kind": "EMNLP 2023 conference paper",
+      "file": "local-downloads/geng2023_grammar-constrained-decoding.pdf",
+      "source_url": "https://aclanthology.org/2023.emnlp-main.674.pdf",
+      "retrieved_on": "2026-09-04",
+      "sha256": "38372e463f8b7142390bd15bcf57dbbac65fc330c693b125d250153e585a1b61",
+      "bytes": 1566937,
+      "pdf_pages": 21,
+      "offline_text_extract": null,
+      "git_tracking": "ignored_local_only"
+    },
+    {
+      "id": "maynez2020",
+      "kind": "ACL 2020 conference paper",
+      "file": "local-downloads/maynez2020_faithfulness-factuality.pdf",
+      "source_url": "https://aclanthology.org/2020.acl-main.173.pdf",
+      "retrieved_on": "2026-09-04",
+      "sha256": "0a17c97845c277210c687e4481f4f4f41fe78e5b8abfabdc0ac1e2b751f92674",
+      "bytes": 388798,
+      "pdf_pages": 14,
+      "offline_text_extract": null,
+      "git_tracking": "ignored_local_only"
+    },
+    {
+      "id": "microsoft2025",
+      "kind": "Technical report/preprint, arXiv v2",
+      "file": "local-downloads/phi4-mini_2503.01743v2.pdf",
+      "source_url": "https://arxiv.org/pdf/2503.01743v2",
+      "retrieved_on": "2026-09-04",
+      "sha256": "51edb849958011b97b5aad904deebd9a4ea31d3c5839741d5e52810eaa9b3bcc",
+      "bytes": 5305665,
+      "pdf_pages": 39,
+      "offline_text_extract": null,
+      "git_tracking": "ignored_local_only"
+    },
+    {
+      "id": "qwen2025",
+      "kind": "Technical report/preprint, arXiv v1",
+      "file": "local-downloads/qwen3_2505.09388v1.pdf",
+      "source_url": "https://arxiv.org/pdf/2505.09388v1",
+      "retrieved_on": "2026-09-04",
+      "sha256": "84a5e2b1fa04bb774bf12ae606d1e6d9dd2147ed2ebe78a4cfeb91ba380ffdd5",
+      "bytes": 779424,
+      "pdf_pages": 35,
+      "offline_text_extract": null,
+      "git_tracking": "ignored_local_only"
+    },
+    {
+      "id": "ollama-nd-a",
+      "kind": "Official software documentation",
+      "file": "local-downloads/ollama_faq_2026-09-04.html",
+      "source_url": "https://docs.ollama.com/faq",
+      "retrieved_on": "2026-09-04",
+      "sha256": "5fb390f182a3d4c61557fb342feef1528ad18375c6cfb4815ed5c0c3827cc660",
+      "bytes": 475776,
+      "pdf_pages": null,
+      "offline_text_extract": "local-downloads/ollama_faq_2026-09-04.txt",
+      "git_tracking": "ignored_local_only"
+    },
+    {
+      "id": "ollama-nd-b",
+      "kind": "Official software documentation",
+      "file": "local-downloads/ollama_structured-outputs_2026-09-04.html",
+      "source_url": "https://docs.ollama.com/capabilities/structured-outputs",
+      "retrieved_on": "2026-09-04",
+      "sha256": "0fd3bdea49da3526e2e24b41fb2f4a76edc6345ccd4dc9df8c77682a4aa36890",
+      "bytes": 340730,
+      "pdf_pages": null,
+      "offline_text_extract": "local-downloads/ollama_structured-outputs_2026-09-04.txt",
+      "git_tracking": "ignored_local_only"
+    },
+    {
+      "id": "who2024",
+      "kind": "Official guidance news release, not full guideline",
+      "file": "local-downloads/who2024_official_guidance_summary.html",
+      "source_url": "https://www.who.int/news/item/18-01-2024-who-releases-ai-ethics-and-governance-guidance-for-large-multi-modal-models",
+      "retrieved_on": "2026-09-04",
+      "sha256": "4b10355aa48afa6aa300177ac9214afe11ad8906fd7818187a3f08f1c64c1451",
+      "bytes": 105297,
+      "pdf_pages": null,
+      "offline_text_extract": "local-downloads/who2024_official_guidance_summary.txt",
+      "git_tracking": "ignored_local_only"
+    }
+  ],
+  "who_full_guideline": {
+    "status": "not_downloaded",
+    "attempted_url": "https://iris.who.int/bitstream/handle/10665/375579/9789240084759-eng.pdf?sequence=1",
+    "reason": "Returned HTML, not PDF; cited official news release instead.",
+    "retained_response": "local-downloads/who_iris_download_response_not_a_pdf.html"
+  },
+  "note": "Hashes identify downloaded bytes, not independent validation of scientific claims. Original works are not redistributed in Git."
+}
