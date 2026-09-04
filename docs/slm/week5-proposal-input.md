@@ -1,15 +1,19 @@
 # Week 5 Proposal Input — Local SLM Integration and Safety
 
-**Contributor:** Richard Zhao, SLM Integration Lead  
+**Contributor:** Richard Zhao, SLM Integration
+
 **Status:** Ready for Documentation Lead review; model selection remains
 `comparison_pending`.
 
 ## Paste-ready technical summary
 
 MindSense uses a local, schema-constrained SLM only after the statistical
-layer has produced a validated `EvidencePacket`. The model does not receive
-raw GPS coordinates, raw sensing rows, participant identifiers, or raw PHQ-4
-records. The current runtime is Ollama on loopback, with `phi4-mini:3.8b` as
+layer has produced a validated `EvidencePacket`. The SLM interface does not
+read raw GPS coordinates, raw sensing rows, or raw PHQ-4 records. The current
+development fixtures are synthetic, and the participant-reference field is
+redacted before the packet is sent to the model. This field-level protection
+does not automatically anonymise arbitrary free-text questions or packet IDs.
+The current runtime is Ollama on loopback, with `phi4-mini:3.8b` as
 the baseline and `qwen3:4b` as the challenger. Final model selection remains
 pending a larger fixed evaluation.
 
@@ -35,6 +39,9 @@ model evaluation.
 
 ## Limitations to retain in the Proposal
 
+- A 4 September rerun passed all four synthetic smoke paths and the full
+  automated suite (179 passed, 8 skipped, no failures or deselections). This
+  is developer evidence, not joint Evaluation Lead acceptance.
 - The public 16-case result is provisional and still requires joint review
   with the Evaluation Lead; it is not the final or held-out score.
 - The English rule-based request detector is a development guardrail, not a
@@ -45,6 +52,9 @@ model evaluation.
   the final statistics pipeline or API integration is complete.
 - Association must not be presented as causation, and PHQ-4 must not be
   presented as a diagnosis.
+- The Week 5 privacy spot-check documents local transport protections and
+  upstream runtime behaviour. Whole-device offline verification and peer
+  approval remain required before participant-facing use.
 
 ## AI acknowledgement input
 
@@ -54,4 +64,3 @@ were reviewed against the project's evidence contract and safety rules, run
 locally through automated tests, and checked with synthetic inputs. No
 participant data, raw CES records, credentials, or sealed evaluation prompts
 were supplied to the generative AI tools for this work.
-
