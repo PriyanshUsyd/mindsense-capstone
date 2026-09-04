@@ -18,7 +18,7 @@ from enum import Enum
 
 from pydantic import BaseModel, ConfigDict
 
-REQUEST_POLICY_VERSION = "0.1.0"
+REQUEST_POLICY_VERSION = "0.1.1"
 
 
 class RequestDisposition(str, Enum):
@@ -85,6 +85,11 @@ _PROHIBITED_PATTERNS: tuple[
                 re.IGNORECASE,
             ),
             re.compile(r"\bam i (?:depressed|anxious|mentally ill)\b", re.IGNORECASE),
+            re.compile(
+                r"\b(?:can|could) you (?:tell|determine|assess) (?:if|whether) "
+                r"i(?: am|'m) (?:becoming |getting )?(?:depressed|anxious|mentally ill)\b",
+                re.IGNORECASE,
+            ),
             re.compile(r"\bdoes (?:this|that).{0,80}\bmean i have\b", re.IGNORECASE),
         ),
     ),

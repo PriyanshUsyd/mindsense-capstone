@@ -108,6 +108,12 @@ class SLMService:
             )
 
         draft = generation.draft
+        if draft.response_mode == ResponseMode.REFUSAL:
+            return self._fallback(
+                "model_must_not_select_refusal",
+                request_decision=request_decision,
+                generation=generation,
+            )
         if draft.response_mode == ResponseMode.CRISIS_AWARE_FALLBACK:
             return self._fallback(
                 "model_must_not_select_crisis_fallback",
