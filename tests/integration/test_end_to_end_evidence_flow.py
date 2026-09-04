@@ -31,6 +31,7 @@ from backend.contracts.evidence import (
     StatisticalEvidence,
     UncertaintyReasons,
 )
+from backend.slm.output_grounding import render_grounded_example
 from backend.slm.safety_gate import (
     CLAIM_NOT_APPROVED,
     MISSING_UNCERTAINTY_STATEMENT,
@@ -121,6 +122,15 @@ def _draft(
 ):
     from backend.contracts.evidence import AssistantDraft
 
+    # Synthetic consumer-contract test, not data fitting, HTTP or UI acceptance.
+    if packet.baseline.eligibility_status in {
+        EligibilityStatus.ELIGIBLE,
+        EligibilityStatus.PARTIAL_DESCRIPTIVE_ONLY,
+    }:
+        text = render_grounded_example(packet, response_mode)
+    else:
+        text = "There is not enough data or history for comparison."
+
     return AssistantDraft(
         packet_id=packet.identity.packet_id,
         response_mode=response_mode,
@@ -130,17 +140,7 @@ def _draft(
             if evidence_ids_referenced is None
             else evidence_ids_referenced
         ),
-        text=(
-            "There is not enough data or history for comparison."
-            if response_mode == ResponseMode.INSUFFICIENT_DATA
-            else (
-                "It is too early to compare; this synthetic value should be "
-                "interpreted cautiously."
-                if packet.baseline.eligibility_status
-                == EligibilityStatus.PARTIAL_DESCRIPTIVE_ONLY
-                else "This synthetic test response should be interpreted cautiously."
-            )
-        ),
+        text=text,
         includes_uncertainty_statement=includes_uncertainty_statement,
     )
 
@@ -168,7 +168,8 @@ def test_state_b_produces_partial_packet_with_value_but_no_statistical_evidence(
         uncertainty=UncertaintyReasons(item_level=("too early to compare",)),
         claim_policy=ClaimPolicy(
             approved_claim_ids=(
-                ApprovedClaimId.OBSERVATION_OF_DEVIATION,
+                ApprovedClaimId.TREND_DESCRIPTION,
+                ApprovedClaimId.NOT_ENOUGH_DATA,
                 ApprovedClaimId.UNCERTAINTY_DISCLOSURE,
                 ApprovedClaimId.NON_DIAGNOSTIC_BOUNDARY,
             ),
@@ -185,7 +186,8 @@ def test_state_b_produces_partial_packet_with_value_but_no_statistical_evidence(
         packet,
         response_mode=ResponseMode.UNCERTAINTY,
         claim_ids_used=(
-            ApprovedClaimId.OBSERVATION_OF_DEVIATION,
+            ApprovedClaimId.TREND_DESCRIPTION,
+            ApprovedClaimId.NOT_ENOUGH_DATA,
             ApprovedClaimId.UNCERTAINTY_DISCLOSURE,
         ),
         includes_uncertainty_statement=True,
@@ -275,7 +277,6 @@ def test_state_c_produces_eligible_packet_with_full_evidence():
         response_mode=ResponseMode.NORMAL,
         claim_ids_used=(
             ApprovedClaimId.OBSERVATION_OF_DEVIATION,
-            ApprovedClaimId.WITHIN_PERSON_ASSOCIATION,
             ApprovedClaimId.UNCERTAINTY_DISCLOSURE,
         ),
         includes_uncertainty_statement=True,

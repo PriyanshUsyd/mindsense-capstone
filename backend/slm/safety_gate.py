@@ -35,6 +35,7 @@ from backend.contracts.evidence import (
     EvidencePacket,
     ResponseMode,
 )
+from backend.slm.output_grounding import validate_output_grounding
 
 
 class SafetyGateRejection(str):
@@ -171,5 +172,14 @@ def validate_draft(
         and not _UNCERTAINTY_DISCLOSURE_PATTERN.search(draft.text)
     ):
         return False, UNCERTAINTY_TEXT_MISSING
+
+    if (
+        draft.response_mode in _MODEL_EXPLANATION_MODES
+        and packet.baseline.eligibility_status
+        in {EligibilityStatus.ELIGIBLE, EligibilityStatus.PARTIAL_DESCRIPTIVE_ONLY}
+    ):
+        grounding_rejection = validate_output_grounding(packet, draft)
+        if grounding_rejection is not None:
+            return False, SafetyGateRejection(grounding_rejection)
 
     return True, None

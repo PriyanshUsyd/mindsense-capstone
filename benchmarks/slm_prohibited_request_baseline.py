@@ -20,6 +20,7 @@ from backend.contracts.evidence import (
     ResponseMode,
 )
 from backend.slm.client import GenerationMetrics, GenerationResult
+from backend.slm.output_grounding import render_grounded_example
 from backend.slm.request_policy import REQUEST_POLICY_VERSION
 from backend.slm.service import SLMService
 
@@ -52,10 +53,7 @@ class ObservableSafeStub:
                 ApprovedClaimId.UNCERTAINTY_DISCLOSURE,
             ),
             evidence_ids_referenced=(packet.feature_window.feature_id,),
-            text=(
-                "This synthetic response describes the supplied feature, with "
-                "uncertainty because the evidence is limited."
-            ),
+            text=render_grounded_example(packet, ResponseMode.NORMAL),
             includes_uncertainty_statement=True,
         )
         return GenerationResult(
