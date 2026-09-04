@@ -94,14 +94,22 @@ class JSONTransport(Protocol):
     ) -> dict[str, Any]: ...
 
 
+class RejectRedirects(request.HTTPRedirectHandler):
+    """Never let a local response redirect inference traffic elsewhere."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        raise SLMUnavailableError("local Ollama redirects are disabled")
+
+
 class UrllibLoopbackTransport:
-    """Small standard-library transport with proxies explicitly disabled."""
+    """Standard-library transport with proxies and redirects disabled."""
 
     _MAX_RESPONSE_BYTES = 2_000_000
 
     def post_json(
         self, endpoint: str, payload: dict[str, Any], timeout_seconds: float
     ) -> dict[str, Any]:
+        OllamaClientConfig.require_loopback_chat_endpoint(endpoint)
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
         req = request.Request(
             endpoint,
@@ -109,7 +117,7 @@ class UrllibLoopbackTransport:
             headers={"Content-Type": "application/json"},
             method="POST",
         )
-        opener = request.build_opener(request.ProxyHandler({}))
+        opener = request.build_opener(request.ProxyHandler({}), RejectRedirects())
         try:
             with opener.open(req, timeout=timeout_seconds) as response:
                 raw = response.read(self._MAX_RESPONSE_BYTES + 1)
@@ -154,6 +162,10 @@ class OllamaClient:
             "AssistantDraft JSON schema:\n"
             f"{json.dumps(schema, ensure_ascii=False, sort_keys=True)}"
         )
+        packet_payload = packet.model_dump(mode="json")
+        # The service keeps the original contract, but the model does not need
+        # this participant-level reference. This does not anonymise free text.
+        packet_payload["identity"]["participant_ref"] = "redacted"
         user_content = json.dumps(
             {
                 "question": clean_question,
@@ -161,7 +173,7 @@ class OllamaClient:
                     packet.identity.packet_id,
                     packet.feature_window.feature_id,
                 ],
-                "evidence_packet": packet.model_dump(mode="json"),
+                "evidence_packet": packet_payload,
             },
             ensure_ascii=False,
             sort_keys=True,
