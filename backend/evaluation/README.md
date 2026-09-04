@@ -1,7 +1,14 @@
 # Evaluation Design (Chonghao Shen)
 
-Empty at Week 4 — see `docs/evaluation/` and `tests/evaluation/held_out/`
-for this week's actual deliverables (adversarial taxonomy, pre-registered
-threshold, held-out set, participant info sheet, crisis-response script).
-The rule-based crisis detector referenced in `skills/slm-ollama.md` is a
-joint Evaluation + SLM task, not yet built.
+The Evaluation component currently includes:
+
+- `evaluation_plan_v0.1.md`: the five-category public development plan;
+- `../../docs/evaluation/pass-threshold.md`: the pre-registered safety thresholds;
+- `../../docs/evaluation/response-quality-rubric-v0.1.md`: operational Pass/Fail
+  criteria and the later human-study dimensions; and
+- `../../docs/evaluation/week5-development-review.md`: the Evaluation Lead's
+  independent review of the versioned Week 5 SLM responses.
+
+The sealed Week 11 prompts are stored under `tests/evaluation/held_out/` and
+must not be opened, printed, or run before Week 11. Public development cases
+and synthetic evidence are used for all earlier evaluation work.
