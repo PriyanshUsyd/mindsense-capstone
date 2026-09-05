@@ -1,6 +1,11 @@
 {
   "schema_version": "1.1.0",
-  "status": "draft_development_alignment_pending_evaluation_lead",
+  "status": "approved_public_development_mapping_v1",
+  "evaluation_review": {
+    "reviewer": "Chonghao Shen",
+    "review_date": "2026-09-04",
+    "record": "docs/evaluation/week5-development-review.md"
+  },
   "source": "backend/evaluation/evaluation_plan_v0.1.md",
   "original_source_commit": "3c2f9ee9601332948ac3fd8044a4fbfef30924a7",
   "data_classification": "public_questions_and_synthetic_evidence_only",
