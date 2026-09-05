@@ -12,12 +12,13 @@ Dependency:
 Purpose:
 Date:
 
-- [ ] Checked network calls by default.
-- [ ] Checked telemetry, analytics, crash reports, diagnostics, and usage metrics.
-- [ ] Checked install scripts, post-install downloads, auto-updates, and remote model/binary downloads.
-- [ ] Checked whether it can access participant data, prompts, responses, wellbeing labels, or dataset-derived features.
-- [ ] Checked license and maintenance status.
-- [ ] Considered standard-library or existing-dependency alternatives.
+Privacy review:
+- [ ] I checked whether this dependency makes network calls by default.
+- [ ] I checked whether this dependency sends telemetry, analytics, crash reports, diagnostics, or usage metrics.
+- [ ] I checked whether this dependency has install scripts, post-install downloads, auto-update behavior, or remote model/binary downloads.
+- [ ] I checked whether this dependency can access or process raw participant data, prompts, SLM responses, wellbeing labels, or dataset-derived features.
+- [ ] I checked the license is acceptable for a university capstone prototype.
+- [ ] I checked whether an existing dependency or standard-library feature can do the job.
 
 Findings:
 - Network behavior:
