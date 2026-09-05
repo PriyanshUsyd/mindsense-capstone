@@ -20,8 +20,14 @@ import pytest
 from backend.statistics.mixed_effects_model import (
     ALIGNMENT_WINDOW_DAYS,
     OCCASION_MIN_VALID_SENSOR_DAYS,
+    _between_within_denominator_df,
+    adjust_confirmatory_family,
+    adjust_exploratory_family,
     build_model_frame,
     build_trailing_predictor,
+    classify_evidence_strength,
+    compute_time_covariates,
+    fit_ar1_robustness_check,
     fit_mixed_effects_model,
 )
 
@@ -166,6 +172,163 @@ def test_fallback_to_random_intercept_only_is_recorded_when_random_slope_fails()
         assert fit.fallback_reason is not None
 
 
+def _synthetic_frame_with_dates(n_people: int, n_occasions: int, seed: int) -> pd.DataFrame:
+    rng = np.random.default_rng(seed)
+    rows = []
+    start = pd.Timestamp("2020-01-01")
+    for p in range(n_people):
+        uid = f"synthetic_{p}"
+        person_level = rng.normal(9.0, 0.5)
+        for occasion in range(n_occasions):
+            x_within_true = rng.normal(0.0, 1.0)
+            phq4 = 5.0 - 1.0 * x_within_true + rng.normal(0, 0.5)
+            rows.append(
+                {
+                    "uid": uid,
+                    "x_within": x_within_true,
+                    "x_between": person_level - 9.0,
+                    "phq4_score": phq4,
+                    "date": start + pd.Timedelta(days=occasion * 5),
+                }
+            )
+    return pd.DataFrame(rows)
+
+
+def test_compute_time_covariates_week_in_study_is_weeks_since_first_occasion():
+    frame = pd.DataFrame(
+        {
+            "uid": ["a", "a", "a"],
+            "date": pd.to_datetime(["2020-01-01", "2020-01-08", "2020-01-22"]),
+        }
+    )
+    out = compute_time_covariates(frame)
+    assert out["week_in_study"].tolist() == pytest.approx([0.0, 1.0, 3.0])
+
+
+def test_compute_time_covariates_term_phase_flags_known_break_and_term_dates():
+    frame = pd.DataFrame(
+        {
+            "uid": ["a", "a", "a"],
+            # Dec 25 (winter break), Jan 20 (in-term), Jul 1 (summer break).
+            "date": pd.to_datetime(["2020-12-25", "2021-01-20", "2021-07-01"]),
+        }
+    )
+    out = compute_time_covariates(frame)
+    assert out["term_phase"].tolist() == [0, 1, 0]
+
+
+def test_extra_fixed_effects_are_estimated_when_requested():
+    """Backward compatibility: omitting extra_fixed_effects must leave the
+    formula exactly `phq4_score ~ x_within + x_between` (already covered
+    by the other tests in this file, which don't pass it). Passing it
+    should add the term to both the formula and the returned params."""
+    frame = _synthetic_frame_with_dates(n_people=30, n_occasions=15, seed=1)
+    frame = compute_time_covariates(frame)
+
+    fit = fit_mixed_effects_model(frame, extra_fixed_effects=["week_in_study"])
+
+    assert "week_in_study" in fit.params
+    assert "week_in_study" in fit.pvalues
+    assert "week_in_study" in fit.denom_df
+
+
+def test_between_within_denominator_df_matches_the_containment_formula():
+    data = pd.DataFrame({"uid": ["a"] * 5 + ["b"] * 5 + ["c"] * 5})
+    denom = _between_within_denominator_df(data, "uid", ["x_within", "x_between"])
+    n_obs, n_groups = 15, 3
+    assert denom["x_within"] == n_obs - n_groups - 1
+    assert denom["x_between"] == n_groups - 1 - 1
+
+
+def test_between_within_denominator_df_is_not_confused_with_satterthwaite():
+    """The one thing this test protects: a future edit can't silently
+    start calling this Satterthwaite/Kenward-Roger without noticing —
+    the module docstring and denom_df_method string both say otherwise."""
+    frame = _synthetic_frame_with_dates(n_people=20, n_occasions=10, seed=2)
+    fit = fit_mixed_effects_model(frame)
+    assert fit.denom_df_method is not None
+    assert "between-within" in fit.denom_df_method
+    assert "not Satterthwaite" in fit.denom_df_method or "Not Satterthwaite" in fit.denom_df_method.replace(
+        "NOT", "Not"
+    )
+
+
+def test_ar1_robustness_check_runs_and_reports_a_rho_or_a_flagged_fallback():
+    """Mirrors the defensive style of
+    test_fallback_to_random_intercept_only_is_recorded_when_random_slope_fails:
+    the Rosner & Munoz dependence-parameter search can itself fail to
+    converge on data with little genuine serial correlation (a documented
+    property of the estimator). We assert the contract: a real float rho
+    is always returned, and if the fallback path was used,
+    fallback_reason is set (not silently swallowed)."""
+    frame = _synthetic_frame_with_dates(n_people=25, n_occasions=15, seed=3)
+
+    result = fit_ar1_robustness_check(frame)
+
+    assert isinstance(result.ar1_rho, float)
+    assert np.isfinite(result.ar1_rho)
+    assert "x_within" in result.params
+    if result.fallback_reason is not None:
+        assert result.ar1_rho == 0.0
+
+
+def test_ar1_robustness_check_recovers_the_same_sign_as_the_primary_fit():
+    """Not the same estimand as the MixedLM fit (population-averaged vs.
+    person-specific), but on data with a genuine strong within-person
+    relationship, both should agree on the sign of x_within."""
+    frame = _synthetic_frame_with_dates(n_people=30, n_occasions=15, seed=4)
+
+    primary = fit_mixed_effects_model(frame)
+    ar1 = fit_ar1_robustness_check(frame)
+
+    assert primary.params["x_within"] < 0
+    assert ar1.params["x_within"] < 0
+
+
+def test_adjust_confirmatory_family_matches_holm_bonferroni():
+    from statsmodels.stats.multitest import multipletests
+
+    pvalues = {"feature_a": 0.001, "feature_b": 0.02, "feature_c": 0.2}
+    result = adjust_confirmatory_family(pvalues, alpha=0.05)
+
+    reject, p_adjusted, _, _ = multipletests(list(pvalues.values()), alpha=0.05, method="holm")
+    for name, expected_reject, expected_p in zip(pvalues, reject, p_adjusted):
+        assert result[name]["reject"] == bool(expected_reject)
+        assert result[name]["p_adjusted"] == pytest.approx(float(expected_p))
+
+
+def test_adjust_exploratory_family_matches_benjamini_hochberg():
+    from statsmodels.stats.multitest import multipletests
+
+    pvalues = {"feature_a": 0.001, "feature_b": 0.02, "feature_c": 0.2, "feature_d": 0.03}
+    result = adjust_exploratory_family(pvalues, q=0.05)
+
+    reject, q_values, _, _ = multipletests(list(pvalues.values()), alpha=0.05, method="fdr_bh")
+    for name, expected_reject, expected_q in zip(pvalues, reject, q_values):
+        assert result[name]["reject"] == bool(expected_reject)
+        assert result[name]["q_value"] == pytest.approx(float(expected_q))
+
+
+def test_classify_evidence_strength_all_four_tiers():
+    # Strong: needs the lag0/lag1 consistency flag explicitly True.
+    assert classify_evidence_strength(0.005, 0.25, 15, lag0_lag1_consistent_sign=True) == "strong"
+    # Moderate.
+    assert classify_evidence_strength(0.03, 0.12, 9) == "moderate"
+    # Weak.
+    assert classify_evidence_strength(0.08, 0.11, 8) == "weak"
+    # Insufficient (fails every gate).
+    assert classify_evidence_strength(0.5, 0.05, 3) == "insufficient"
+
+
+def test_classify_evidence_strength_strong_is_unreachable_without_lag_comparison():
+    """Flagged scope gap (module docstring / Section 7): without the
+    lag-1 term (out of scope for this module), callers can't supply
+    lag0_lag1_consistent_sign, so a result that would otherwise qualify
+    as 'strong' is capped at 'moderate' instead of silently upgraded."""
+    assert classify_evidence_strength(0.005, 0.25, 15) == "moderate"
+    assert classify_evidence_strength(0.005, 0.25, 15, lag0_lag1_consistent_sign=False) == "moderate"
+
+
 @pytest.mark.skipif(
     not (DATASET_DIR / "Sensing" / "sensing.csv").exists(),
     reason="real CES dataset not present locally (gitignored) — cannot run end-to-end",
@@ -180,6 +343,8 @@ def test_end_to_end_fit_against_the_real_dataset():
 
     frame = build_model_frame(cleaned, ema)
     assert len(frame) > 1000  # real data should yield thousands of valid occasions
+    assert "week_in_study" in frame.columns
+    assert "term_phase" in frame.columns
 
     fit = fit_mixed_effects_model(frame)
 
@@ -189,3 +354,52 @@ def test_end_to_end_fit_against_the_real_dataset():
     assert "x_between" in fit.params
     assert np.isfinite(fit.params["x_within"])
     assert np.isfinite(fit.pvalues["x_within"])
+    assert fit.reml is True
+    assert fit.denom_df_method is not None
+    assert set(fit.denom_df) == {"x_within", "x_between"}
+
+
+@pytest.mark.skipif(
+    not (DATASET_DIR / "Sensing" / "sensing.csv").exists(),
+    reason="real CES dataset not present locally (gitignored) — cannot run end-to-end",
+)
+def test_end_to_end_fit_with_time_covariates_against_the_real_dataset():
+    """Same real dataset/pipeline as the test above, but requesting the
+    new week_in_study/term_phase fixed effects — confirms the extended
+    formula still converges on real data, not just synthetic fixtures."""
+    from backend.data_pipeline.gps_distance_feature import build_gps_distance_feature, load_sensing_days
+
+    sensing_days = load_sensing_days()
+    cleaned = build_gps_distance_feature(sensing_days)
+    ema = pd.read_csv(DATASET_DIR / "EMA" / "general_ema.csv", usecols=["uid", "day", "phq4_score"])
+
+    frame = build_model_frame(cleaned, ema)
+
+    fit = fit_mixed_effects_model(frame, extra_fixed_effects=["week_in_study", "term_phase"])
+    assert fit.converged
+    assert "week_in_study" in fit.params
+    assert "term_phase" in fit.params
+    assert np.isfinite(fit.params["week_in_study"])
+    assert np.isfinite(fit.params["term_phase"])
+
+
+@pytest.mark.skipif(
+    not (DATASET_DIR / "Sensing" / "sensing.csv").exists(),
+    reason="real CES dataset not present locally (gitignored) — cannot run end-to-end",
+)
+def test_end_to_end_ar1_robustness_check_against_the_real_dataset():
+    """Real dataset AR(1) robustness check — confirms the GEE
+    Autoregressive fit (or its documented independence fallback) runs to
+    completion on the real, irregularly-spaced EMA data."""
+    from backend.data_pipeline.gps_distance_feature import build_gps_distance_feature, load_sensing_days
+
+    sensing_days = load_sensing_days()
+    cleaned = build_gps_distance_feature(sensing_days)
+    ema = pd.read_csv(DATASET_DIR / "EMA" / "general_ema.csv", usecols=["uid", "day", "phq4_score"])
+
+    frame = build_model_frame(cleaned, ema)
+
+    result = fit_ar1_robustness_check(frame)
+    assert np.isfinite(result.ar1_rho)
+    assert "x_within" in result.params
+    assert np.isfinite(result.params["x_within"])
