@@ -1,6 +1,6 @@
 # MindSense privacy documentation
 
-Yuktha Naveen owns this area as Privacy and Security Lead. The editable policy and verification sources remain in the repository's established top-level `privacy/` directory. This documentation directory stores the rendered technical reports and provides a single index to the current evidence.
+Yuktha Naveen owns this area as Privacy and Security Lead. The operational policy and status sources remain in the repository's established top-level `privacy/` directory. This documentation directory stores the rendered weekly reports and provides a single index to the current evidence.
 
 ## Core privacy controls
 
@@ -14,9 +14,7 @@ Yuktha Naveen owns this area as Privacy and Security Lead. The editable policy a
 
 - [Week 4 status](../../privacy/week4_privacy_status.md): initial principles, dependency gate, and real-machine Phi-4 Mini latency baseline.
 - [Week 4 Privacy Lead Report](week4-privacy-lead-report.pdf): six-page rendered report covering the completed Week 4 assignment.
-- [Week 5 verification source](../../privacy/week5_privacy_security_report.md): post-merge privacy, transport, telemetry, logging, dependency, safety, and latency review.
-- [Week 5 Privacy and Security Report](week5-privacy-security-report.pdf): six-page rendered verification report.
-- [Week 5 individual contribution](../proposal/yuktha-week5-individual-contribution.md) and [rendered PDF](../proposal/yuktha-week5-individual-contribution.pdf): concise personal contribution evidence for the Group Proposal Report.
+- [Week 5 Privacy and Security Report](week5-privacy-security-report.pdf): six-page rendered post-merge privacy, transport, telemetry, logging, dependency, safety, and latency review.
 - [Latency benchmark](../../benchmarks/slm_latency_benchmark.py) and [latest measured results](../../benchmarks/slm_latency_results.json): reproducible local benchmark and the current Week 5 result.
 
 ## Current assurance boundary
