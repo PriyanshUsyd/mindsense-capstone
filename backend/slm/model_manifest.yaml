@@ -1,21 +1,40 @@
-# Local SLM model manifest — pinned tag, per build-reference.md Section 6
+# Local SLM comparison manifest — pinned tags, per build-reference.md Section 6
 # ("Pin the exact model tag ... Do not use a floating 'latest' tag in any
 # release script") and skills/slm-ollama.md.
 #
-# STATUS: built to fill a Week 4 gap (no manifest existed in the repo as of
-# 2026-08-29). Richard Zhao should confirm this matches what he actually
-# pulled/tested locally.
+# STATUS: comparison pending. Phi-4 Mini remains the Week 4 baseline, not a
+# final product decision. Qwen3 4B is the size-matched comparison candidate.
 
 provider: ollama
-model_tag: "phi4-mini:3.8b"   # pinned exactly — never "phi4-mini:latest"
+selection_status: comparison_pending
+model_tag: "phi4-mini:3.8b"   # baseline candidate; never a floating latest tag
 model_size_gb: 2.5
 context_window_tokens: 131072  # 128K
 license: MIT
+registry_digest_prefix: "78fad5d182a7"
+comparison_candidates:
+  - model_tag: "phi4-mini:3.8b"
+    role: baseline
+    parameter_count: "3.84B"
+    quantization: Q4_K_M
+    size_gb: 2.5
+    context_window_tokens: 131072
+    license: MIT
+    registry_digest_prefix: "78fad5d182a7"
+  - model_tag: "qwen3:4b"
+    role: challenger
+    parameter_count: "4.02B"
+    quantization: Q4_K_M
+    size_gb: 2.5
+    context_window_tokens: 262144
+    license: Apache-2.0
+    registry_digest_prefix: "359d7dd4bcda"
 call_pattern:
   mode: schema_constrained_json
   temperature: 0.0
+  seed: 42
 notes: >
-  All calls to this model go through backend/slm/client.py, the only file in
-  the backend allowed to talk to the local Ollama daemon (bound to
-  127.0.0.1 only — enforced by the Privacy lead's network-audit test, see
-  docs/privacy/architecture-principles.md).
+  All calls go through backend/slm/client.py, the only backend file allowed
+  to talk to the local Ollama daemon on 127.0.0.1. The final model is selected
+  only after both candidates run the same evidence, safety, latency, memory,
+  and response-quality evaluation on the target Windows machine.

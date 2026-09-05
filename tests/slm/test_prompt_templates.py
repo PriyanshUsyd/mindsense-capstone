@@ -11,7 +11,9 @@ import pytest
 import yaml
 
 TEMPLATE_DIR = Path(__file__).resolve().parents[2] / "backend" / "slm" / "prompts"
-MANIFEST_PATH = Path(__file__).resolve().parents[2] / "backend" / "slm" / "model_manifest.yaml"
+MANIFEST_PATH = (
+    Path(__file__).resolve().parents[2] / "backend" / "slm" / "model_manifest.yaml"
+)
 
 REQUIRED_TEMPLATE_FIELDS = {
     "template_id",
@@ -68,7 +70,9 @@ def test_template_has_all_required_fields(template):
 
 def test_template_response_mode_is_valid(template):
     data, name = template
-    assert data["response_mode"] in VALID_RESPONSE_MODES, f"{name} has unknown response_mode {data['response_mode']!r}"
+    assert data["response_mode"] in VALID_RESPONSE_MODES, (
+        f"{name} has unknown response_mode {data['response_mode']!r}"
+    )
 
 
 def test_template_allowed_claim_ids_are_all_approved(template):
@@ -87,12 +91,16 @@ def test_template_prohibited_claim_ids_cover_all_four(template):
 def test_template_no_overlap_between_allowed_and_prohibited(template):
     data, name = template
     overlap = set(data["allowed_claim_ids"]) & set(data["prohibited_claim_ids"])
-    assert not overlap, f"{name} allows a claim id that is also listed prohibited: {overlap}"
+    assert not overlap, (
+        f"{name} allows a claim id that is also listed prohibited: {overlap}"
+    )
 
 
 def test_template_text_is_nonempty(template):
     data, name = template
-    assert isinstance(data["text"], str) and data["text"].strip(), f"{name} has empty text"
+    assert isinstance(data["text"], str) and data["text"].strip(), (
+        f"{name} has empty text"
+    )
 
 
 def test_generic_fallback_does_not_contain_crisis_resources():
@@ -110,7 +118,21 @@ def test_crisis_aware_contains_real_helpline_reference():
     with open(TEMPLATE_DIR / "crisis_aware.yaml", "r", encoding="utf-8") as f:
         data = yaml.safe_load(f)
     text_lower = data["text"].lower()
-    assert "988" in text_lower or "lifeline" in text_lower
+    assert "lifeline" in text_lower
+    assert "13 11 14" in text_lower
+    assert "000" in text_lower
+    assert "1300 659 467" in text_lower
+
+
+def test_crisis_aware_is_localised_for_australia_only():
+    with open(TEMPLATE_DIR / "crisis_aware.yaml", "r", encoding="utf-8") as f:
+        data = yaml.safe_load(f)
+    text_lower = data["text"].lower()
+    assert "australia" in text_lower
+    assert "988" not in text_lower
+    assert "741741" not in text_lower
+    assert "united states" not in text_lower
+    assert "if you're in the us" not in text_lower
 
 
 def test_template_ids_are_unique_across_both_files():
@@ -128,7 +150,17 @@ def test_model_manifest_parses_and_pins_exact_tag():
     assert "latest" not in manifest["model_tag"]
 
 
+def test_model_manifest_marks_phi_and_qwen_as_comparison_candidates():
+    with open(MANIFEST_PATH, "r", encoding="utf-8") as f:
+        manifest = yaml.safe_load(f)
+    assert manifest["selection_status"] == "comparison_pending"
+    tags = {candidate["model_tag"] for candidate in manifest["comparison_candidates"]}
+    assert tags == {"phi4-mini:3.8b", "qwen3:4b"}
+    assert all("latest" not in tag for tag in tags)
+
+
 def test_model_manifest_has_temperature_zero():
     with open(MANIFEST_PATH, "r", encoding="utf-8") as f:
         manifest = yaml.safe_load(f)
     assert manifest["call_pattern"]["temperature"] == 0.0
+    assert manifest["call_pattern"]["seed"] == 42
