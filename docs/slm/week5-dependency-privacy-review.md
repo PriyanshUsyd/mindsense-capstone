@@ -148,7 +148,3 @@ sign-off does not authorise participant deployment. The disconnected
 integrated-app check, controlled model/runtime installation, input
 minimisation, logging and retention design, and separate Integration/QA and
 peer review of safety-critical paths remain required.
-
-AI assistance: command execution, dependency lookup, and sign-off drafting;
-the review decision was authorised by Yuktha Naveen after the recorded results
-were checked.
