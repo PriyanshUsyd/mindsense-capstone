@@ -1,17 +1,15 @@
 """
-Shared Evidence Contract (Statistics -> SLM) — DRAFT, contract-v1.0.0 candidate.
+Shared Evidence Contract (Statistics -> SLM) — FROZEN, contract-v1.0.0.
 
-STATUS: Built to fill a Week 4 gap (no contract file existed in the repo as of
-2026-08-29). This is a DRAFT scaffold following build-reference.md Section 5
-exactly. It still needs the actual freeze/sign-off described there:
+STATUS: Frozen 2026-09-05 at commit 706a599, tag `contract-v1.0.0`. See
+freeze-decision.md at the repo root for the team's confirmation record
+(verbal agreement over WhatsApp, 26 August 2026, all 8 members).
 
-    "Any change after [contract freeze] requires sign-off from the Data,
-    Statistics, SLM, UI, and Integration/QA leads together, plus a valid
-    fixture, an invalid fixture, and a regenerated OpenAPI export."
-
-Do NOT treat this file as frozen. Priyansh still needs to run the actual
-freeze meeting and tag `contract-v1.0.0` with Moe, Richard, Sheng, and
-Honghao's sign-off before Wednesday of Week 4, per Weekly_Plan.md.
+Per build-reference.md Section 5: "Any change after [contract freeze]
+requires sign-off from the Data, Statistics, SLM, UI, and Integration/QA
+leads together, plus a valid fixture, an invalid fixture, and a
+regenerated OpenAPI export." Any change to this file from this point on
+must go through that process — it is no longer a Week 4 draft.
 
 All models are strict Pydantic v2: extra="forbid", frozen=True, per
 build-reference.md Section 3 (locked stack) and Section 5.

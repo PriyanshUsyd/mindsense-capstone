@@ -4,10 +4,21 @@ import pandas as pd
 
 
 # Automatically detect the project root directory and locate the CES dataset within it.
+#
+# PATH FIX (2026-09-05, Priyansh/Integration-QA): this originally pointed at
+# dataset/ces/, which doesn't match this repo's actual local dataset layout
+# (dataset/EMA/, dataset/Sensing/ directly - no "ces" subfolder, same
+# convention used by backend/data_pipeline/verify_ces.py and
+# ces_eligibility.py). As committed, the script could not run against the
+# real local dataset copy at all (FileNotFoundError on the very first
+# check). Falls back to dataset/ces/ if that layout is ever used instead,
+# so this still works for whichever convention is actually present.
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
-CES_ROOT = PROJECT_ROOT / "dataset" / "ces"
+_DATASET_DIRECT = PROJECT_ROOT / "dataset"
+_DATASET_CES_SUBDIR = PROJECT_ROOT / "dataset" / "ces"
+CES_ROOT = _DATASET_DIRECT if (_DATASET_DIRECT / "EMA").exists() else _DATASET_CES_SUBDIR
 
 EMA_FILE = CES_ROOT / "EMA" / "general_ema.csv"
 SENSING_FILE = CES_ROOT / "Sensing" / "sensing.csv"
