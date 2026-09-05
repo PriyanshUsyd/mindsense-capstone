@@ -1,8 +1,8 @@
 """
-GPS-distance feature builder — Honghao Li's Week 5 deliverable (Data
-Pipeline Lead), per Weekly_Plan.md: "Build ONE feature end-to-end (GPS
-distance), including real cleaning (timestamp alignment, missing-sensor
-handling, outlier filtering)."
+GPS-distance feature builder, implementing the Week 5 Data Pipeline Lead
+task from Weekly_Plan.md: "Build ONE feature end-to-end (GPS distance),
+including real cleaning (timestamp alignment, missing-sensor handling,
+outlier filtering)."
 
 Builds the locked Tier-1 GPS feature (`loc_dist_ep_0`, per
 skills/data-pipeline-ces.md and build-reference.md's 2-feature cap) from
