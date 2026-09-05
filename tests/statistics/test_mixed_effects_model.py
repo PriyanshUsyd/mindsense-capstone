@@ -17,6 +17,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from backend.statistics import r_bridge
 from backend.statistics.mixed_effects_model import (
     ALIGNMENT_WINDOW_DAYS,
     OCCASION_MIN_VALID_SENSOR_DAYS,
@@ -27,8 +28,17 @@ from backend.statistics.mixed_effects_model import (
     build_trailing_predictor,
     classify_evidence_strength,
     compute_time_covariates,
+    fit_ar1_effect,
     fit_ar1_robustness_check,
     fit_mixed_effects_model,
+)
+
+R_AVAILABLE = r_bridge.r_bridge_available()
+requires_r = pytest.mark.skipif(
+    not R_AVAILABLE,
+    reason="R + rpy2 + lme4/lmerTest/pbkrtest/nlme not usable in this environment "
+    "(see docs/statistics/r-bridge-setup.md — on Windows this must be checked from a "
+    "native process, not git-bash/MSYS)",
 )
 
 DATASET_DIR = Path(__file__).resolve().parents[2] / "dataset"
@@ -241,16 +251,75 @@ def test_between_within_denominator_df_matches_the_containment_formula():
 
 
 def test_between_within_denominator_df_is_not_confused_with_satterthwaite():
-    """The one thing this test protects: a future edit can't silently
-    start calling this Satterthwaite/Kenward-Roger without noticing —
-    the module docstring and denom_df_method string both say otherwise."""
+    """The one thing this test protects: the Python fallback path's
+    denom_df_method must never silently start claiming to be
+    Satterthwaite/Kenward-Roger. Forces prefer_r=False so this checks the
+    fallback path's own labelling regardless of whether R happens to be
+    available in the environment running this test — R being primary
+    when available is exactly the point of test_fit_mixed_effects_model_
+    uses_r_as_the_primary_engine_when_available below, not this test."""
     frame = _synthetic_frame_with_dates(n_people=20, n_occasions=10, seed=2)
-    fit = fit_mixed_effects_model(frame)
+    fit = fit_mixed_effects_model(frame, prefer_r=False)
+    assert fit.engine == "statsmodels (Python fallback)"
     assert fit.denom_df_method is not None
     assert "between-within" in fit.denom_df_method
-    assert "not Satterthwaite" in fit.denom_df_method or "Not Satterthwaite" in fit.denom_df_method.replace(
-        "NOT", "Not"
-    )
+    assert "Satterthwaite" not in fit.denom_df_method
+    assert "Kenward-Roger" not in fit.denom_df_method
+
+
+def test_fit_mixed_effects_model_uses_python_fallback_when_r_is_forced_off():
+    """prefer_r=False must produce identical behaviour to the pre-R-bridge
+    implementation, regardless of whether R happens to be available."""
+    frame = _synthetic_frame_with_dates(n_people=30, n_occasions=15, seed=1)
+    fit = fit_mixed_effects_model(frame, prefer_r=False)
+    assert fit.engine == "statsmodels (Python fallback)"
+    assert fit.params["x_within"] < 0
+
+
+@requires_r
+def test_fit_mixed_effects_model_uses_r_as_the_primary_engine_when_available():
+    """When R is available, fit_mixed_effects_model must use it by
+    default (prefer_r defaults to True) — this is the whole point of
+    wiring the R bridge in as primary, not just available-but-unused."""
+    frame = _synthetic_frame_with_dates(n_people=30, n_occasions=15, seed=5)
+    fit = fit_mixed_effects_model(frame)
+    assert fit.engine == "R (lme4::lmer + lmerTest)"
+    assert fit.denom_df_method == "Satterthwaite (R lme4::lmer + lmerTest)"
+    assert set(fit.denom_df) == {"x_within", "x_between"}
+    assert fit.params["x_within"] < 0
+    assert fit.pvalues["x_within"] < 0.01
+
+
+@requires_r
+def test_fit_mixed_effects_model_kenward_roger_via_r():
+    frame = _synthetic_frame_with_dates(n_people=30, n_occasions=15, seed=6)
+    fit = fit_mixed_effects_model(frame, df_method="Kenward-Roger")
+    assert fit.engine == "R (lme4::lmer + lmerTest)"
+    assert fit.denom_df_method == "Kenward-Roger (R lme4::lmer + lmerTest)"
+    assert np.isfinite(fit.denom_df["x_within"])
+    assert np.isfinite(fit.pvalues["x_within"])
+
+
+@requires_r
+def test_fit_mixed_effects_model_r_and_python_agree_on_point_estimates():
+    """R lmer and statsmodels MixedLM fit the same REML model — their
+    x_within point estimates should be very close (both are legitimate
+    numerical fits of the same specification, not expected to be bit-
+    identical given different optimizers)."""
+    frame = _synthetic_frame_with_dates(n_people=30, n_occasions=15, seed=7)
+    r_fit = fit_mixed_effects_model(frame, prefer_r=True)
+    py_fit = fit_mixed_effects_model(frame, prefer_r=False)
+    assert r_fit.params["x_within"] == pytest.approx(py_fit.params["x_within"], abs=0.01)
+
+
+@requires_r
+def test_r_bridge_is_not_confused_with_satterthwaite_python_fallback_split():
+    """Sanity check on the engine split itself: forcing prefer_r=False
+    must never accidentally still hit R (e.g. via a bug that ignores the
+    flag)."""
+    frame = _synthetic_frame_with_dates(n_people=20, n_occasions=10, seed=8)
+    fit = fit_mixed_effects_model(frame, prefer_r=False)
+    assert fit.engine == "statsmodels (Python fallback)"
 
 
 def test_ar1_robustness_check_runs_and_reports_a_rho_or_a_flagged_fallback():
@@ -283,6 +352,70 @@ def test_ar1_robustness_check_recovers_the_same_sign_as_the_primary_fit():
 
     assert primary.params["x_within"] < 0
     assert ar1.params["x_within"] < 0
+
+
+def test_fit_ar1_effect_falls_back_to_gee_when_r_is_forced_off():
+    frame = _synthetic_frame_with_dates(n_people=25, n_occasions=15, seed=9)
+    result = fit_ar1_effect(frame, prefer_r=False)
+    assert result.engine.startswith("GEE (Python fallback")
+    assert result.blups is None
+    assert result.used_random_slope is None
+    assert "x_within" in result.params
+
+
+@requires_r
+def test_fit_ar1_effect_uses_r_as_the_primary_engine_when_available():
+    """When R is available, fit_ar1_effect must use the real joint
+    AR(1) mixed model by default — this is the whole point of wiring the
+    R bridge in as primary, not just available-but-unused. Also confirms
+    real per-person BLUPs come back, which GEE structurally cannot
+    provide."""
+    frame = _synthetic_frame_with_dates(n_people=30, n_occasions=15, seed=10)
+    result = fit_ar1_effect(frame)
+    assert result.engine == "R (nlme::lme + corAR1)"
+    assert np.isfinite(result.ar1_coefficient)
+    assert result.blups is not None
+    assert len(result.blups) == 30
+    sample_uid = next(iter(result.blups))
+    assert "Intercept" in result.blups[sample_uid]
+
+
+@requires_r
+def test_r_bridge_ar1_bypasses_the_gee_fallback_entirely():
+    """Sanity check on the engine split: forcing prefer_r=False on
+    fit_ar1_effect must genuinely produce the GEE result (no BLUPs),
+    distinguishable from the R engine's result (has BLUPs)."""
+    frame = _synthetic_frame_with_dates(n_people=25, n_occasions=15, seed=11)
+    r_result = fit_ar1_effect(frame, prefer_r=True)
+    gee_result = fit_ar1_effect(frame, prefer_r=False)
+    assert r_result.blups is not None
+    assert gee_result.blups is None
+    assert gee_result.engine != r_result.engine
+
+
+@requires_r
+def test_end_to_end_r_backed_fit_against_the_real_dataset():
+    """Real dataset, real R fit — the primary path, not synthetic data."""
+    from backend.data_pipeline.gps_distance_feature import build_gps_distance_feature, load_sensing_days
+
+    sensing_days = load_sensing_days()
+    cleaned = build_gps_distance_feature(sensing_days)
+    ema = pd.read_csv(DATASET_DIR / "EMA" / "general_ema.csv", usecols=["uid", "day", "phq4_score"])
+    frame = build_model_frame(cleaned, ema)
+
+    fit = fit_mixed_effects_model(frame)
+    assert fit.engine == "R (lme4::lmer + lmerTest)"
+    assert fit.converged
+    assert fit.n_groups > 100
+    assert np.isfinite(fit.params["x_within"])
+    assert np.isfinite(fit.pvalues["x_within"])
+    assert np.isfinite(fit.denom_df["x_within"])
+
+    ar1 = fit_ar1_effect(frame)
+    assert ar1.engine == "R (nlme::lme + corAR1)"
+    assert np.isfinite(ar1.ar1_coefficient)
+    assert ar1.blups is not None
+    assert len(ar1.blups) == fit.n_groups
 
 
 def test_adjust_confirmatory_family_matches_holm_bonferroni():
