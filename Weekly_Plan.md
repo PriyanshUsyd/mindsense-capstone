@@ -34,6 +34,8 @@ Every foundational decision that gates later work gets made concretely this week
 | **Honglin Lu** (Docs) | Set up the GitHub repo, branch protection, and skeleton per the repository structure in `build-reference.md`. Begin the Proposal outline. |
 | **Priyansh Khandelwal** (Integration/QA) | Facilitate the evidence contract freeze meeting — tag `contract-v1.0.0` by Wednesday. Schedule the Tier 1 feature-list confirmation for Wednesday of Week 5. Hard cap confirmed: maximum 2 cross-platform features (GPS distance, unlock events) unless a third genuinely meets the same standard. |
 
+**SLM decision update (2026-08-30):** the row above records the original Week 4 plan. The role owner has not approved Phi-4 Mini as the final model. Ollama is confirmed as the local runtime; `phi4-mini:3.8b` remains the pinned baseline and `qwen3:4b` the pinned challenger until a larger fixed evaluation supports a final choice.
+
 ---
 
 ## Week 5 — Group Proposal Report Due (Sep 6)
