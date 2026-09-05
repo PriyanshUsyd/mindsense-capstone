@@ -13,6 +13,13 @@ pytest
 pytest-asyncio
 pytest-socket
 ruff
+httpx  # test-only: required by fastapi.testclient.TestClient to exercise backend/api/app.py.
+       # Privacy spot-check (2026-09-05): no network calls by default (used only
+       # in-process against our own TestClient/ASGI app in tests); no telemetry/
+       # analytics; no install scripts or auto-updates; touches only synthetic
+       # test fixtures, never participant data; BSD-3-Clause license; no
+       # stdlib alternative (urllib doesn't implement the ASGI transport
+       # TestClient needs). Decision: approved, test-only dependency.
 
 # Explicitly excluded per build-reference.md's decisions log — do not add:
 # scikit-learn
