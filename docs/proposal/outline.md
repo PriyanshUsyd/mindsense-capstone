@@ -132,9 +132,10 @@ what's actually real on `main` as of 2026-08-29 for each.
 ## 9. AI Acknowledgement Statement
 
 - Required per Weekly_Plan.md Week 5.
-- Describe honestly where AI tools were used, including this Week 4
-  gap-fill/reconciliation pass — the real teammate branches that were
-  merged in, the AI-drafted placeholders that were built and later
-  superseded, and the shared CES eligibility script built to match
-  Honghao's reported figure. This kind of transparency is exactly what an
-  AI Acknowledgement statement is for.
+- Draft written 2026-09-05: see
+  [docs/proposal/ai-acknowledgement.md](ai-acknowledgement.md) — describes,
+  from actual git history and commit hashes, where AI tools were used
+  (Week 4 gap-fill/reconciliation, independent cross-checks, Week 5
+  implementation work) and states plainly which two roles have no real
+  commit anywhere in the repository. Marked as a draft for the team to
+  review/edit before it goes into the compiled report — not final.
