@@ -2,6 +2,7 @@ from typing import Any
 
 from backend.contracts.evidence import ResponseMode
 from backend.slm.client import GenerationMetrics, GenerationResult
+from backend.slm.output_grounding import render_grounded_example
 from benchmarks.slm_model_comparison import (
     comparison_cases,
     percentile,
@@ -17,26 +18,21 @@ class CaseAwareClient:
     def generate_draft(self, packet, question):
         del question
         mode = packet.claim_policy.permitted_response_modes[0]
-        claim_id = packet.claim_policy.approved_claim_ids[0]
         from backend.contracts.evidence import AssistantDraft
 
         draft = AssistantDraft(
             packet_id=packet.identity.packet_id,
             response_mode=mode,
-            claim_ids_used=(claim_id,),
+            claim_ids_used=packet.claim_policy.approved_claim_ids,
             evidence_ids_referenced=(
                 ()
                 if mode == ResponseMode.REFUSAL
                 else (packet.feature_window.feature_id,)
             ),
             text=(
-                "This is a cautious synthetic explanation with stated uncertainty."
-                if mode in {ResponseMode.NORMAL, ResponseMode.UNCERTAINTY}
-                else (
-                    "There is insufficient history for comparison."
-                    if mode == ResponseMode.INSUFFICIENT_DATA
-                    else "This app cannot diagnose a condition."
-                )
+                "This app cannot diagnose a condition."
+                if mode == ResponseMode.REFUSAL
+                else render_grounded_example(packet, mode)
             ),
             includes_uncertainty_statement=mode
             in {ResponseMode.NORMAL, ResponseMode.UNCERTAINTY},

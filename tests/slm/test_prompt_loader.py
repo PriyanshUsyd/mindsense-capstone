@@ -6,6 +6,7 @@ from backend.contracts.evidence import ProhibitedClaimId
 from backend.slm.prompt_loader import (
     DEFAULT_CRISIS_FALLBACK,
     DEFAULT_EVIDENCE_PROMPT,
+    DEFAULT_INSUFFICIENT_DATA_TEMPLATE,
     PromptManifestError,
     load_evidence_prompt,
     load_fallback_prompt,
@@ -16,7 +17,7 @@ def test_evidence_prompt_loads_and_hashes_exact_bytes():
     loaded = load_evidence_prompt()
 
     assert loaded.manifest.prompt_id == "evidence_explainer"
-    assert loaded.manifest.prompt_version == "0.3.0"
+    assert loaded.manifest.prompt_version == "0.4.8"
     assert set(loaded.manifest.prohibited_claim_ids) == set(ProhibitedClaimId)
     assert (
         loaded.sha256
@@ -36,6 +37,14 @@ def test_crisis_fallback_loads_with_safe_yaml():
 
     assert loaded.manifest.template_id == "crisis_aware_fallback"
     assert loaded.manifest.template_version == "1.1.0"
+    assert loaded.manifest.text.strip()
+
+
+def test_insufficient_data_template_loads_with_safe_yaml():
+    loaded = load_fallback_prompt(DEFAULT_INSUFFICIENT_DATA_TEMPLATE)
+
+    assert loaded.manifest.template_id == "insufficient_data"
+    assert loaded.manifest.response_mode.value == "insufficient_data"
     assert loaded.manifest.text.strip()
 
 

@@ -1,3 +1,4 @@
+import json
 from typing import Any
 
 import pytest
@@ -67,6 +68,11 @@ def test_payload_is_schema_constrained_and_deterministic(
     assert payload["options"] == {"temperature": 0, "seed": 42}
     assert payload["format"] == AssistantDraft.model_json_schema()
     assert eligible_packet.identity.packet_id in payload["messages"][1]["content"]
+    user_payload = json.loads(payload["messages"][1]["content"])
+    assert user_payload["allowed_evidence_ids"] == [
+        eligible_packet.identity.packet_id,
+        eligible_packet.feature_window.feature_id,
+    ]
 
 
 def test_invalid_model_content_is_rejected(eligible_packet: EvidencePacket):
@@ -78,3 +84,18 @@ def test_invalid_model_content_is_rejected(eligible_packet: EvidencePacket):
 
     with pytest.raises(SLMResponseError, match="AssistantDraft"):
         client.generate_draft(eligible_packet, "What changed?")
+
+
+def test_model_payload_redacts_participant_reference_without_mutating_packet(
+    eligible_packet: EvidencePacket,
+):
+    original_reference = eligible_packet.identity.participant_ref
+    client = OllamaClient(OllamaClientConfig(model_tag="phi4-mini:3.8b"))
+    payload = client.build_payload(eligible_packet, "What changed?")
+    content = payload["messages"][1]["content"]
+    model_packet = json.loads(content)["evidence_packet"]
+
+    assert model_packet["identity"]["participant_ref"] == "redacted"
+    assert original_reference not in content
+    assert eligible_packet.identity.participant_ref == original_reference
+    assert model_packet["identity"]["packet_id"] == eligible_packet.identity.packet_id
