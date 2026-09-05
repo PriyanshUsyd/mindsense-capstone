@@ -81,9 +81,9 @@ def valid_draft(eligible_packet: EvidencePacket) -> AssistantDraft:
         ),
         evidence_ids_referenced=(eligible_packet.feature_window.feature_id,),
         text=(
-            "Your unlock count was above your personal baseline in this "
-            "window. The evidence is moderate, so this pattern should be "
-            "interpreted cautiously."
+            "Your phone unlock count was 42 unlocks per day, compared with "
+            "your own baseline of 35 unlocks per day. This estimate is "
+            "uncertain and should be interpreted cautiously."
         ),
         includes_uncertainty_statement=True,
     )

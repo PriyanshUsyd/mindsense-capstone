@@ -1,0 +1,60 @@
+{
+  "identity": {
+    "contract_version": "1.0.0",
+    "packet_id": "synthetic_week5_gps_001",
+    "model_spec_id": "synthetic-shadow-v1",
+    "generated_at": "2026-09-01T12:00:00Z",
+    "participant_ref": "synthetic-only"
+  },
+  "feature_window": {
+    "feature_id": "gps_distance",
+    "unit": "kilometres_per_day",
+    "window_start": "2026-08-01",
+    "window_end": "2026-08-28",
+    "value": 3.8,
+    "observed_days": 25,
+    "expected_days": 28,
+    "coverage_ratio": 0.8928571428571429,
+    "platform": "android",
+    "quality_flags": []
+  },
+  "baseline": {
+    "method": "trailing person-mean, 28-day window",
+    "value": 4.6,
+    "n_baseline_observations": 4,
+    "eligibility_status": "eligible",
+    "ineligible_reason": null
+  },
+  "evidence": {
+    "within_person_deviation_estimate": -0.8,
+    "confidence_interval_low": -1.4,
+    "confidence_interval_high": -0.2,
+    "direction": "below_baseline",
+    "evidence_strength": "moderate"
+  },
+  "uncertainty": {
+    "item_level": [
+      "moderate evidence strength"
+    ],
+    "packet_level": [
+      "synthetic development fixture; not participant data"
+    ]
+  },
+  "claim_policy": {
+    "approved_claim_ids": [
+      "observation_of_deviation",
+      "uncertainty_disclosure",
+      "non_diagnostic_boundary"
+    ],
+    "prohibited_claim_ids": [
+      "diagnosis",
+      "causal_explanation",
+      "treatment_or_crisis_advice",
+      "risk_prediction"
+    ],
+    "permitted_response_modes": [
+      "normal",
+      "uncertainty"
+    ]
+  }
+}

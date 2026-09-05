@@ -1,0 +1,23 @@
+# Deterministic State A response. This is a cold-start response template,
+# not an SLM-generated explanation and not one of the two failure fallbacks.
+
+template_id: insufficient_data
+template_version: "1.0.0"
+response_mode: insufficient_data
+allowed_claim_ids:
+  - not_enough_data
+  - non_diagnostic_boundary
+prohibited_claim_ids:
+  - diagnosis
+  - causal_explanation
+  - treatment_or_crisis_advice
+  - risk_prediction
+
+text: >
+  There is not enough data yet to compare this activity with your personal
+  baseline. MindSense will not guess or make a comparison until the required
+  observation history and data-quality checks are complete.
+
+review_note: >
+  WEEK 5 DEVELOPMENT TEMPLATE. Statistics and UI leads should confirm the
+  final participant-facing wording when the cold-start contract is frozen.
