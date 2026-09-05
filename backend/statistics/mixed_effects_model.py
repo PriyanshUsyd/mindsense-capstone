@@ -1,6 +1,6 @@
 """
-Mixed-effects model fitting — Moe Tanaka's Week 5 deliverable (Statistical
-Analysis Lead), per Weekly_Plan.md: "Implement baseline/evidence logic for
+Mixed-effects model fitting, implementing the Week 5 Statistical Analysis
+Lead task from Weekly_Plan.md: "Implement baseline/evidence logic for
 that one feature using the named statistical model."
 
 Implements the CORE of the LMM named in

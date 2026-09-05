@@ -1,19 +1,17 @@
 """
-CES eligibility verification — Priyansh's independent cross-check
-(Integration/QA), per Weekly_Plan.md's Honghao Li (Data Pipeline Lead)
-task: "Re-verify CES against the real, current copy of the data
-(participant count, PHQ-4 repeat density, feature completeness)."
+CES eligibility verification, implementing the Week 4 Data Pipeline Lead
+task from Weekly_Plan.md: "Re-verify CES against the real, current copy of
+the data (participant count, PHQ-4 repeat density, feature completeness)."
 
-STATUS, updated 2026-09-05: Honghao's own real script,
-`scripts/validate_ces.py` (commit `f30fce5`, author `AllenLi845`), is now
-the canonical CES re-verification deliverable — it is his own genuine,
-author-verified work, fixed and confirmed running end-to-end (see
-`d5406a3`). This file remains as an independent cross-check that
-corroborates his 214/220 (97.3%) figure via a different methodology
-(Moe's locked ≥20-valid-sensor-day gate on 2 features, vs. his ≥30-day
-gate on 3 features + 2 PHQ-4 measurements) — kept for that corroboration
-value, not as the primary source of truth it was described as before his
-real script existed.
+STATUS, updated 2026-09-05: `scripts/validate_ces.py` (commit `f30fce5`) is
+now the canonical CES re-verification deliverable, fixed and confirmed
+running end-to-end (see `d5406a3`). This file remains as an independent
+cross-check that corroborates that script's 214/220 (97.3%) eligibility
+figure via a different methodology (the locked ≥20-valid-sensor-day gate on
+2 features from the Week 4 Statistical Analysis deliverable, vs.
+`validate_ces.py`'s ≥30-day gate on 3 features + 2 PHQ-4 measurements) —
+kept for that corroboration value, not as the primary source of truth it
+was described as before `validate_ces.py` existed.
 
 PRIVACY FIX (2026-09-05): this script previously printed raw CES uids in
 its `ineligible_uids` / `ineligible_reasons` output. Per
@@ -24,10 +22,9 @@ The salt is generated fresh per run and discarded, so the pseudonym is
 non-reversible and not correlatable across separate runs. See
 privacy/ces-uid-fix.md.
 
-Honghao reported 97.3% eligible in chat on/before 2026-08-27; this module
-reproduces that figure exactly against the real local dataset, using a
-real, independently-justified threshold (Moe Tanaka's locked
-≥20-valid-sensor-day sufficiency gate from
+This module reproduces the reported 97.3% eligible figure exactly against
+the real local dataset, using a real, independently-justified threshold
+(the locked ≥20-valid-sensor-day sufficiency gate from
 weekly_update/week4/Week4_Statistical_Analysis_Deliverable.md Section 4.3,
 State C) rather than an arbitrary cutoff chosen just to hit the target
 number — see docs/data-pipeline/eligibility-methodology-note.md for the
