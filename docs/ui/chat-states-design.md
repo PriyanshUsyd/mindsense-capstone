@@ -1,5 +1,11 @@
 # UI — Chat States Design (Week 4, planning-level only)
 
+**Filled in by Priyansh Khandelwal (Integration/QA) — Sheng Wang did not
+deliver this, per Weekly_Plan.md Week 4: "Design (not build yet) the 7
+required chat states ... Set up the Vite + React + TypeScript scaffold."**
+No commit from Sheng Wang exists anywhere in this repository as of
+2026-09-05.
+
 **Status: DRAFT, built to fill a Week 4 gap found on 2026-08-29.** This is
 planning-level design only, per Weekly_Plan.md ("Design (not build yet) the 7
 required chat states") — no components are built here beyond the scaffold
