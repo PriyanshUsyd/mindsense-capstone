@@ -1,12 +1,10 @@
 import { useState } from 'react'
 import { respond, type EvidencePacket, type SafeSLMResponse } from '../../api/client'
 
-// Week 5 "normal response" state, integrated against the real SLM stub via
-// backend/api/app.py. Filled in by Priyansh Khandelwal (Integration/QA) —
-// Sheng Wang did not deliver this, per Weekly_Plan.md Week 5: "Integrate
-// the UI against the real SLM stub; build the 'normal response' state
-// fully." No commit from Sheng exists anywhere in this repository as of
-// 2026-09-05.
+// Week 5 "normal response" state, implementing the Conversational
+// Interface Lead task from Weekly_Plan.md: "Integrate the UI against the
+// real SLM stub; build the 'normal response' state fully." Integrated
+// against the real SLM stub via backend/api/app.py.
 //
 // Mirrors tests/slm/fixtures/week5_gps_eligible.json (kept in sync by
 // hand for this minimal demo — see backend/api/app.py's own note about
