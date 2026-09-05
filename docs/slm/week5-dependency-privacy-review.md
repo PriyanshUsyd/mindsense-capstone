@@ -118,12 +118,37 @@ Sources checked on 4 September 2026:
 ## Decision for reviewers
 
 - [ ] Approved
-- [ ] Approved with mitigation
+- [x] Approved with mitigation
 - [ ] Rejected
 
-No reviewer decision has been entered by the author or AI. Recommendation:
-review for synthetic local development with the mitigations above. Yuktha
-should review privacy findings; Integration/QA plus a peer must review the
-safety-critical paths. The team must decide whether this Week 5 document can
-serve as linked evidence for the still-open Week 4 PR; it does not silently
-satisfy that PR's approval process. No participant deployment is authorised.
+### Privacy Lead sign-off
+
+- Reviewer: Yuktha Naveen, Privacy and Security Lead
+- Review date: 5 September 2026 (Australia/Sydney)
+- Reviewed commit: `1554ec6`
+- Scope: the Week 5 SLM dependency and local-inference boundary documented
+  above; this is not approval of every dependency added by other components.
+- Verification: 10/10 focused privacy and transport tests passed; the complete
+  current-main suite passed 308/308 tests with 14 `statsmodels` convergence
+  warnings unrelated to the SLM transport boundary.
+- Dependency checks: `pip check` reported no broken requirements, and both the
+  declared-requirements and installed-environment `pip-audit` checks reported
+  no known vulnerabilities.
+
+The current FastAPI `0.141.1` and Starlette `1.6.0` test stack requires
+`httpx2`; current main instead declares `httpx`. For verification,
+`httpx2==2.12.0` was privacy-checked and installed only in the untracked local
+`.venv`. The package can make outbound HTTP requests when explicitly used, but
+the reviewed API tests use its in-process ASGI transport with synthetic
+fixtures. Integration/QA must correct or pin the declared test dependency and
+rerun the suite so a fresh environment is reproducible.
+
+**Decision:** approved with mitigation for synthetic local development. This
+sign-off does not authorise participant deployment. The disconnected
+integrated-app check, controlled model/runtime installation, input
+minimisation, logging and retention design, and separate Integration/QA and
+peer review of safety-critical paths remain required.
+
+AI assistance: command execution, dependency lookup, and sign-off drafting;
+the review decision was authorised by Yuktha Naveen after the recorded results
+were checked.
