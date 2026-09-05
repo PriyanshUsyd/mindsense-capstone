@@ -163,13 +163,18 @@ def test_pass_threshold_doc_is_locked_not_parked():
     assert "unresolved conflict" not in text.lower()
 
 
-def test_week4_milestone_status_shows_every_role_as_complete_or_locked():
-    """The final status doc's per-role table must show every one of the 8
-    roles with an acceptable status (Complete / Locked default, no action
-    needed) — not pending a reply or blocked on someone. Parses the
-    markdown table's role rows specifically, rather than banning words
-    like 'blocked' outright (which can legitimately appear describing an
-    unrelated result, e.g. a benchmark that is itself honestly "blocked")."""
+def test_week4_milestone_status_has_a_row_for_every_role_with_an_honest_status():
+    """CORRECTED 2026-09-05: this test originally required every role's row
+    to read 'Complete' or 'Locked default, no action needed' — an
+    assertion that enforced rounding every role up to 'done' regardless of
+    whether real work backed it. Week 5 verification found that three
+    roles (Honghao, Sheng, Honglin) have zero commits anywhere in the
+    repository, and the doc's own 'Complete'/'Locked default' labels for
+    them were corrected to 'In progress'/'Not started' to match reality.
+    This test now only requires every role to have a row, with one of the
+    real, honest statuses actually used in the doc — it no longer asserts
+    everyone is done, since that was never true and the doc should not be
+    forced back into claiming it is."""
     text = _read("docs/week4-milestone-status.md")
     roles = [
         "Honghao Li", "Moe Tanaka", "Richard Zhao", "Sheng Wang",
@@ -177,10 +182,23 @@ def test_week4_milestone_status_shows_every_role_as_complete_or_locked():
     ]
     table_lines = [line for line in text.splitlines() if line.startswith("|") and any(r in line for r in roles)]
     assert len(table_lines) == len(roles), "not every role has a row in the status table"
+    valid_statuses = ("**Complete**", "**In progress**", "**Not started**")
     for line in table_lines:
-        assert "**Complete**" in line or "**Locked default, no action needed**" in line, (
-            f"role row does not show an acceptable status: {line}"
+        assert any(status in line for status in valid_statuses), (
+            f"role row does not show a recognised status: {line}"
         )
+
+    # The specific corrections this Week 5 pass made must actually be present
+    # (not just "some honest status or other") — these three roles have no
+    # real repo contribution and must not silently read "Complete" again.
+    for role, expected_status in [
+        ("Honghao Li", "**In progress**"),
+        ("Sheng Wang", "**Not started**"),
+        ("Honglin Lu", "**Not started**"),
+        ("Priyansh Khandelwal", "**Not started**"),
+    ]:
+        role_line = next(line for line in table_lines if role in line)
+        assert expected_status in role_line, f"{role}'s row should read {expected_status}: {role_line}"
 
 
 def test_safety_gate_module_is_importable_and_self_documented():
