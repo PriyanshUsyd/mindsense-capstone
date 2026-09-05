@@ -121,17 +121,32 @@ def test_honghao_real_script_is_referenced_from_proposal_outline():
     assert "ces_eligibility.py" in text
 
 
-def test_ces_eligibility_script_is_locked_as_shared_working_script():
-    """2026-08-29 update: 'pending Honghao's confirmation' language was
-    retired — this is now locked as the shared, working script Data
-    Pipeline Lead builds directly on. Checked (whitespace-normalized,
-    since the docstring hand-wraps across lines) so a future edit can't
-    silently reintroduce the old pending-confirmation framing."""
+def test_ces_eligibility_script_correctly_defers_to_honghaos_real_script():
+    """RECONCILED 2026-09-05: this file previously described
+    ces_eligibility.py itself as 'the shared, working eligibility script' —
+    accurate when written (Honghao had no real script yet), stale once his
+    own scripts/validate_ces.py existed, was fixed, and started passing.
+    Now checks the docstring correctly names his script as canonical and
+    this one as the secondary cross-check. Whitespace-normalized since the
+    docstring hand-wraps across lines."""
     text = _read_unwrapped("backend/data_pipeline/ces_eligibility.py")
-    assert "shared, working eligibility script" in text
-    assert "Data Pipeline Lead continues building directly on this file during Week 5 work" in text
+    assert "scripts/validate_ces.py" in text
+    assert "is now the canonical CES re-verification deliverable" in text
+    assert "independent cross-check that" in text
     assert "DATA PIPELINE LEAD TO CONFIRM" not in text.upper()
     assert "RECONSTRUCTED METHODOLOGY" not in text.upper()
+
+
+def test_validate_ces_script_is_the_canonical_deliverable_and_runs():
+    """The reconciliation above is only honest if his script actually
+    exists and genuinely runs — re-confirms both, so this test fails loudly
+    if either regresses."""
+    assert (REPO_ROOT / "scripts" / "validate_ces.py").is_file()
+    text = _read("scripts/validate_ces.py")
+    assert "dataset" in text
+    # The 2026-09-05 path fix must still be present - without it the
+    # script can't run against this repo's real dataset layout at all.
+    assert '_DATASET_DIRECT / "EMA"' in text
 
 
 def test_proposal_outline_is_starting_content_not_pending_a_person():

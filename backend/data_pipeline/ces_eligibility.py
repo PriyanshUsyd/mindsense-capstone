@@ -1,12 +1,19 @@
 """
-CES eligibility verification — Honghao Li's Week 4 deliverable
-(Data Pipeline Lead), per Weekly_Plan.md: "Re-verify CES against the real,
-current copy of the data (participant count, PHQ-4 repeat density, feature
-completeness)."
+CES eligibility verification — Priyansh's independent cross-check
+(Integration/QA), per Weekly_Plan.md's Honghao Li (Data Pipeline Lead)
+task: "Re-verify CES against the real, current copy of the data
+(participant count, PHQ-4 repeat density, feature completeness)."
 
-STATUS: This is the shared, working eligibility script — Data Pipeline
-Lead continues building directly on this file during Week 5 work, rather
-than maintaining a separate version.
+STATUS, updated 2026-09-05: Honghao's own real script,
+`scripts/validate_ces.py` (commit `f30fce5`, author `AllenLi845`), is now
+the canonical CES re-verification deliverable — it is his own genuine,
+author-verified work, fixed and confirmed running end-to-end (see
+`d5406a3`). This file remains as an independent cross-check that
+corroborates his 214/220 (97.3%) figure via a different methodology
+(Moe's locked ≥20-valid-sensor-day gate on 2 features, vs. his ≥30-day
+gate on 3 features + 2 PHQ-4 measurements) — kept for that corroboration
+value, not as the primary source of truth it was described as before his
+real script existed.
 
 PRIVACY FIX (2026-09-05): this script previously printed raw CES uids in
 its `ineligible_uids` / `ineligible_reasons` output. Per
