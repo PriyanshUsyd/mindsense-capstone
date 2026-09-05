@@ -8,6 +8,15 @@ STATUS: This is the shared, working eligibility script — Data Pipeline
 Lead continues building directly on this file during Week 5 work, rather
 than maintaining a separate version.
 
+PRIVACY FIX (2026-09-05): this script previously printed raw CES uids in
+its `ineligible_uids` / `ineligible_reasons` output. Per
+skills/privacy-security.md and evidence.py's own rule that
+`participant_ref` must never be the raw CES uid, all output paths now use
+a salted-hash pseudonym (see `make_pseudonymizer`) instead of the raw id.
+The salt is generated fresh per run and discarded, so the pseudonym is
+non-reversible and not correlatable across separate runs. See
+privacy/ces-uid-fix.md.
+
 Honghao reported 97.3% eligible in chat on/before 2026-08-27; this module
 reproduces that figure exactly against the real local dataset, using a
 real, independently-justified threshold (Moe Tanaka's locked
@@ -23,7 +32,9 @@ Run: python backend/data_pipeline/ces_eligibility.py
 
 from __future__ import annotations
 
+import hashlib
 import json
+import os
 from pathlib import Path
 
 import pandas as pd
@@ -76,24 +87,50 @@ def compute_eligibility(sensing: pd.DataFrame, ema: pd.DataFrame) -> pd.DataFram
     return per_participant
 
 
-def summarize(per_participant: pd.DataFrame) -> dict:
+def make_pseudonymizer(salt: bytes | None = None):
+    """Returns a callable mapping a raw CES uid to a non-reversible pseudonym.
+
+    Privacy fix (see privacy/ces-uid-fix.md): raw participant uids must never
+    appear in this script's stdout or any file it writes — per
+    skills/privacy-security.md and backend/contracts/evidence.py's own rule
+    that `participant_ref` must never be the raw CES uid. The salt defaults
+    to a fresh random value generated once per process invocation, so
+    pseudonyms cannot be correlated across separate runs of this script
+    (or back to the raw uid, since SHA-256 with a discarded random salt is
+    not invertible). Callers that need a stable/testable mapping within a
+    single test may pass a fixed salt explicitly.
+    """
+    if salt is None:
+        salt = os.urandom(16)
+
+    def pseudonym(uid: str) -> str:
+        return "p_" + hashlib.sha256(salt + str(uid).encode("utf-8")).hexdigest()[:12]
+
+    return pseudonym
+
+
+def summarize(per_participant: pd.DataFrame, pseudonymize=None) -> dict:
+    if pseudonymize is None:
+        pseudonymize = make_pseudonymizer()
+
     n_total = len(per_participant)
     n_eligible = int(per_participant["eligible"].sum())
     ineligible = per_participant[~per_participant["eligible"]]
+    ineligible_reasons = {
+        pseudonymize(uid): {
+            "gps_valid_days": int(row.gps_valid_days),
+            "unlock_valid_days": int(row.unlock_valid_days),
+            "has_phq4": bool(row.has_phq4),
+        }
+        for uid, row in ineligible.iterrows()
+    }
     return {
         "n_total_participants": n_total,
         "n_eligible_participants": n_eligible,
         "eligible_pct": round(100.0 * n_eligible / n_total, 1),
         "min_valid_sensor_days_threshold": MIN_VALID_SENSOR_DAYS,
-        "ineligible_uids": sorted(ineligible.index.tolist()),
-        "ineligible_reasons": {
-            uid: {
-                "gps_valid_days": int(row.gps_valid_days),
-                "unlock_valid_days": int(row.unlock_valid_days),
-                "has_phq4": bool(row.has_phq4),
-            }
-            for uid, row in ineligible.iterrows()
-        },
+        "ineligible_participant_pseudonyms": sorted(ineligible_reasons.keys()),
+        "ineligible_reasons": ineligible_reasons,
     }
 
 
