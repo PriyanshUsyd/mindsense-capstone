@@ -1,25 +1,22 @@
-# Privacy docs — see the real ones at the repo root
+# MindSense privacy documentation
 
-**2026-08-29:** the AI-drafted placeholder docs that used to live in this
-folder (`architecture-principles.md`, `latency-benchmark.md`) have been
-removed — Yuktha Naveen pushed real Week 4 privacy work that supersedes
-them. Read these instead:
+Yuktha Naveen owns this area as Privacy and Security Lead. The operational policy and status sources remain in the repository's established top-level `privacy/` directory. This documentation directory stores the rendered weekly reports and provides a single index to the current evidence.
 
-- [`privacy/privacy_architecture_principles.md`](../../privacy/privacy_architecture_principles.md)
-- [`privacy/dependency_privacy_checklist.md`](../../privacy/dependency_privacy_checklist.md)
-- [`privacy/initial_dependency_audit.md`](../../privacy/initial_dependency_audit.md)
-- [`privacy/week4_privacy_status.md`](../../privacy/week4_privacy_status.md)
-- [`benchmarks/slm_latency_benchmark.py`](../../benchmarks/slm_latency_benchmark.py) +
-  [`benchmarks/slm_latency_results.json`](../../benchmarks/slm_latency_results.json)
-  (she actually ran this — result is honestly "blocked, not measured", no
-  Ollama installed on her machine either)
+## Core privacy controls
 
-Note the structural mismatch: `build-reference.md` Section 8 says Privacy's
-code should live under `backend/privacy/`, but Yuktha's real files are at
-the repo root (`privacy/`, `benchmarks/`). Not moved/renamed here — that's
-a real-file relocation that should be Yuktha's or Honglin's call, not
-something to silently "fix" by relocating someone else's committed work.
+- [Privacy architecture principles](../../privacy/privacy_architecture_principles.md): rules for network calls, telemetry, logs, dependencies, storage, model files, and sensitive outputs.
+- [Dependency privacy checklist](../../privacy/dependency_privacy_checklist.md): the reusable review applied when a dependency is proposed or changed.
+- [Initial dependency audit](../../privacy/initial_dependency_audit.md): the baseline dependency and network-behaviour review.
+- [Pull request privacy gate](../../.github/pull_request_template.md): the standing requirement that every dependency change records a privacy spot-check in its PR description.
+- [Network-egress tests](../../tests/privacy/test_no_network_egress.py): automated enforcement that permits loopback traffic and blocks public Python socket connections during tests.
 
-`tests/privacy/test_no_network_egress.py` (AI-drafted, still in this repo)
-has no equivalent in Yuktha's branch and doesn't overlap with anything she
-built — kept as-is.
+## Weekly verification evidence
+
+- [Week 4 status](../../privacy/week4_privacy_status.md): initial principles, dependency gate, and real-machine Phi-4 Mini latency baseline.
+- [Week 4 Privacy Lead Report](week4-privacy-lead-report.pdf): six-page rendered report covering the completed Week 4 assignment.
+- [Week 5 Privacy and Security Report](week5-privacy-security-report.pdf): six-page rendered post-merge privacy, transport, telemetry, logging, dependency, safety, and latency review.
+- [Latency benchmark](../../benchmarks/slm_latency_benchmark.py) and [latest measured results](../../benchmarks/slm_latency_results.json): reproducible local benchmark and the current Week 5 result.
+
+## Current assurance boundary
+
+Week 5 verification passed 10 focused privacy and transport tests and 276 complete repository tests. The evidence supports conditional approval for synthetic local development. It does not approve participant use; disconnected integrated-app testing, input minimisation, logging and retention rules, aggregate-only CES output, dependency locking, and governance review remain required.
