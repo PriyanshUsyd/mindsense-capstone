@@ -1,0 +1,9 @@
+state,user_facing_bh,deviation_available,occasions,participants,pct_of_all_occasions,contract
+A,evidence_available,True,105,59,0.3,templated message only; no numbers
+A,no_claim,True,375,150,1.06,templated message only; no numbers
+B,evidence_available,True,3450,64,9.76,"descriptive only; no comparison, no relationship claim"
+B,no_claim,True,7859,151,22.23,"descriptive only; no comparison, no relationship claim"
+C,evidence_available,False,245,54,0.69,"comparison framing permitted, but no deviation value this occasion; hedged relationship claim permitted"
+C,evidence_available,True,8209,64,23.22,comparison permitted; hedged relationship claim permitted
+C,no_claim,False,517,116,1.46,"comparison framing permitted, but no deviation value this occasion; relationship claim forbidden"
+C,no_claim,True,14588,148,41.27,comparison permitted; relationship claim forbidden
