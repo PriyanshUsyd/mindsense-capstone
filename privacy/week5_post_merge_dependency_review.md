@@ -81,6 +81,11 @@ Findings:
 - `rpy2` is now pinned in the optional `requirements-r.txt`. R package versions
   remain recorded rather than machine-locked, so reproducibility across future
   CRAN releases remains a limitation.
+- On this Apple Silicon Mac, the `rpy2` wheel's API mode looked for a CRAN R
+  framework that was not installed. Verification therefore set
+  `RPY2_CFFI_MODE=ABI` and successfully loaded Homebrew R 4.6.1. This
+  environment setting must be retained or resolved before reproducing the
+  R-active run on the same toolchain.
 
 Decision: approved with mitigation for local statistical development. Do not run
 Homebrew, pip, npm, or CRAN installation commands while real participant data is
