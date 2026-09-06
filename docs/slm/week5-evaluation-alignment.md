@@ -1,7 +1,10 @@
 # Week 5 Alignment with the Existing Evaluation Plan
 
-Owner: Richard Zhao, SLM Integration. Updated: 4 September 2026 (Australia/Sydney).
-Status: Week 5 development amendment for PR #2; joint review pending.
+Owner: Richard Zhao, SLM Integration. Updated: 6 September 2026 (Australia/Sydney).
+Status: Week 5 development amendment for PR #2; joint review on Q1/Q7, privacy_01/privacy_02,
+Q2/Q8 and the held-out set completed by consensus on 6 September 2026 — see
+[integration/evaluation handoff](week5-integration-evaluation-handoff.md#joint-evaluation-with-chonghao)
+for the verbatim exchange. Other cases were not individually re-reviewed in that exchange.
 
 Latest follow-up: [runtime output grounding](week5-output-grounding.md),
 Prompt 0.4.8 and grounding 0.1.1, has 265 full-suite passes / 8 skips and
@@ -72,7 +75,12 @@ but cannot count as passes or completed positive interpretation.
    synthetic evidence, routing checks, selected content checks, source hashes,
    code HEAD plus dirty-worktree status, prompt and policy versions. It does
    not claim to retain rejected raw model drafts. Ratings for Richard and
-   Chonghao and the resolution field remain blank.
+   Chonghao and the resolution field are now filled in for the four cases
+   they actually commented on in the joint review (`plan_q1`, `plan_q7`,
+   `privacy_01`, `privacy_02` — see
+   [integration/evaluation handoff](week5-integration-evaluation-handoff.md#joint-evaluation-with-chonghao));
+   every other case's fields remain blank because neither lead commented on
+   them.
 
 The selected content checks verify supplied values, feature naming, units,
 and one known observation-window wording error. They are developer checks,
@@ -146,6 +154,13 @@ Next, ask Chonghao to:
    If there are no disagreements, say so; do not fabricate the planned examples.
 4. Confirm the proposal to continue synthetic/mock data. Any future real
    anonymised-data use still requires the appropriate privacy/governance checks.
+
+**Done, 6 September 2026:** Richard and Chonghao completed 1-3 above by
+independent written reply, reaching consensus rather than disagreement — see
+[integration/evaluation handoff](week5-integration-evaluation-handoff.md#joint-evaluation-with-chonghao)
+for the verbatim exchange and resolutions. Continuing synthetic/mock data
+(item 4) was independently confirmed by both: Q2/Q8 stay not-covered and the
+held-out set stays untouched.
 
 PHQ-4/association contract work is a shared dependency, not a task to transfer
 entirely to Chonghao. Broader cases, paraphrases, other languages, crisis wording,
