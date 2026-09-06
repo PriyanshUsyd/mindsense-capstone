@@ -1,0 +1,8 @@
+{
+  "n_daily_obs": 216065,
+  "n_dropped_quality_gate": 50498,
+  "n_quality_missing": 0,
+  "n_dropped_implausible": 4472,
+  "n_valid_after_cleaning": 161283,
+  "pct_valid_after_cleaning": 74.65
+}

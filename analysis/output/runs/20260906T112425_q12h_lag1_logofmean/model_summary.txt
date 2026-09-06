@@ -1,0 +1,22 @@
+fallback_to_intercept_only: False
+
+              Mixed Linear Model Regression Results
+==================================================================
+Model:               MixedLM    Dependent Variable:    phq4_score 
+No. Observations:    27530      Method:                REML       
+No. Groups:          213        Scale:                 3.1674     
+Min. group size:     6          Log-Likelihood:        -55625.0238
+Max. group size:     434        Converged:             Yes        
+Mean group size:     129.2                                        
+------------------------------------------------------------------
+                        Coef.  Std.Err.   z    P>|z| [0.025 0.975]
+------------------------------------------------------------------
+Intercept                1.962    0.125 15.651 0.000  1.717  2.208
+x_within_it             -0.248    0.034 -7.315 0.000 -0.315 -0.182
+x_within_lag1_it        -0.040    0.018 -2.182 0.029 -0.075 -0.004
+x_between_i              0.149    0.243  0.613 0.540 -0.327  0.625
+week_in_study_it         0.007    0.000 32.125 0.000  0.007  0.008
+Group Var                3.265    0.182                           
+Group x x_within_it Cov -0.127    0.032                           
+x_within_it Var          0.160    0.011                           
+==================================================================
