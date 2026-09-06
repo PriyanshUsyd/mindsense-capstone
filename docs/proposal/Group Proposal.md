@@ -246,11 +246,15 @@ Random intercepts account for differences in participants’ typical PHQ-4 level
 
 ### 4.3 Temporal Alignment
 
-The behavioural predictors and PHQ-4 outcomes are observed at different frequencies. For each PHQ-4 assessment, the pipeline constructs a trailing 14-day behavioural window ending on or before the assessment date. The 14-day interval corresponds to the recall period represented by PHQ-4 and prevents future sensing data from being used to explain an earlier outcome.
+The behavioural predictors and PHQ-4 outcomes are observed at different frequencies. For each PHQ-4 assessment, the pipeline constructs a trailing 14-day behavioural window ending on the calendar day before the assessment date. The 14-day interval corresponds to the recall period represented by PHQ-4. Ending the window on the previous day prevents future sensing data from being used to explain an earlier outcome: the daily sensing features are full-day aggregates covering 00:00 to 23:59, so including the assessment day itself would place behaviour recorded after the PHQ-4 response into the predictor.
+
+The behavioural feature is aggregated by taking the arithmetic mean of the cleaned daily values within the window and applying the logarithmic transformation once to that mean. Log-transforming each daily value before averaging produces a different quantity by Jensen's inequality, and for a right-skewed variable such as daily travel distance the difference is substantial. The order of operations is therefore fixed rather than left to implementation choice.
 
 A behavioural window must contain at least seven valid sensor-days before it can contribute to the model. Windows that fail this requirement are excluded rather than imputed. Overlapping trailing windows may create serial correlation between repeated observations, so the analysis includes an autoregressive AR(1) assessment.
 
 The current implementation supports an AR(1)-aware mixed-effects fit through R’s `nlme` framework when the required R environment is available. A Python fallback is retained for development and testing, but its result must be identified as an approximation rather than presented as equivalent to the primary R analysis.
+
+Serial correlation in this data is substantial rather than negligible: the R pathway estimates an autoregressive parameter of approximately 0.60, while a population-averaged Python approximation failed to converge and returned zero. Coefficient estimates uncorrected for this structure should not be reported as final.
 
 ### 4.4 Personal Baselines and Cold-Start Policy
 
@@ -262,15 +266,23 @@ Personalised comparison is permitted only when sufficient historical information
 
 **State C — Sufficient history:** Comparative statements become available when a feature has at least 28 calendar days of history, at least 20 valid sensor-days and at least three completed PHQ-4 assessments. A stronger historical relationship claim additionally requires the target 56-day history, at least 40 valid sensor-days, at least eight PHQ-4 assessments spanning at least 28 days, and sufficient statistical evidence.
 
-The lowest qualifying state among the features used in a response controls the framing of that response. This prevents a well-observed feature from concealing insufficient evidence for another feature.
+Cold-start state is evaluated at each assessment occasion rather than once per participant. A participant moves between states as history accrues and as data quality varies, so State C is not a permanent status once reached. The comparison window and the baseline window are constructed so that they do not overlap: the baseline period ends immediately before the 14-day comparison window begins, ensuring that a participant's current observation does not form part of its own reference.
+
+The lowest qualifying state among the features used in a response controls the framing of that response. This prevents a well-observed feature from concealing insufficient evidence for another feature. A single behavioural window is used for both the model and the user-facing description, so that the quantity presented to the participant and the quantity from which its evidence strength was estimated are the same object.
 
 ### 4.5 Multiple Comparisons and Evidence Strength
 
 The project distinguishes between confirmatory and exploratory statistical tests. The confirmatory analysis will use Holm–Bonferroni correction to control the family-wise error rate across the small predefined set of primary tests. Exploratory analyses will use the Benjamini–Hochberg procedure to control the false discovery rate.
 
+The composition of each family must be stated explicitly rather than left implicit. For per-participant classification, the exploratory family comprises all participants holding a per-person estimate for the feature under analysis. If each participant's test were instead treated as its own family, both correction procedures would reduce mathematically to the uncorrected p-value and no correction would be applied at all. Where a per-participant p-value cannot be computed, that participant is excluded from the family rather than counted within it.
+
 Evidence strength will not be determined from a p-value alone. Classification also considers the adjusted significance level, standardised effect size, number of valid assessment occasions, data coverage and consistency of the estimated direction across relevant model specifications. Evidence may be classified as insufficient, weak, moderate or strong.
 
-These classifications control the language available to the SLM. Weak or incomplete evidence requires cautious descriptive wording, while stronger evidence may support an associational statement. No evidence category permits diagnostic or causal language.
+The four tiers are retained for internal reporting and analysis. The evidence contract passed to the conversational layer collapses them to two values: one permitting a hedged associational statement, and one permitting no relationship claim at all. This collapse reflects the observed instability of the boundary between the two upper tiers, which is sensitive to specification choices in a way the boundary between claim and no-claim is not.
+
+Individual classifications should be read as indicative rather than determinate. Under a defensible alternative preprocessing specification, approximately one participant in eight moves to the opposite side of the claim boundary, in both directions. Template wording for the claim-permitted category must therefore carry hedging strong enough to remain defensible for a participant who would fall on the other side under a slightly different specification.
+
+Data sufficiency and statistical evidence are separate gates. A participant may hold sufficient history for a comparative statement while holding insufficient evidence for any relationship claim; this combination is the most common one in the current data, and the two gates must be evaluated independently rather than collapsed into a single eligibility decision. No evidence category permits diagnostic or causal language.
 
 ### 4.6 Estimation and Statistical Software
 
@@ -286,9 +298,9 @@ The current statistical prototype implements the main within-person and between-
 
 The implementation nevertheless remains incomplete in several respects. The planned one-occasion lagged behavioural predictor has not yet been incorporated into the full model. Consequently, the strongest evidence category, which requires consistent directions across the contemporaneous and lagged terms, cannot yet be reached automatically without additional evidence supplied by the caller.
 
-The R pathway can produce participant-level empirical Bayes estimates, but these estimates have not yet been connected to a dedicated participant-level reporting process. In addition, the current academic-term covariate uses an approximate general United States academic calendar because the CES data does not include a definitive term-phase field. This approximation must be refined or clearly retained as a limitation.
+A participant-level reporting process consuming the empirical Bayes estimates has been implemented and is being integrated with the R pathway, so that the per-participant estimates it produces carry the Satterthwaite denominator degrees of freedom and AR(1) correction the R engine provides. In addition, the current academic-term covariate uses an approximate general United States academic calendar because the CES data does not include a definitive term-phase field. This approximation must be refined or clearly retained as a limitation.
 
-The present results should therefore be described as a working statistical prototype rather than a final confirmatory analysis. Subsequent work will add the lagged predictor, complete participant-level evidence generation, validate the final two-feature model and confirm that all outputs satisfy the agreed evidence-strength and cold-start rules.
+The present results should therefore be described as a working statistical prototype rather than a final confirmatory analysis. Subsequent work will add the lagged predictor, complete the integration of participant-level evidence generation with the R estimation pathway, validate the proposed three-feature Tier 1 set, and confirm that all outputs satisfy the agreed evidence-strength and cold-start rules.
 
 ## 5. SLM Integration and Safety
 
