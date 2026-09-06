@@ -262,7 +262,7 @@ Personalised comparison is permitted only when sufficient historical information
 
 **State A — No or insufficient data:** This state applies when fewer than seven calendar days of history are available, no valid PHQ-4 assessment is available, or every Tier 1 feature has fewer than five valid sensor-days. The system may provide only a fixed insufficient-data response. It must not present numerical comparisons or behavioural–wellbeing interpretations.
 
-**State B — Partial history:** This state applies when at least seven days of history and one PHQ-4 assessment are available but the feature has not reached the minimum comparative-baseline requirement. The system may describe recent observed behaviour while stating that it is too early to make a reliable historical comparison. Baseline percentages, standardised deviation scores and historical relationship claims are not permitted.
+**State B — Partial history:** This state applies when at least seven calendar days of history, at least five valid sensor-days, and one PHQ-4 assessment are available, but the feature has not reached the minimum comparative-baseline requirement.
 
 **State C — Sufficient history:** Comparative statements become available when a feature has at least 28 calendar days of history, at least 20 valid sensor-days and at least three completed PHQ-4 assessments. A stronger historical relationship claim additionally requires the target 56-day history, at least 40 valid sensor-days, at least eight PHQ-4 assessments spanning at least 28 days, and sufficient statistical evidence.
 
