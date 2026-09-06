@@ -1,16 +1,23 @@
 import { useState } from 'react'
-import { respond, type EvidencePacket, type SafeSLMResponse } from '../../api/client'
 
-// Week 5 "normal response" state, implementing the Conversational
-// Interface Lead task from Weekly_Plan.md: "Integrate the UI against the
-// real SLM stub; build the 'normal response' state fully." Integrated
-// against the real SLM stub via backend/api/app.py.
-//
-// Mirrors tests/slm/fixtures/week5_gps_eligible.json (kept in sync by
-// hand for this minimal demo — see backend/api/app.py's own note about
-// scripts/export_openapi.py not existing yet, which is the real fix for
-// this once it's built).
-const EXAMPLE_ELIGIBLE_GPS_PACKET: EvidencePacket = {
+import { respond, type EvidencePacket, type SafeSLMResponse } from '../../api/client'
+import { AppShell } from '../../components/AppShell'
+import {
+  CrisisAwareFallbackState,
+  GenericFallbackState,
+  InsufficientDataState,
+  LoadingState,
+  NormalState,
+  RefusalState,
+  UncertaintyState,
+  WelcomeState,
+  type EvidenceSummaryView,
+} from './ChatStates'
+
+// Synthetic fixture matching the frozen Week 5 EvidencePacket contract.
+// It exercises the same /respond route as participant data without exposing
+// personal information in the frontend demo.
+const EXAMPLE_ELIGIBLE_GPS_PACKET = {
   identity: {
     contract_version: '1.0.0',
     packet_id: 'synthetic_week5_gps_001',
@@ -49,62 +56,184 @@ const EXAMPLE_ELIGIBLE_GPS_PACKET: EvidencePacket = {
     packet_level: ['synthetic development fixture; not participant data'],
   },
   claim_policy: {
-    approved_claim_ids: ['observation_of_deviation', 'uncertainty_disclosure', 'non_diagnostic_boundary'],
-    prohibited_claim_ids: ['diagnosis', 'causal_explanation', 'treatment_or_crisis_advice', 'risk_prediction'],
+    approved_claim_ids: [
+      'observation_of_deviation',
+      'uncertainty_disclosure',
+      'non_diagnostic_boundary',
+    ],
+    prohibited_claim_ids: [
+      'diagnosis',
+      'causal_explanation',
+      'treatment_or_crisis_advice',
+      'risk_prediction',
+    ],
     permitted_response_modes: ['normal', 'uncertainty'],
   },
+} satisfies EvidencePacket
+
+const DEFAULT_QUESTION = 'How was my movement different from my recent baseline?'
+
+const featureWindow = EXAMPLE_ELIGIBLE_GPS_PACKET.feature_window
+const baseline = EXAMPLE_ELIGIBLE_GPS_PACKET.baseline
+const dateFormatter = new Intl.DateTimeFormat('en-AU', {
+  day: 'numeric',
+  month: 'short',
+  timeZone: 'UTC',
+  year: 'numeric',
+})
+
+const EVIDENCE_SUMMARY: EvidenceSummaryView = {
+  baseline: `${baseline.value} km/day`,
+  coverage:
+    `${featureWindow.observed_days} of ${featureWindow.expected_days} days ` +
+    `(${Math.round(featureWindow.coverage_ratio * 100)}%)`,
+  currentValue: `${featureWindow.value} km/day`,
+  evidenceStrength:
+    EXAMPLE_ELIGIBLE_GPS_PACKET.evidence.evidence_strength[0].toUpperCase() +
+    EXAMPLE_ELIGIBLE_GPS_PACKET.evidence.evidence_strength.slice(1),
+  featureLabel: 'GPS distance',
+  timeWindow:
+    `${dateFormatter.format(new Date(featureWindow.window_start))} – ` +
+    dateFormatter.format(new Date(featureWindow.window_end)),
+  uncertainty: EXAMPLE_ELIGIBLE_GPS_PACKET.uncertainty.packet_level,
 }
 
 type LoadState =
   | { status: 'idle' }
-  | { status: 'loading' }
-  | { status: 'error'; message: string }
-  | { status: 'success'; response: SafeSLMResponse }
+  | { status: 'loading'; question: string }
+  | { status: 'error'; message: string; question: string }
+  | { status: 'success'; question: string; response: SafeSLMResponse }
+
+const responseLabels: Record<SafeSLMResponse['response_mode'], string> = {
+  crisis_aware_fallback: 'Safety support',
+  generic_fallback: 'Fallback',
+  insufficient_data: 'More data needed',
+  normal: 'Normal response',
+  refusal: 'Safe boundary',
+  uncertainty: 'Uncertain evidence',
+}
 
 export function NormalResponse() {
+  const [draft, setDraft] = useState(DEFAULT_QUESTION)
   const [state, setState] = useState<LoadState>({ status: 'idle' })
 
-  async function handleAsk() {
-    setState({ status: 'loading' })
+  async function handleAsk(rawQuestion = draft) {
+    const question = rawQuestion.trim()
+    if (!question || state.status === 'loading') return
+
+    setDraft(question)
+    setState({ status: 'loading', question })
+
     try {
-      const response = await respond(
-        EXAMPLE_ELIGIBLE_GPS_PACKET,
-        'How was my movement different from my recent baseline?',
-      )
-      setState({ status: 'success', response })
-    } catch (err) {
+      const response = await respond(EXAMPLE_ELIGIBLE_GPS_PACKET, question)
+      setState({ status: 'success', question, response })
+    } catch (error) {
       setState({
         status: 'error',
-        message: err instanceof Error ? err.message : 'unknown error',
+        message: error instanceof Error ? error.message : 'unknown error',
+        question,
       })
     }
   }
 
+  function renderConversation() {
+    if (state.status === 'idle') {
+      return <WelcomeState disabled={false} onAsk={handleAsk} />
+    }
+
+    if (state.status === 'loading') {
+      return <LoadingState question={state.question} />
+    }
+
+    if (state.status === 'error') {
+      return (
+        <GenericFallbackState
+          message="MindSense could not reach the local response service. Your data was not sent to an external service."
+          onRetry={() => handleAsk(state.question)}
+          question={state.question}
+          technicalDetail={state.message}
+        />
+      )
+    }
+
+    const { question, response } = state
+    switch (response.response_mode) {
+      case 'normal':
+        return (
+          <NormalState evidence={EVIDENCE_SUMMARY} question={question} response={response} />
+        )
+      case 'insufficient_data':
+        return <InsufficientDataState message={response.text} question={question} />
+      case 'uncertainty':
+        return <UncertaintyState message={response.text} question={question} />
+      case 'refusal':
+        return <RefusalState message={response.text} question={question} />
+      case 'generic_fallback':
+        return (
+          <GenericFallbackState
+            message={response.text}
+            onRetry={() => handleAsk(question)}
+            question={question}
+          />
+        )
+      case 'crisis_aware_fallback':
+        return <CrisisAwareFallbackState message={response.text} question={question} />
+    }
+  }
+
+  const status =
+    state.status === 'loading'
+      ? { label: 'Reviewing evidence', tone: 'working' as const }
+      : state.status === 'success'
+        ? {
+            label: responseLabels[state.response.response_mode],
+            tone:
+              state.response.response_mode === 'normal'
+                ? ('normal' as const)
+                : state.response.response_mode === 'crisis_aware_fallback' ||
+                    state.response.response_mode === 'refusal'
+                  ? ('boundary' as const)
+                  : ('caution' as const),
+          }
+        : state.status === 'error'
+          ? { label: 'Local service unavailable', tone: 'caution' as const }
+          : { label: 'Ready', tone: 'ready' as const }
+
   return (
-    <section id="normal-response-demo">
-      <h2>Normal response (Week 5)</h2>
-      <p>
-        Calls the real backend at <code>backend/api/app.py</code>, which runs the
-        request through the real <code>SLMService</code> (safety gate, output
-        grounding, and all) — this is not a hardcoded string.
-      </p>
-      <button type="button" onClick={handleAsk} disabled={state.status === 'loading'}>
-        {state.status === 'loading' ? 'Asking…' : 'Ask about my recent movement'}
-      </button>
+    <AppShell statusLabel={status.label} statusTone={status.tone}>
+      <div className="conversation-scroll">{renderConversation()}</div>
 
-      {state.status === 'error' && (
-        <p role="alert" className="response-error">
-          Could not reach the local API ({state.message}). Is
-          <code> uvicorn backend.api.app:app</code> running?
+      <form
+        className="composer"
+        onSubmit={(event) => {
+          event.preventDefault()
+          void handleAsk()
+        }}
+      >
+        <label className="sr-only" htmlFor="chat-question">
+          Ask MindSense about your behavioural data
+        </label>
+        <textarea
+          disabled={state.status === 'loading'}
+          id="chat-question"
+          onChange={(event) => setDraft(event.target.value)}
+          placeholder="Ask about your recent patterns…"
+          rows={1}
+          value={draft}
+        />
+        <button
+          className="send-button"
+          disabled={state.status === 'loading' || draft.trim().length === 0}
+          type="submit"
+        >
+          <span>{state.status === 'loading' ? 'Asking…' : 'Ask MindSense'}</span>
+          <span aria-hidden="true">↑</span>
+        </button>
+        <p>
+          <span aria-hidden="true">⌁</span> Processed locally · MindSense explains patterns,
+          not diagnoses
         </p>
-      )}
-
-      {state.status === 'success' && (
-        <div className="response-card" data-response-mode={state.response.response_mode}>
-          <span className="response-mode-badge">{state.response.response_mode}</span>
-          <p>{state.response.text}</p>
-        </div>
-      )}
-    </section>
+      </form>
+    </AppShell>
   )
 }
