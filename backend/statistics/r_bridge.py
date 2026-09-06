@@ -33,7 +33,11 @@ fully implemented and tested — not deleted, just no longer primary here.
 from __future__ import annotations
 
 import functools
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass, field
+from threading import RLock
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -43,6 +47,51 @@ class RBridgeUnavailable(RuntimeError):
     """R/rpy2/lme4/lmerTest/pbkrtest/nlme aren't usable in this
     environment. Callers should catch this and fall back to the
     pure-Python approximations in mixed_effects_model.py."""
+
+
+_R_WORKSPACE_NAMES = (
+    ".mindsense_r_df",
+    ".mindsense_model",
+    ".mindsense_summary",
+)
+_MISSING_R_OBJECT = object()
+_R_WORKSPACE_LOCK = RLock()
+
+
+@contextmanager
+def _temporary_r_workspace(ro: Any) -> Iterator[None]:
+    """Keep participant-derived objects out of R's persistent workspace."""
+    previous: dict[str, Any] = {}
+    for name in _R_WORKSPACE_NAMES:
+        try:
+            previous[name] = ro.globalenv[name]
+        except KeyError:
+            previous[name] = _MISSING_R_OBJECT
+
+    try:
+        yield
+    finally:
+        for name, value in previous.items():
+            if value is _MISSING_R_OBJECT:
+                try:
+                    del ro.globalenv[name]
+                except KeyError:
+                    pass
+            else:
+                ro.globalenv[name] = value
+
+
+def _r_workspace_scoped(function: Callable[..., Any]) -> Callable[..., Any]:
+    """Run an R fit with cleanup on success and on every failure path."""
+
+    @functools.wraps(function)
+    def wrapped(*args: Any, **kwargs: Any) -> Any:
+        with _R_WORKSPACE_LOCK:
+            ro = _load_r()[0]
+            with _temporary_r_workspace(ro):
+                return function(*args, **kwargs)
+
+    return wrapped
 
 
 @functools.lru_cache(maxsize=1)
@@ -63,21 +112,27 @@ def _load_r() -> tuple:
     try:
         import rpy2.robjects as ro
         from rpy2.robjects import pandas2ri
-        from rpy2.robjects.conversion import Converter, localconverter
+        from rpy2.robjects.conversion import localconverter
         from rpy2.robjects.packages import PackageNotInstalledError, importr
-    except Exception as exc:  # noqa: BLE001 - any import-time failure means "R backend unavailable"
-        raise RBridgeUnavailable(f"rpy2 import failed: {type(exc).__name__}: {exc}") from exc
+    except Exception as exc:
+        raise RBridgeUnavailable(
+            f"rpy2 import failed: {type(exc).__name__}: {exc}"
+        ) from exc
 
     try:
         base = importr("base")
         lme4 = importr("lme4")
         lmerTest = importr("lmerTest")
-        importr("pbkrtest")  # lmerTest's Kenward-Roger path depends on this; checked explicitly
+        importr(
+            "pbkrtest"
+        )  # lmerTest's Kenward-Roger path depends on this; checked explicitly
         nlme = importr("nlme")
     except PackageNotInstalledError as exc:
         raise RBridgeUnavailable(f"required R package not installed: {exc}") from exc
-    except Exception as exc:  # noqa: BLE001 - genuinely any R-side failure means "unavailable"
-        raise RBridgeUnavailable(f"R package import failed: {type(exc).__name__}: {exc}") from exc
+    except Exception as exc:
+        raise RBridgeUnavailable(
+            f"R package import failed: {type(exc).__name__}: {exc}"
+        ) from exc
 
     converter = pandas2ri.converter
     return ro, base, lme4, lmerTest, nlme, converter, localconverter
@@ -87,7 +142,8 @@ def r_bridge_available() -> bool:
     """True if R + rpy2 + lme4/lmerTest/pbkrtest/nlme are all usable
     right now in this process. Cheap to call repeatedly (cached)."""
     try:
-        _load_r()
+        with _R_WORKSPACE_LOCK:
+            _load_r()
         return True
     except RBridgeUnavailable:
         return False
@@ -123,6 +179,24 @@ def fit_lmer_with_denominator_df(
     uid_col: str,
     method: str = "Satterthwaite",
 ) -> RSatterthwaiteResult:
+    """Validate the method before entering the optional R-backed path."""
+    if method not in ("Satterthwaite", "Kenward-Roger"):
+        raise ValueError(
+            f"method must be 'Satterthwaite' or 'Kenward-Roger', got {method!r}"
+        )
+    return _fit_lmer_with_denominator_df(
+        data, outcome_col, fixed_effect_names, uid_col, method
+    )
+
+
+@_r_workspace_scoped
+def _fit_lmer_with_denominator_df(
+    data: pd.DataFrame,
+    outcome_col: str,
+    fixed_effect_names: list[str],
+    uid_col: str,
+    method: str,
+) -> RSatterthwaiteResult:
     """Fits `outcome_col ~ fixed_effect_names... + (x_within | uid_col)`
     via R `lme4::lmer`, then reports fixed-effect df/p-values via
     `lmerTest::summary(model, ddf=method)` — `method` is `"Satterthwaite"`
@@ -135,37 +209,44 @@ def fit_lmer_with_denominator_df(
     packages aren't usable at all — that is a different failure mode
     from "converged but singular", which is handled here, not raised.
     """
-    if method not in ("Satterthwaite", "Kenward-Roger"):
-        raise ValueError(f"method must be 'Satterthwaite' or 'Kenward-Roger', got {method!r}")
-
-    ro, base, lme4, lmerTest, nlme, converter, localconverter = _load_r()
+    ro, _base, _lme4, _lmer_test, _nlme, converter, localconverter = _load_r()
 
     fixed_formula = f"{outcome_col} ~ " + " + ".join(fixed_effect_names)
 
     with localconverter(ro.default_converter + converter):
-        ro.globalenv["r_df"] = data
+        ro.globalenv[".mindsense_r_df"] = data
 
     fallback_reason = None
     used_random_slope = True
 
     full_formula = f"{fixed_formula} + {_random_effects_formula(uid_col, include_random_slope=True)}"
     try:
-        ro.r(f'model <- lmerTest::lmer({full_formula!r}, data = r_df)')
-        is_singular = bool(ro.r("lme4::isSingular(model)")[0])
-        n_conv_messages = int(ro.r("length(model@optinfo$conv$lme4$messages)")[0])
+        ro.r(
+            f".mindsense_model <- lmerTest::lmer({full_formula!r}, data = .mindsense_r_df)"
+        )
+        is_singular = bool(ro.r("lme4::isSingular(.mindsense_model)")[0])
+        n_conv_messages = int(
+            ro.r("length(.mindsense_model@optinfo$conv$lme4$messages)")[0]
+        )
         if is_singular or n_conv_messages > 0:
-            fallback_reason = "singular fit" if is_singular else "lme4 reported a convergence message"
+            fallback_reason = (
+                "singular fit" if is_singular else "lme4 reported a convergence message"
+            )
             raise RuntimeError(fallback_reason)
     except Exception as exc:  # noqa: BLE001 - any lme4-side failure triggers the documented fallback
         if fallback_reason is None:
-            fallback_reason = f"random-slope lmer fit raised {type(exc).__name__}: {exc}"
+            fallback_reason = (
+                f"random-slope lmer fit raised {type(exc).__name__}: {exc}"
+            )
         used_random_slope = False
         reduced_formula = f"{fixed_formula} + {_random_effects_formula(uid_col, include_random_slope=False)}"
-        ro.r(f'model <- lmerTest::lmer({reduced_formula!r}, data = r_df)')
-        is_singular = bool(ro.r("lme4::isSingular(model)")[0])
+        ro.r(
+            f".mindsense_model <- lmerTest::lmer({reduced_formula!r}, data = .mindsense_r_df)"
+        )
+        is_singular = bool(ro.r("lme4::isSingular(.mindsense_model)")[0])
 
-    ro.r(f'r_summary <- summary(model, ddf = {method!r})')
-    coef_table = ro.r("as.data.frame(coef(r_summary))")
+    ro.r(f".mindsense_summary <- summary(.mindsense_model, ddf = {method!r})")
+    coef_table = ro.r("as.data.frame(coef(.mindsense_summary))")
     with localconverter(ro.default_converter + converter):
         coef_df = ro.conversion.get_conversion().rpy2py(coef_table)
 
@@ -178,7 +259,10 @@ def fit_lmer_with_denominator_df(
     # notice would conflate the two; filtered out here so `converged`
     # reflects genuine optimizer problems only.
     n_genuine_messages_final = int(
-        ro.r('length(grep("singular", model@optinfo$conv$lme4$messages, ignore.case = TRUE, invert = TRUE, value = TRUE))')[0]
+        ro.r(
+            'length(grep("singular", .mindsense_model@optinfo$conv$lme4$messages, '
+            "ignore.case = TRUE, invert = TRUE, value = TRUE))"
+        )[0]
     )
 
     return RSatterthwaiteResult(
@@ -187,7 +271,7 @@ def fit_lmer_with_denominator_df(
         fallback_reason=fallback_reason,
         converged=(n_genuine_messages_final == 0),
         is_singular=is_singular,
-        n_observations=int(ro.r("nobs(model)")[0]),
+        n_observations=int(ro.r("nobs(.mindsense_model)")[0]),
         n_groups=int(data[uid_col].nunique()),
         params=coef_df["Estimate"].to_dict(),
         se=coef_df["Std. Error"].to_dict(),
@@ -219,6 +303,17 @@ def fit_lme_ar1(
     fixed_effect_names: list[str],
     uid_col: str,
 ) -> RAr1Result:
+    """Run the AR(1) fit inside a temporary R workspace."""
+    return _fit_lme_ar1(data, outcome_col, fixed_effect_names, uid_col)
+
+
+@_r_workspace_scoped
+def _fit_lme_ar1(
+    data: pd.DataFrame,
+    outcome_col: str,
+    fixed_effect_names: list[str],
+    uid_col: str,
+) -> RAr1Result:
     """Fits `outcome_col ~ fixed_effect_names...` via R `nlme::lme`, with
     `random = ~ x_within | uid_col` and `correlation = corAR1(form = ~ 1
     | uid_col)` — a real AR(1) residual structure *inside* the mixed
@@ -240,42 +335,48 @@ def fit_lme_ar1(
     non-convergence via an R error, not a warning/flag). Raises
     `RBridgeUnavailable` if R/rpy2/nlme aren't usable at all.
     """
-    ro, base, lme4, lmerTest, nlme, converter, localconverter = _load_r()
+    ro, _base, _lme4, _lmer_test, _nlme, converter, localconverter = _load_r()
 
     fixed_formula = f"{outcome_col} ~ " + " + ".join(fixed_effect_names)
 
     with localconverter(ro.default_converter + converter):
-        ro.globalenv["r_df"] = data
+        ro.globalenv[".mindsense_r_df"] = data
 
     fallback_reason = None
     used_random_slope = True
 
     try:
         ro.r(
-            f'model <- nlme::lme(fixed = as.formula({fixed_formula!r}), '
-            f'random = ~ x_within | {uid_col}, '
-            f'correlation = nlme::corAR1(form = ~ 1 | {uid_col}), '
-            f'data = r_df, control = nlme::lmeControl(msMaxIter = 200, niterEM = 50))'
+            f".mindsense_model <- nlme::lme(fixed = as.formula({fixed_formula!r}), "
+            f"random = ~ x_within | {uid_col}, "
+            f"correlation = nlme::corAR1(form = ~ 1 | {uid_col}), "
+            f"data = .mindsense_r_df, control = nlme::lmeControl(msMaxIter = 200, niterEM = 50))"
         )
     except Exception as exc:  # noqa: BLE001 - any nlme-side failure triggers the documented fallback
-        fallback_reason = f"random-slope lme(AR1) fit raised {type(exc).__name__}: {exc}"
+        fallback_reason = (
+            f"random-slope lme(AR1) fit raised {type(exc).__name__}: {exc}"
+        )
         used_random_slope = False
         ro.r(
-            f'model <- nlme::lme(fixed = as.formula({fixed_formula!r}), '
-            f'random = ~ 1 | {uid_col}, '
-            f'correlation = nlme::corAR1(form = ~ 1 | {uid_col}), '
-            f'data = r_df, control = nlme::lmeControl(msMaxIter = 200, niterEM = 50))'
+            f".mindsense_model <- nlme::lme(fixed = as.formula({fixed_formula!r}), "
+            f"random = ~ 1 | {uid_col}, "
+            f"correlation = nlme::corAR1(form = ~ 1 | {uid_col}), "
+            f"data = .mindsense_r_df, control = nlme::lmeControl(msMaxIter = 200, niterEM = 50))"
         )
 
     ar1_phi = float(
-        np.asarray(ro.r("as.numeric(coef(model$modelStruct$corStruct, unconstrained = FALSE))")).reshape(-1)[0]
+        np.asarray(
+            ro.r(
+                "as.numeric(coef(.mindsense_model$modelStruct$corStruct, unconstrained = FALSE))"
+            )
+        ).reshape(-1)[0]
     )
 
-    t_table = ro.r("as.data.frame(summary(model)$tTable)")
+    t_table = ro.r("as.data.frame(summary(.mindsense_model)$tTable)")
     with localconverter(ro.default_converter + converter):
         t_df = ro.conversion.get_conversion().rpy2py(t_table)
 
-    ranef_r = ro.r("as.data.frame(nlme::ranef(model))")
+    ranef_r = ro.r("as.data.frame(nlme::ranef(.mindsense_model))")
     with localconverter(ro.default_converter + converter):
         ranef_df = ro.conversion.get_conversion().rpy2py(ranef_r)
     blups = {str(uid): row.to_dict() for uid, row in ranef_df.iterrows()}
@@ -284,7 +385,7 @@ def fit_lme_ar1(
         used_random_slope=used_random_slope,
         fallback_reason=fallback_reason,
         ar1_phi=ar1_phi,
-        n_observations=int(ro.r("nobs(model)")[0]),
+        n_observations=int(ro.r("nobs(.mindsense_model)")[0]),
         n_groups=int(data[uid_col].nunique()),
         params=t_df["Value"].to_dict(),
         se=t_df["Std.Error"].to_dict(),
