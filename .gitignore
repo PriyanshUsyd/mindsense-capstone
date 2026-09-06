@@ -9,3 +9,5 @@ node_modules/
 
 .idea/
 .Rhistory
+# Generated pipeline outputs
+outputs/
