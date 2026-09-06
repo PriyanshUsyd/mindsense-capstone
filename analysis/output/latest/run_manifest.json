@@ -1,0 +1,64 @@
+{
+  "run_timestamp": "20260906T150252",
+  "config_summary": "q12h_lag1_logofmean",
+  "git_commit": null,
+  "feature": "loc_dist_ep_0",
+  "cleaning": {
+    "quality_threshold_hours": 12,
+    "implausible_max_m": 500000,
+    "winsor_low": 0.01,
+    "winsor_high": 0.99,
+    "min_obs_for_winsor": 5,
+    "log_offset_m": 1000
+  },
+  "predictors": {
+    "align_window_days": 14,
+    "align_window_lag_days": 1,
+    "occasion_min_valid_days": 7,
+    "transform_order": "log_of_mean",
+    "transform_order_detail": "mean is taken on the cleaned (non-log) daily value over the window, then log(mean + LOG_OFFSET_M) is applied once -- NOT mean-of-log (averaging already-logged daily values)."
+  },
+  "baseline": {
+    "baseline_min_days": 28,
+    "baseline_min_valid_sensor_days": 20,
+    "baseline_target_days": 56,
+    "baseline_target_valid_sensor_days": 40
+  },
+  "evidence": {
+    "family_size": 213,
+    "family_size_effective_bh": 213,
+    "family_size_effective_holm": 213,
+    "n_undefined_pvalues": 0,
+    "family_definition": "all participants in the model frame for this one feature (see evidence_model.reclassify_family213 docstring)",
+    "correction_methods": {
+      "production_bh": "Benjamini-Hochberg FDR (statsmodels.stats.multitest.multipletests, method='fdr_bh')",
+      "sensitivity_holm": "Holm-Bonferroni (statsmodels.stats.multitest.multipletests, method='holm')"
+    },
+    "thresholds_source_note": "read directly from evidence_model.py's named constants at run time -- not duplicated",
+    "thresholds": {
+      "strong": {
+        "q_lt": 0.01,
+        "effect_gte": 0.2,
+        "min_occasions": 12,
+        "requires_lag_sign_consistency": true
+      },
+      "moderate": {
+        "q_lt": 0.05,
+        "effect_gte": 0.1,
+        "min_occasions": 8
+      },
+      "weak": {
+        "q_lt": 0.1,
+        "effect_gte": 0.1,
+        "min_occasions": 8
+      }
+    }
+  },
+  "model": {
+    "fixed_effects_formula": "phq4_score ~ x_within_it + x_within_lag1_it + x_between_i + week_in_study_it",
+    "random_effects_formula": "~x_within_it",
+    "grouping_variable": "uid",
+    "fallback_to_intercept_only": false,
+    "estimator": "REML (statsmodels MixedLM, method='lbfgs')"
+  }
+}

@@ -1,0 +1,15 @@
+state,label_bh,occasions,participants
+A,insufficient,244,136
+A,moderate,56,33
+A,no_evidence_row,118,5
+A,strong,49,26
+A,weak,13,9
+B,insufficient,7351,139
+B,moderate,1845,36
+B,no_evidence_row,60,2
+B,strong,1605,28
+B,weak,448,10
+C,insufficient,14314,138
+C,moderate,5014,36
+C,strong,3440,28
+C,weak,791,10
