@@ -3,12 +3,16 @@
 Home for the 7 chat-state components described in
 `docs/ui/chat-states-design.md`.
 
-`NormalResponse.tsx` retains the API wrapper established by Priyansh and now
-provides the Week 5 conversational prototype. It posts a frozen-contract,
-synthetic EvidencePacket to `backend/api/app.py`, which passes the request
-through Richard's `SLMService` safety, request-policy, and output-grounding
-path. The default backend uses its deterministic local demo client; switching
-the backend to Ollama does not require a frontend contract change.
+`NormalResponse.tsx` retains the API wrapper established by Priyansh and the
+Week 5 visual system merged in PR #10. The Week 6 flow keeps successful turns
+visible, accepts subsequent questions, prevents duplicate in-flight requests,
+supports Enter-to-send, and can reset to a new conversation.
+
+Every turn posts the frozen-contract synthetic EvidencePacket to
+`backend/api/app.py`. That route passes the question through Richard's
+`SLMService` request policy, local generation, output grounding, and fail-closed
+fallback path. Launching FastAPI with `MINDSENSE_SLM_RUNTIME=ollama` selects the
+real manifest-pinned local client without changing frontend code.
 
 Implemented required UI states:
 
@@ -27,7 +31,11 @@ request; it is not counted as one of the seven required states.
 message is rendered verbatim from `SafeSLMResponse.text`; client code never
 paraphrases it. A transport failure maps to generic fallback and offers retry.
 
-Only the normal state is the fully exercised Week 5 product flow. The other
-response states are structurally implemented so Richard's backend responses
-cannot fall into an unstyled or misleading normal state; richer Week 6
-interactions can extend them without changing the response contract.
+The normal state is the fully interactive Week 6 flow. Other response states
+remain intentionally simple, but Richard's response modes cannot fall into an
+unstyled or misleading normal state.
+
+The frozen HTTP request contains one question and one EvidencePacket, not prior
+turns. The interface therefore preserves conversation history visually while
+each follow-up is independently grounded against the same evidence. Contextual
+memory would require an approved shared-contract change and is not claimed here.

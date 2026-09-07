@@ -13,15 +13,39 @@ vi.mock('../../api/client', async () => {
 
 const mockedRespond = vi.mocked(respond)
 
-function responseFor(responseMode: ResponseMode, text = `Backend ${responseMode} response`) {
+function responseFor(
+  responseMode: ResponseMode,
+  text = `Backend ${responseMode} response`,
+): SafeSLMResponse {
+  const isGenerated = responseMode === 'normal' || responseMode === 'uncertainty'
+  const usesFallback =
+    responseMode === 'refusal' ||
+    responseMode === 'generic_fallback' ||
+    responseMode === 'crisis_aware_fallback'
   return {
-    model_invoked: responseMode === 'normal' || responseMode === 'uncertainty',
+    fallback_prompt_sha256: usesFallback ? 'f'.repeat(64) : null,
+    generation_prompt_sha256: isGenerated ? 'a'.repeat(64) : null,
+    metrics: null,
+    model_invoked: isGenerated,
     model_tag: responseMode === 'normal' ? 'synthetic-shadow-v1' : null,
     rejection_reason: responseMode === 'refusal' ? 'prohibited_claim' : null,
+    request_category:
+      responseMode === 'crisis_aware_fallback'
+        ? 'crisis_self_harm'
+        : responseMode === 'refusal'
+          ? 'diagnosis_seeking'
+          : 'in_scope',
+    request_disposition:
+      responseMode === 'crisis_aware_fallback'
+        ? 'crisis'
+        : responseMode === 'refusal'
+          ? 'refuse'
+          : 'allow',
+    request_policy_version: '0.1.1',
     response_mode: responseMode,
     text,
-    used_fallback: responseMode.includes('fallback'),
-  } satisfies SafeSLMResponse
+    used_fallback: usesFallback,
+  }
 }
 
 const NORMAL_RESPONSE = responseFor(
@@ -61,8 +85,9 @@ describe('NormalResponse', () => {
 
     resolveRespond(NORMAL_RESPONSE)
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /ask mindsense/i })).toBeEnabled()
+      expect(screen.getByText(NORMAL_RESPONSE.text)).toBeInTheDocument()
     })
+    expect(screen.getByRole('button', { name: /ask mindsense/i })).toBeDisabled()
   })
 
   it('renders the fully wired normal state with evidence provenance', async () => {
@@ -118,6 +143,50 @@ describe('NormalResponse', () => {
       baseline: expect.objectContaining({ eligibility_status: 'eligible' }),
       feature_window: expect.objectContaining({ feature_id: 'gps_distance' }),
     })
+  })
+
+  it('keeps earlier turns visible and sends a second normal question end to end', async () => {
+    const user = userEvent.setup()
+    const secondResponse = responseFor(
+      'normal',
+      'The same evidence window has moderate evidence strength.',
+    )
+    mockedRespond.mockResolvedValueOnce(NORMAL_RESPONSE).mockResolvedValueOnce(secondResponse)
+
+    render(<NormalResponse />)
+    await user.click(screen.getByRole('button', { name: /ask about my recent movement/i }))
+    expect(await screen.findByText(NORMAL_RESPONSE.text)).toBeInTheDocument()
+
+    const textbox = screen.getByRole('textbox', {
+      name: /ask mindsense about your behavioural data/i,
+    })
+    await user.type(textbox, 'How confident is this insight?')
+    await user.click(screen.getByRole('button', { name: /ask mindsense/i }))
+
+    expect(await screen.findByText(secondResponse.text)).toBeInTheDocument()
+    expect(screen.getByText(NORMAL_RESPONSE.text)).toBeInTheDocument()
+    expect(screen.getByText('How confident is this insight?')).toBeInTheDocument()
+    expect(mockedRespond).toHaveBeenCalledTimes(2)
+    expect(mockedRespond.mock.calls[1][1]).toBe('How confident is this insight?')
+  })
+
+  it('can clear the visible history and begin a new conversation', async () => {
+    const user = userEvent.setup()
+    mockedRespond.mockResolvedValueOnce(NORMAL_RESPONSE)
+
+    render(<NormalResponse />)
+    await user.click(screen.getByRole('button', { name: /ask about my recent movement/i }))
+    expect(await screen.findByText(NORMAL_RESPONSE.text)).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /new conversation/i }))
+
+    expect(screen.queryByText(NORMAL_RESPONSE.text)).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: /understand your patterns, at your own pace/i }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('textbox')).toHaveValue(
+      'How was my movement different from my recent baseline?',
+    )
   })
 
   it.each([
