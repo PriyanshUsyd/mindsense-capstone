@@ -24,7 +24,30 @@ export interface SafeSLMResponse {
   used_fallback: boolean
   rejection_reason: string | null
   model_tag: string | null
+  generation_prompt_sha256: string | null
+  fallback_prompt_sha256: string | null
+  metrics: GenerationMetrics | null
+  request_disposition: 'allow' | 'refuse' | 'crisis'
+  request_category:
+    | 'in_scope'
+    | 'crisis_self_harm'
+    | 'diagnosis_seeking'
+    | 'causal_inference_seeking'
+    | 'treatment_advice_seeking'
+    | 'risk_prediction_seeking'
+    | 'prompt_injection'
+    | 'sensitive_data_request'
+  request_policy_version: string
   model_invoked: boolean
+}
+
+export interface GenerationMetrics {
+  total_duration_ns: number | null
+  load_duration_ns: number | null
+  prompt_eval_count: number | null
+  prompt_eval_duration_ns: number | null
+  eval_count: number | null
+  eval_duration_ns: number | null
 }
 
 // The evidence packet's exact shape is owned by backend/contracts/evidence.py

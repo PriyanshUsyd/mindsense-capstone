@@ -18,29 +18,33 @@ SLMService.respond() — every safety/grounding/fallback rule already
 enforced there applies unchanged; this file adds no new logic of its own
 beyond request/response shaping.
 
-By default, uses a deterministic stub client (same pattern as
-benchmarks/slm_prohibited_request_baseline.py's ObservableSafeStub and
-backend/slm/shadow_cli.py), NOT a live Ollama call — so `npm run dev` +
-this API can demonstrate the real "normal response" flow end-to-end
-without requiring Ollama installed. Pass a real client
-(backend.slm.runtime.create_local_service()) via create_app(service=...)
-to use the real local model instead; nothing about the HTTP contract
-changes either way.
+The default `MINDSENSE_SLM_RUNTIME=demo` uses a deterministic client so tests
+and UI setup do not require Ollama. Set `MINDSENSE_SLM_RUNTIME=ollama` when
+starting Uvicorn to select Richard's manifest-pinned local client. Nothing
+about the HTTP contract changes between the two modes.
 """
 
 from __future__ import annotations
 
 import json
+import os
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict, ValidationError
 
-from backend.contracts.evidence import EvidencePacket
+from backend.contracts.evidence import (
+    ApprovedClaimId,
+    AssistantDraft,
+    EvidencePacket,
+    ResponseMode,
+)
 from backend.slm.client import GenerationMetrics, GenerationResult
 from backend.slm.output_grounding import render_grounded_example
-from backend.contracts.evidence import ApprovedClaimId, AssistantDraft, ResponseMode
+from backend.slm.runtime import create_local_service
 from backend.slm.service import SafeSLMResponse, SLMService
+
+SLM_RUNTIME_ENV = "MINDSENSE_SLM_RUNTIME"
 
 
 class DeterministicDemoClient:
@@ -89,6 +93,26 @@ class RespondRequest(BaseModel):
     question: str
 
 
+def create_runtime_service(runtime_name: str | None = None) -> SLMService:
+    """Select an explicit local runtime without changing the HTTP contract.
+
+    ``demo`` remains the safe default for tests and contributor setup.
+    ``ollama`` uses Richard's manifest-pinned local model client and still
+    fails closed through ``SLMService`` if the daemon is unavailable.
+    """
+
+    selected = (
+        runtime_name
+        if runtime_name is not None
+        else os.environ.get(SLM_RUNTIME_ENV, "demo")
+    ).strip().lower()
+    if selected == "demo":
+        return SLMService(DeterministicDemoClient())
+    if selected == "ollama":
+        return create_local_service()
+    raise ValueError(f"{SLM_RUNTIME_ENV} must be 'demo' or 'ollama'")
+
+
 def create_app(service: SLMService | None = None) -> FastAPI:
     app = FastAPI(title="MindSense local SLM API", version="0.1.0")
 
@@ -101,7 +125,7 @@ def create_app(service: SLMService | None = None) -> FastAPI:
         allow_headers=["*"],
     )
 
-    active_service = service or SLMService(DeterministicDemoClient())
+    active_service = service or create_runtime_service("demo")
 
     @app.post("/respond", response_model=SafeSLMResponse)
     def respond(payload: RespondRequest) -> SafeSLMResponse:
@@ -121,4 +145,4 @@ def create_app(service: SLMService | None = None) -> FastAPI:
     return app
 
 
-app = create_app()
+app = create_app(service=create_runtime_service())

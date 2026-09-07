@@ -207,6 +207,24 @@
   margin-left: auto;
 }
 
+.new-conversation-button {
+  min-height: 31px;
+  padding: 6px 11px;
+  color: var(--sage-700);
+  background: transparent;
+  border: 1px solid var(--mint-200);
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 750;
+  cursor: pointer;
+  transition: background 160ms ease, border-color 160ms ease;
+}
+
+.new-conversation-button:hover {
+  background: var(--mint-50);
+  border-color: var(--sage-500);
+}
+
 .local-badge,
 .state-badge,
 .response-mode-badge,
@@ -274,6 +292,10 @@
   min-height: 0;
   overflow-y: auto;
   scroll-behavior: smooth;
+}
+
+.conversation-turn + .conversation-turn {
+  border-top: 1px solid rgba(226, 232, 227, 0.72);
 }
 
 .welcome-state,
@@ -386,11 +408,11 @@
   font-weight: 800;
 }
 
-.quick-question[data-accent="unlock"] .quick-question-icon {
+.quick-question[data-accent="baseline"] .quick-question-icon {
   background: var(--amber-100);
 }
 
-.quick-question[data-accent="unlock"] .quick-question-icon::after {
+.quick-question[data-accent="baseline"] .quick-question-icon::after {
   color: var(--amber-700);
   content: "⌁";
 }
@@ -893,6 +915,11 @@
   .chat-heading span,
   .local-badge {
     display: none;
+  }
+
+  .new-conversation-button {
+    max-width: 86px;
+    line-height: 1.15;
   }
 
   .state-badge {
