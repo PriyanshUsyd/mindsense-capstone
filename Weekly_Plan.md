@@ -74,18 +74,18 @@ Implement the signed-off feature list. Hard freeze at week's end. Build both fal
 
 ## Week 7 — Pilot
 
-Pilot (team-only, rostered pairs drawn from the 8 team members) against a frozen build, using the tested rubric and session runbook. No external recruitment — per client feedback, all evaluation stays within the team. Internal rostering for the main evaluation starts now. In parallel, confirm the build is demo-ready on Priyansh's machine and schedule a live screen-share call with Tianyi by **2026-09-25** (2 weeks from her request) — not deployed or hosted anywhere, consistent with the local-only claim.
+Pilot (team-only, rostered pairs drawn from the 8 team members) against a frozen build, using the tested rubric and session runbook. No external recruitment — per client feedback, all evaluation stays within the team. Internal rostering for the main evaluation starts now. In parallel, confirm the build is demo-ready on Richard's machine (Ollama and the pinned models are already running there from Week 4-6) and schedule a live screen-share call with Tianyi by **2026-09-25** (2 weeks from her request) — not deployed or hosted anywhere, consistent with the local-only claim.
 
 | Person | Task |
 |---|---|
 | **Honghao Li** | No new features (frozen). Fix only critical/blocking bugs on a separate branch. |
 | **Moe Tanaka** | Support the pilot; log calibration concerns for Week 8, no live changes. |
-| **Richard Zhao** | Re-test guardrails (scripted run) against the frozen build; held-out set stays reserved. Continue fallback refinement. Support Priyansh in preloading and boot-testing the local SLM (Ollama) ahead of the Tianyi demo call. |
-| **Sheng Wang** | Support the pilot; log UI issues for Week 8. Support Priyansh in confirming the frontend runs cleanly end-to-end on the local demo machine ahead of the Tianyi screen-share call. |
+| **Richard Zhao** | Re-test guardrails (scripted run) against the frozen build; held-out set stays reserved. Continue fallback refinement. Preload and boot-test the local SLM (Ollama, phi4-mini:3.8b / qwen3:4b) on my own machine ahead of the Tianyi demo call — this machine hosts the live demo, since Ollama is already installed and running here. |
+| **Sheng Wang** | Support the pilot; log UI issues for Week 8. Support Richard in confirming the frontend runs cleanly end-to-end on his machine (the demo machine) ahead of the Tianyi screen-share call. |
 | **Yuktha Naveen** | Run the full privacy check against the frozen build. |
 | **Chonghao Shen** | Run the pilot using the session runbook and crisis-response script, with team members in rostered pairs (one operating the build, one facilitating/observing) standing in for external participants. Check protocol health after the first rostered pair. Begin scheduling the internal rostered-pair sessions for the main evaluation in parallel — no external recruitment. |
 | **Honglin Lu** | Begin the Progress Report outline using real pilot findings. |
-| **Priyansh Khandelwal** | Pilot-fix intake with triage: critical/blocking issues get a full linked-issue process; minor polish items go into a simple batch checklist. Confirm the frozen Tier 1 build runs end-to-end on my machine; preload and boot-test the local SLM ahead of time, the same way Week 11 does for the final demo. Schedule a live screen-share call with Tianyi to demo the running build by **2026-09-25** — no deployment or hosting. |
+| **Priyansh Khandelwal** | Pilot-fix intake with triage: critical/blocking issues get a full linked-issue process; minor polish items go into a simple batch checklist. Coordinate with Richard to confirm the frozen Tier 1 build runs end-to-end on his machine (where Ollama and the pinned models already run), rather than mine. Schedule and host the live screen-share call with Tianyi to demo Richard's running build by **2026-09-25** — no deployment or hosting. |
 
 ---
 

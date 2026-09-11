@@ -272,16 +272,20 @@ def to_user_facing_evidence(label: str) -> str:
     unchanged and still used everywhere else (reports, analysis, per-person
     tables); only this user-facing mapping is 2-valued.
 
-    この統合は事後(post-hoc)の判断である。Week 4 の事前登録では4段階を
-    定義していたが、結果を見た後にuser-facingのみ2値に統合すると決定した。
+    This collapsing is a post-hoc decision. The Week 4 pre-registration
+    defined four levels, but after seeing the results it was decided to
+    collapse only the user-facing output to two values.
 
-    根拠: 標準化効果量 [0.15, 0.20) の帯に26人が集中しており、これは
-    strong / moderateの境界の直下にあたる。前処理仕様の修正のみで213人中
-    51人(24%)のラベルが変化しており、この境界は仕様選択に対して不安定で
-    ある。同一人物が妥当な代替仕様のもとでstrongにもmoderateにもなりうる
-    以上、その2つを言い分ける根拠がない。
+    Rationale: 26 people cluster in the standardised-effect-size band
+    [0.15, 0.20), which sits just below the strong/moderate boundary.
+    Changing only the preprocessing specification shifts the label for
+    51 of 213 people (24%), so this boundary is unstable with respect to
+    specification choice. Since the same person can land in either strong
+    or moderate under an equally reasonable alternative specification,
+    there is no basis for distinguishing the two.
 
-    閾値そのものは変更していないため、事前登録違反ではない。
+    The threshold itself has not been changed, so this is not a
+    pre-registration violation.
     """
     if label in ("strong", "moderate"):
         return "evidence_available"

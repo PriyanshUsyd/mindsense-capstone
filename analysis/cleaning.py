@@ -33,8 +33,8 @@ KNOWN LIMITATIONS (documented, not fixed):
 import numpy as np
 import pandas as pd
 
-# Week 4 で 12h に確定。8h から 12h に上げるコストは有効日数の 1.63%。
-# 変更する場合は Statistical Analysis Lead の承認が必要。
+# Finalised at 12h in Week 4. The cost of raising it from 8h to 12h is 1.63% of valid days.
+# Changing this requires Statistical Analysis Lead approval.
 QUALITY_THRESHOLD_HOURS = 12
 
 IMPLAUSIBLE_MAX_M = 500_000
