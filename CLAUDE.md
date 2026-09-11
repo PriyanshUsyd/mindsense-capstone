@@ -1,44 +1,42 @@
 # CLAUDE.md — MindSense / DATA5702
 
-Statistical Analysis Lead (Moe Tanaka) の作業リポジトリ。git 管理外。
+Working repository for the Statistical Analysis Lead (Moe Tanaka). Not under git management.
 
-## 文書と実装の同期規則
+## Documentation-implementation sync rule
 
-`analysis/` 配下のコードを変更した場合、同じセッション内で以下の文書に反映すること。
-変更だけして文書を残すのは禁止。
+When code under `analysis/` is changed, reflect the change in the following documents within the same session.
+Changing the code without also updating the documentation is prohibited.
 
 - `analysis/preregistration.md`
 - `Week5_Statistical_Analysis_Deliverable.md`
 
-反映が難しい場合は、変更内容を下記「未反映の変更」セクションに追記して、
-次のセッションに引き継ぐこと。
+If reflecting the change is difficult, append it to the "Unreflected changes" section below and hand it off to the next session.
 
-## 未反映の変更
+## Unreflected changes
 
-（コードを変更したが文書に反映できなかった項目をここに追記する。
-反映が済んだら該当行を削除する。日付・対象ファイル・変更内容を書くこと。）
+(Append here any item where code was changed but the documentation could not be updated.
+Remove the line once it has been reflected. Record the date, the affected file, and the change made.)
 
-現在なし。
+None currently.
 
-## 確定済みの決定事項（変更には Statistical Analysis Lead の承認が必要）
+## Finalised decisions (changes require Statistical Analysis Lead approval)
 
-- 品質ゲート **12h**
-- 比較窓 **`[-14, -1]`**、baseline 窓 **`[-42, -15]`** / **`[-70, -15]`**
-- 変換順序 **`log(mean)`**。**`mean(log)` は使用禁止**
-- recency 窓は **14日に統一**、`RECENCY_WINDOW_DAYS` は**廃止**
-- cohort-level family = **213**、**BH-FDR が報告値**、Holm は感度分析
-- user-facing は **2値**（`evidence_available` / `no_claim`）
-- cold-start は**評価機会ごと**、**State C は永続しない**
+- Quality gate: **12h**
+- Comparison window **`[-14, -1]`**, baseline window **`[-42, -15]`** / **`[-70, -15]`**
+- Transform order: **`log(mean)`**. **`mean(log)` is prohibited**
+- Recency window unified to **14 days**; `RECENCY_WINDOW_DAYS` is **deprecated**
+- Cohort-level family = **213**, **BH-FDR is the reported value**, Holm is the sensitivity analysis
+- User-facing is **binary** (`evidence_available` / `no_claim`)
+- Cold-start applies **per evaluation opportunity**; **State C does not persist**
 
-## セッション開始時の確認
+## Session-start check
 
-このリポジトリは複数のセッションから作業されている。
-作業開始前に `analysis/` 配下の更新時刻を確認し、文書より新しいコードがないか
-確認すること。
+This repository is worked on from multiple sessions.
+Before starting work, check the update times of files under `analysis/` to confirm there is no code newer than the documentation.
 
 ```bash
 find analysis -type f -not -path "*__pycache__*" -printf "%T+  %p\n" | sort | tail -20
 ls -l --time-style=full-iso analysis/preregistration.md Week5_Statistical_Analysis_Deliverable.md
 ```
 
-文書の更新時刻より新しいコードがあれば、それが未反映の変更である可能性が高い。
+If there is code newer than the documentation's update time, it is likely an unreflected change.
