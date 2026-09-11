@@ -66,7 +66,7 @@ Implement the signed-off feature list. Hard freeze at week's end. Build both fal
 | **Richard Zhao** | Iterate prompts using the Week 5 baseline against the pre-registered thresholds. Both fallback templates become fully functional. Build the deterministic response health-check tied to explicit evidence-contract violations. |
 | **Sheng Wang** | Build the cold-start, insufficient-data, refusal, and both fallback UI states — visually distinct from each other and from normal responses. |
 | **Yuktha Naveen** | Jointly with Priyansh Khandelwal, build the automated privacy/regression check and a lightweight per-PR gate (build + integration test + guardrail subset). |
-| **Chonghao Shen** | Draft and internally test the evaluation rubric, built directly around the client's 10 named criteria (see build-reference.md Section 9: accuracy/faithfulness, comprehensibility, usefulness, perceived personal relevance, trust, uncertainty communication, correlation-vs-causation distinction, inappropriate mental-health inference, usability, privacy perceptions) - not a rubric invented independently of the spec. Finalise the evaluation-data-source decision (synthetic vs. de-identified real extract). Draft the one-page session runbook. Increase planned pilot to 4-5 participants. |
+| **Chonghao Shen** | Draft and internally test the evaluation rubric, built directly around the client's 10 named criteria (see build-reference.md Section 9: accuracy/faithfulness, comprehensibility, usefulness, perceived personal relevance, trust, uncertainty communication, correlation-vs-causation distinction, inappropriate mental-health inference, usability, privacy perceptions) - not a rubric invented independently of the spec. Finalise the evaluation-data-source decision (synthetic vs. de-identified real extract). Draft the one-page session runbook. Increase planned pilot to 4-5 participants.<br>**[Superseded 2026-09-11]:** the client (Tianyi Zhang) confirmed no ethics approval exists for recruiting participants from outside the 8-person team. This line did not proceed — no external recruitment occurred. From Week 7 onward, all evaluation runs team-only using rostered pairs (see below). |
 | **Honglin Lu** | Update documentation to reflect the frozen Tier 1 architecture. |
 | **Priyansh Khandelwal** | Review/merge PRs; run integration tests confirming the complete Tier 1 set and both fallback UI states work end-to-end. Confirm the adversarial suite runs as a scripted/batch process. |
 
@@ -74,18 +74,18 @@ Implement the signed-off feature list. Hard freeze at week's end. Build both fal
 
 ## Week 7 — Pilot
 
-Pilot (4-5 participants) against a frozen build, using the tested rubric and session runbook. Recruitment for the main evaluation starts now.
+Pilot (team-only, rostered pairs drawn from the 8 team members) against a frozen build, using the tested rubric and session runbook. No external recruitment — per client feedback, all evaluation stays within the team. Internal rostering for the main evaluation starts now. In parallel, confirm the build is demo-ready on Priyansh's machine and schedule a live screen-share call with Tianyi by **2026-09-25** (2 weeks from her request) — not deployed or hosted anywhere, consistent with the local-only claim.
 
 | Person | Task |
 |---|---|
 | **Honghao Li** | No new features (frozen). Fix only critical/blocking bugs on a separate branch. |
 | **Moe Tanaka** | Support the pilot; log calibration concerns for Week 8, no live changes. |
-| **Richard Zhao** | Re-test guardrails (scripted run) against the frozen build; held-out set stays reserved. Continue fallback refinement. |
-| **Sheng Wang** | Support the pilot; log UI issues for Week 8. |
+| **Richard Zhao** | Re-test guardrails (scripted run) against the frozen build; held-out set stays reserved. Continue fallback refinement. Support Priyansh in preloading and boot-testing the local SLM (Ollama) ahead of the Tianyi demo call. |
+| **Sheng Wang** | Support the pilot; log UI issues for Week 8. Support Priyansh in confirming the frontend runs cleanly end-to-end on the local demo machine ahead of the Tianyi screen-share call. |
 | **Yuktha Naveen** | Run the full privacy check against the frozen build. |
-| **Chonghao Shen** | Run the pilot using the session runbook and crisis-response script. Check protocol health after the first participant. Start main-evaluation recruitment in parallel. |
+| **Chonghao Shen** | Run the pilot using the session runbook and crisis-response script, with team members in rostered pairs (one operating the build, one facilitating/observing) standing in for external participants. Check protocol health after the first rostered pair. Begin scheduling the internal rostered-pair sessions for the main evaluation in parallel — no external recruitment. |
 | **Honglin Lu** | Begin the Progress Report outline using real pilot findings. |
-| **Priyansh Khandelwal** | Pilot-fix intake with triage: critical/blocking issues get a full linked-issue process; minor polish items go into a simple batch checklist. |
+| **Priyansh Khandelwal** | Pilot-fix intake with triage: critical/blocking issues get a full linked-issue process; minor polish items go into a simple batch checklist. Confirm the frozen Tier 1 build runs end-to-end on my machine; preload and boot-test the local SLM ahead of time, the same way Week 11 does for the final demo. Schedule a live screen-share call with Tianyi to demo the running build by **2026-09-25** — no deployment or hosting. |
 
 ---
 
@@ -97,10 +97,10 @@ Hardening from pilot feedback. Both fallback templates tested end-to-end, includ
 |---|---|
 | **Honghao Li** | Fix pipeline issues found during the pilot. |
 | **Moe Tanaka** | Fix statistical calibration issues found during the pilot. |
-| **Richard Zhao** | Fix guardrail failures using the Week 4 pre-registered thresholds (not renegotiated after the fact). Confirm fail-safe defaults to the safe template on ambiguous cases. |
+| **Richard Zhao** | Fix guardrail failures using the Week 4 pre-registered thresholds (not renegotiated after the fact). Confirm fail-safe defaults to the safe template on ambiguous cases. Draft the zero-shot-vs-few-shot and conversational-multi-turn-reasoning methodology plus empty results-table templates (documentation only — no build or prompt changes yet; see `build-reference.md`). |
 | **Sheng Wang** | Fix UI issues found during the pilot. |
 | **Yuktha Naveen** | Run the final privacy verification. |
-| **Chonghao Shen** | Confirm recruitment on track; roster 2-person facilitation teams for the 10-15 main sessions. Test both fallback templates end-to-end — simulate a generic SLM failure and a crisis-trigger case. |
+| **Chonghao Shen** | Confirm the internal rostered-pair schedule is on track; finalise 2-person rostered pairs (drawn from the 8 team members) for the main sessions. Test both fallback templates end-to-end — simulate a generic SLM failure and a crisis-trigger case. |
 | **Honglin Lu** | Prepare and submit Project Status Checking 2, with honest reporting of any deviation. |
 | **Priyansh Khandelwal** | Review/merge PRs; confirm the release-candidate checklist is met. Lock the rule: all Week 9 sessions complete at least 2 working days before the Progress Report deadline. |
 
@@ -117,7 +117,7 @@ Main evaluation on a version-locked build, submitted after sessions are genuinel
 | **Richard Zhao** | Ensure a fixed, reproducible SLM + prompt version runs throughout; confirm prompts are version-controlled files, not undocumented inline edits. |
 | **Sheng Wang** | Support sessions; log issues without live-patching. |
 | **Yuktha Naveen** | Confirm and record exactly what was checked for the no-data-leaves-local claim, including any dependencies added since Week 4. |
-| **Chonghao Shen** | Run the main evaluation (10-15 participants) with rostered 2-person facilitation. Own the master analysis; record the full version manifest. |
+| **Chonghao Shen** | Run the main evaluation as 10-15 rostered-pair sessions using the 8 team members (each member completing multiple sessions in rotating pair combinations; no external participants). Own the master analysis; record the full version manifest. |
 | **Honglin Lu** | Write the Progress Report using genuinely complete session data. |
 | **Priyansh Khandelwal** | Review/merge PRs; submit the Progress Report. |
 
@@ -131,10 +131,10 @@ Targeted fixes and an honestly-framed smoke-test round. First of two cross-train
 |---|---|
 | **Honghao Li** | Fix pipeline issues found during the main evaluation. |
 | **Moe Tanaka** | Complete the statistical write-up of the main evaluation results. |
-| **Richard Zhao** | Fix guardrail/response-quality issues — most important category. If ahead of schedule, try few-shot examples in the prompt as a first, cheap improvement. |
+| **Richard Zhao** | Fix guardrail/response-quality issues — most important category. If ahead of schedule, try few-shot examples in the prompt as a first, cheap improvement, and run the zero-shot-vs-few-shot comparison harness, filling in the Week 8 results table. Build and test the conversational multi-turn "memory" feature only inside a separate, standalone benchmark/test script — do NOT wire it into the real app used for the Tianyi demo (Week 7), so the demo build stays untouched and stable. Jointly with Yuktha Naveen, review this multi-turn work specifically for cross-message data leakage before it goes any further. |
 | **Sheng Wang** | Fix UI issues found during the main evaluation. |
-| **Yuktha Naveen** | Write up the privacy-perception findings. |
-| **Chonghao Shen** | Run a small second round (5-8 participants) re-testing the exact failed scenarios — framed as a directional smoke-test, not proof. |
+| **Yuktha Naveen** | Write up the privacy-perception findings. Jointly with Richard, review the standalone multi-turn conversational-memory test script for cross-message/participant data leakage — this stays out of the demo build. |
+| **Chonghao Shen** | Run a small second round (5-8 rostered team sessions, same 8 team members rotating pairs) re-testing the exact failed scenarios — framed as a directional smoke-test, not proof. |
 | **Honglin Lu** | Begin drafting the Final Report's core sections. Organise cross-training session 1 of 2 (45-60 minutes). |
 | **Priyansh Khandelwal** | Review/merge PRs; run full regression tests. |
 
@@ -148,7 +148,7 @@ Run the LAST guardrail check early, against the previously-untouched held-out pr
 |---|---|
 | **Honghao Li** | Final pipeline pass and methodology documentation. |
 | **Moe Tanaka** | Final statistical methodology write-up. |
-| **Richard Zhao** | Run the final guardrail check early this week using the held-out prompt set for the first time. Fix and re-verify with time to spare. See the fine-tuning note in `build-reference.md` for the conditional stretch goal. |
+| **Richard Zhao** | Run the final guardrail check early this week using the held-out prompt set for the first time. Fix and re-verify with time to spare. Fold the Week 10 zero-shot-vs-few-shot and standalone conversational-multi-turn-reasoning results into the final methodology write-up. See the fine-tuning note in `build-reference.md` for the conditional stretch goal (deferred, not tested — cloud GPU time reopens the unresolved local-only privacy question from Status Checking 1). |
 | **Sheng Wang** | Final UI polish and consistency pass. |
 | **Yuktha Naveen** | Write the Final Report's privacy, limitations, and risks discussion. |
 | **Chonghao Shen** | Finalise the evaluation results section; cross-check consistency across all documents. |

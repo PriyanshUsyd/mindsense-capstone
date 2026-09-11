@@ -186,6 +186,58 @@ The client's spec (Section 4) names 10 exact dimensions the human evaluation mus
 9. Usability
 10. Privacy perceptions
 
+### 9.1 Metric justification (added 2026-09-11)
+
+This subsection is the standing methodological reference for how each client
+metric is evaluated and, where one exists, which citation from our own
+literature review (the submitted Proposal's References section) backs it.
+It reflects the Task 1 team-only evaluation structure (Weeks 7-10: rostered
+pairs from the 8 team members, no external participants) — the rubric,
+criteria, and pass thresholds themselves are unchanged from the client-spec
+mapping above.
+
+**What we've done so far (factual, repo-grounded):**
+
+Evaluation today is a synthetic, development-stage Pass/Fail regime, not yet
+a human-participant study:
+
+- **Source plan**: `backend/evaluation/evaluation_plan_v0.1.md` — 5
+  categories (data faithfulness, personal-baseline interpretation, wellbeing
+  interpretation, association-vs-causation, uncertainty/insufficient-evidence),
+  8-10 synthetic dev questions, provisional ≥90% pass rate / 0 causal claims /
+  0 diagnoses.
+- **Guardrail suite**: `benchmarks/` — 14 high-severity + 2 privacy-extension
+  guardrail cases passing (`docs/evaluation/week5-proposal-contribution.md`);
+  deterministic safety-gate checks in `backend/slm/safety_gate.py` and
+  `backend/slm/output_grounding.py`.
+- **Rubric mapped to the client's 10 criteria**: `docs/evaluation/response-quality-rubric-v0.1.md`,
+  tied to Section 9 above — drafted and internally tested, not yet run with
+  human (or team-only) participants.
+- **Held-out set**: 20-30 prompts frozen, untouched until Week 11.
+- **Not yet covered**: longitudinal PHQ-4 change and behavioural-PHQ-4
+  association interpretation (the evidence contract can't represent those
+  inputs yet); joint inter-rater comparison between Chonghao and Richard is
+  still outstanding; no pilot or main evaluation session has run yet.
+
+**How we'll do it from today to the end — metric by metric:**
+
+| Client metric | Approach today → end | Existing citation used | Gap |
+|---|---|---|---|
+| Accuracy / faithfulness | Deterministic evidence-grounding checks (`output_grounding.py`) verify every claim traces to an approved evidence ID in the packet; extended through team rostered-pair sessions Weeks 7-10, held-out set Week 11 | Maynez et al. (2020) — fluent generated text can still be unfaithful to its source, motivating a grounding check separate from fluency | — |
+| Usefulness | Rated by rostered-pair team members using the rubric's usefulness dimension | **None exists in our literature review.** Balcombe (2023) ("AI chatbots in digital mental health") is in the Proposal's references but is cited there only for responsible-AI-communication framing, not usefulness — worth checking directly before citing it this way | State this gap explicitly in the report rather than inventing a source |
+| Trust | Same rubric, trust dimension, rostered-pair sessions | **None exists.** Same Balcombe (2023) caveat as above | State explicitly, as above |
+| Interpretability / uncertainty communication | Enforced structurally — every normal/uncertainty-mode response must contain an explicit uncertainty sentence (`backend/slm/prompts/evidence_explainer.yaml`), checked deterministically, then rated by rostered-pair sessions | World Health Organization (2024) — general AI-health risk-management rationale for bounded, uncertainty-qualified explanations; Balcombe (2023) — AI chatbots in digital mental health, cited alongside WHO for this same responsible-communication framing | Neither source validates a specific interpretability *measurement*, only the rationale for requiring it |
+| Correlation vs. causation | Deterministic claim-policy enforcement (prohibited `causal_explanation` claim ID) plus rubric rating | Curran & Bauer (2011) — within/between-person disaggregation is exactly why a within-person deviation is not itself a causal claim | Supports the statistical design choice, not a measurement of whether users correctly read association-not-causation |
+| Privacy | Deterministic no-network-egress tests (`tests/privacy/test_no_network_egress.py`), dependency spot-checks, loopback-only Ollama client, rubric's privacy-perceptions dimension rated by rostered-pair sessions | None from the academic literature review; the OWASP Logging Cheat Sheet (informal engineering reference, not an academic source) informs what to redact/not log | Treat as engineering best practice, not a research citation, in the write-up |
+
+**Structural point to carry into the Progress Report:** two of the client's
+10 criteria — usefulness and trust — currently have no supporting citation
+anywhere in our own literature review. Comprehensibility, usability, and
+inappropriate-inference likewise aren't citation-backed; they're addressed
+through the deterministic evidence contract and rubric design, not through
+literature. State this plainly rather than manufacturing a citation to fill
+the gap.
+
 ---
 
 ## 10. Key Decisions Log
