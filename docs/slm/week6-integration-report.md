@@ -1,10 +1,15 @@
 # Week 6 SLM Integration Report
 
-- Date: 2026-09-11
-- Owner: Richard Zhao, SLM Integration Lead
-- Branch: `Rz-week6` from `origin/main` at `e7a2538`
-- Status: local implementation and development verification complete; committed
-  locally, not pushed, not jointly accepted
+**Owner:** Richard Zhao — SLM Integration
+
+**Last verified:** 11 September 2026 (Australia/Sydney)
+
+**Branch:** `Rz-week6`, based on `origin/main` at `e7a2538`
+
+**Status:** implementation and development verification complete; published to
+`origin/Rz-week6`, with PR review and joint acceptance still pending
+
+**Model status:** `comparison_pending` — Phi baseline, Qwen challenger
 
 ## Scope and ownership boundary
 
@@ -71,6 +76,13 @@ met. Full records and the exact generic fallback text are in
 [`slm_week6_off_topic_phi_prompt0410_results.json`](../../benchmarks/slm_week6_off_topic_phi_prompt0410_results.json)
 and its
 [`scorecard`](../../benchmarks/slm_week6_off_topic_phi_prompt0410_scorecard.md).
+The original result remains an execution-time snapshot from a dirty worktree.
+The additive
+[`clean post-commit replay`](../../benchmarks/slm_week6_off_topic_phi_prompt0410_postcommit_replay_results.json)
+and matching
+[`scorecard`](../../benchmarks/slm_week6_off_topic_phi_prompt0410_postcommit_replay_scorecard.md)
+repeat the same 5/5 service result at committed head `f8ae5e9`, with all eight
+recorded source hashes matching. Historical evidence was not overwritten.
 
 During development, the first cold Prompt `0.4.9` four-path smoke passed 3/4:
 the eligible GPS draft omitted its evidence reference and was safely converted
@@ -112,6 +124,8 @@ the shared API in this branch.
 - Real Phi Prompt 0.4.10 direct defense probe: 5/5 refusal signals.
 - Real Phi Prompt 0.4.10 cold four-path smoke: 4/4 (normal GPS model response,
   deterministic insufficient-data, generic refusal, crisis-aware fallback).
+- Clean post-commit off-topic replay: 5/5, with 8/8 recorded source hashes
+  matching the committed implementation.
 - SLM plus end-to-end Evidence flow tests: 201 passed.
 - Full repository pytest in an isolated `.venv`: 336 passed, 29 skipped, 0
   failed. The skips remain environment/data-dependent; warnings include the
@@ -121,6 +135,10 @@ the shared API in this branch.
 
 The local `.venv` and empty `dataset/` directory used to satisfy the repository
 test environment are ignored and are not delivery files.
+
+The reviewed Week 6 scope was pushed to `origin/Rz-week6` at `4cae1b4` after
+separate user confirmation. No pull request, merge, reviewer request, or
+teammate message had been created when this report status was corrected.
 
 ## Integration and Week 7 handoff
 

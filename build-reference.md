@@ -128,7 +128,7 @@ Example of a prohibited statement: "Your phone use caused your anxiety." / "You 
 - Deterministic safety gate: every draft response is validated a second time before becoming a response. It is rejected/rewritten to the safe fallback unless every evidence ID in the draft exists in the input packet, every claim ID is approved by its referenced evidence item, no prohibited claim or phrase is present, and every "ready" explanation includes an uncertainty statement
 - Crisis wording is never a model inference. A rule-based detector triggers the pre-approved deterministic crisis-support message — this is safer and auditable, consistent with the project's non-diagnostic scope
 
-**Week 6 branch status (pending review/merge):** `Rz-week6` addresses the
+**Week 6 branch status (published; PR review/merge pending):** `Rz-week6` addresses the
 off-topic limitation documented on `main`. Request policy `0.2.0` adds an
 explicit `off_topic` category and routes unmatched or ambiguous requests to
 the versioned generic refusal before model generation. Crisis and existing
