@@ -1,10 +1,10 @@
 # Week 6 SLM Integration Report
 
-Date: 2026-09-11  
-Owner: Richard Zhao, SLM Integration Lead  
-Branch: `Rz-week6` from `origin/main` at `e7a2538`  
-Status: local implementation and development verification complete; not committed,
-not pushed, not jointly accepted
+- Date: 2026-09-11
+- Owner: Richard Zhao, SLM Integration Lead
+- Branch: `Rz-week6` from `origin/main` at `e7a2538`
+- Status: local implementation and development verification complete; committed
+  locally, not pushed, not jointly accepted
 
 ## Scope and ownership boundary
 
