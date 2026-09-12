@@ -1,3 +1,29 @@
+"""
+CES GPS-distance end-to-end exploratory pipeline (diagnostics + Tier-1
+feature builder for GPS distance, home duration, and unlock frequency).
+
+**Not a duplicate of backend/data_pipeline/gps_distance_feature.py /
+backend/data_pipeline/cleaning.py — checked 2026-09-12, kept as-is.**
+Only this module's `clean_gps_base` overlaps with the reconciled
+`backend/data_pipeline/cleaning.py::clean_gps_distance` (same locked
+GPS spec: 12h quality gate, 500km implausibility cutoff, per-person
+1st-99th percentile winsorisation, log(mean + 1000) transform). The
+rest of this module — `clean_home_duration`, `clean_unlock`,
+`build_tier1_feature_windows` (the multi-feature Tier-1 FeatureWindow
+builder covering all three Tier-1 features, not just GPS), and the
+exploratory/sensitivity diagnostics (quality-gate cost, cutoff
+sensitivity, winsorisation-method comparison, etc.) exist nowhere in
+`backend/` and are the sole implementation backing
+`tests/data_pipeline/test_tier1_features.py` (currently passing) and
+the reproducibility section of
+`docs/data-pipeline/data_pipeline_proposal_report.md`. Retiring this
+file the way `analysis/` was retired would break that test suite and
+delete functionality that has no replacement — so it stays live. If
+`clean_gps_base` and `backend/data_pipeline/cleaning.py::clean_gps_distance`
+are ever changed, change both together; they are expected to describe
+the same locked GPS-cleaning spec.
+"""
+
 from pathlib import Path
 
 import numpy as np
