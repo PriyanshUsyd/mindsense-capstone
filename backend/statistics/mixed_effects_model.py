@@ -343,10 +343,23 @@ def build_model_frame(
     day_col: str = "day",
     window_days: int = ALIGNMENT_WINDOW_DAYS,
     min_valid_sensor_days: int = OCCASION_MIN_VALID_SENSOR_DAYS,
+    log_offset: float = GPS_LOG_OFFSET_M,
 ) -> pd.DataFrame:
-    """Joins EMA occasions to the trailing GPS predictor, applies the
-    occasion-validity gate (drop, don't impute), and computes the
-    person-mean-centred within/between terms (spec Section 1.2).
+    """Joins EMA occasions to the trailing predictor for `value_col`,
+    applies the occasion-validity gate (drop, don't impute), and computes
+    the person-mean-centred within/between terms (spec Section 1.2).
+
+    **`log_offset` must match whichever feature `value_col` actually is**
+    — e.g. `GPS_LOG_OFFSET_M` (1000) for GPS distance,
+    `backend.data_pipeline.cleaning.UNLOCK_LOG_OFFSET` (1) for unlock
+    frequency. FIXED 2026-09-12: this parameter did not previously exist —
+    `build_model_frame` always used the GPS-specific default regardless of
+    which feature it was called with, so wiring in a second Tier-1 feature
+    silently reused GPS's `+1000` offset on a count variable until this was
+    added. Now passed through to `build_trailing_predictor` explicitly
+    rather than left implicit, so a caller who forgets it gets the GPS
+    default (backward compatible for existing GPS call sites) rather than
+    an offset that's silently wrong for a different feature's scale.
 
     `x_bar_i` (the person's mean of the cleaned feature) is computed over
     **all of that person's valid occasion-level `x_it` values used in
@@ -359,7 +372,12 @@ def build_model_frame(
     guessed silently).
     """
     predictor = build_trailing_predictor(
-        cleaned_sensing_days, value_col=value_col, window_days=window_days, uid_col=uid_col, day_col=day_col
+        cleaned_sensing_days,
+        value_col=value_col,
+        window_days=window_days,
+        uid_col=uid_col,
+        day_col=day_col,
+        log_offset=log_offset,
     )
 
     occasions = ema[[uid_col, day_col, outcome_col]].dropna(subset=[outcome_col]).copy()
