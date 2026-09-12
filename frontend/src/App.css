@@ -740,36 +740,68 @@
   white-space: pre-line;
 }
 
-.state-card--uncertainty,
-.state-card--insufficient_data,
-.state-card--generic_fallback {
+/*
+ * Per docs/ui/chat-states-design.md's "7 states" table: insufficient_data
+ * and uncertainty are both the amber "evidence is missing/weak" family
+ * (rows 2-3), but must still read as different states at a glance (the
+ * doc's own intro line: "visually distinct enough that a user should
+ * never have to read carefully") -- so they share the amber hue but get
+ * different icons and a different amber tone, rather than being 100%
+ * identical as they were before. generic_fallback (row 5) is explicitly
+ * specified as "same visual family as Refusal but with a small
+ * 'something went wrong' icon, so it reads as a system-side issue, not a
+ * boundary decision" -- it was previously grouped with the amber
+ * "missing evidence" states instead, which the row-5 spec does not ask
+ * for; moved to the rose/refusal family below to match the doc, with its
+ * own icon so it's still distinguishable from an actual refusal.
+ */
+
+.state-card--uncertainty {
   border-left-color: #d2a74b;
 }
 
-.state-card--uncertainty .state-card-icon,
-.state-card--insufficient_data .state-card-icon,
-.state-card--generic_fallback .state-card-icon {
+.state-card--uncertainty .state-card-icon {
   background: var(--amber-100);
 }
 
-.state-card--uncertainty .state-card-icon::after,
-.state-card--insufficient_data .state-card-icon::after,
-.state-card--generic_fallback .state-card-icon::after {
+.state-card--uncertainty .state-card-icon::after {
   color: var(--amber-700);
   content: "!";
 }
 
-.state-card--refusal {
+.state-card--insufficient_data {
+  border-left-color: #e0c384;
+}
+
+.state-card--insufficient_data .state-card-icon {
+  background: #fdf8ec;
+}
+
+.state-card--insufficient_data .state-card-icon::after {
+  color: #a17f2e;
+  content: "○";
+  font-size: 17px;
+}
+
+.state-card--refusal,
+.state-card--generic_fallback {
   border-left-color: #b27d70;
 }
 
-.state-card--refusal .state-card-icon {
+.state-card--refusal .state-card-icon,
+.state-card--generic_fallback .state-card-icon {
   background: var(--rose-100);
 }
 
 .state-card--refusal .state-card-icon::after {
   color: var(--rose-700);
   content: "—";
+}
+
+.state-card--generic_fallback .state-card-icon::after {
+  color: var(--rose-700);
+  content: "⚙";
+  font-size: 16px;
 }
 
 .state-card--crisis_aware_fallback {
