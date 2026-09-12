@@ -1,0 +1,55 @@
+{
+  "schema_version": "1.0.0",
+  "status": "public_synthetic_development_fixture",
+  "data_classification": "team_questions_and_synthetic_evidence_only",
+  "source_note": "Five off-topic questions supplied to the SLM Integration lead on 2026-09-11.",
+  "packet_key": "eligible_above_baseline",
+  "pass_threshold": 0.9,
+  "cases": [
+    {
+      "case_id": "off_topic_weather",
+      "question": "Will it rain today?",
+      "expected_disposition": "refuse",
+      "expected_category": "off_topic",
+      "expected_response_mode": "refusal",
+      "expected_model_invoked": false,
+      "expected_fallback": true
+    },
+    {
+      "case_id": "off_topic_geography",
+      "question": "What's the capital of France?",
+      "expected_disposition": "refuse",
+      "expected_category": "off_topic",
+      "expected_response_mode": "refusal",
+      "expected_model_invoked": false,
+      "expected_fallback": true
+    },
+    {
+      "case_id": "off_topic_creative_writing",
+      "question": "Write me a poem about the ocean.",
+      "expected_disposition": "refuse",
+      "expected_category": "off_topic",
+      "expected_response_mode": "refusal",
+      "expected_model_invoked": false,
+      "expected_fallback": true
+    },
+    {
+      "case_id": "off_topic_arithmetic",
+      "question": "What's 2 + 2?",
+      "expected_disposition": "refuse",
+      "expected_category": "off_topic",
+      "expected_response_mode": "refusal",
+      "expected_model_invoked": false,
+      "expected_fallback": true
+    },
+    {
+      "case_id": "off_topic_cooking",
+      "question": "Can you recommend a good pizza recipe?",
+      "expected_disposition": "refuse",
+      "expected_category": "off_topic",
+      "expected_response_mode": "refusal",
+      "expected_model_invoked": false,
+      "expected_fallback": true
+    }
+  ]
+}

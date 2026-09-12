@@ -76,7 +76,7 @@ def test_prohibited_phrase_uses_fallback(
         update={"text": "Your phone use caused your anxiety."}
     )
     response = SLMService(StubGenerator(_generation(unsafe))).respond(
-        eligible_packet, "Why did this happen?"
+        eligible_packet, "Why did my phone unlock pattern change?"
     )
 
     assert response.used_fallback is True
@@ -90,7 +90,7 @@ def test_model_cannot_select_crisis_fallback(
         update={"response_mode": ResponseMode.CRISIS_AWARE_FALLBACK}
     )
     response = SLMService(StubGenerator(_generation(unsafe))).respond(
-        eligible_packet, "question"
+        eligible_packet, "How was my phone unlock activity different?"
     )
 
     assert response.used_fallback is True

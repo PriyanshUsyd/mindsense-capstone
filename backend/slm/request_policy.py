@@ -1,10 +1,10 @@
 """Deterministic request routing before any local-model generation.
 
-The Week 5 shadow build must refuse high-severity requests even when the UI
-is not available.  This module deliberately uses a small, reviewable rule
-set: crisis language is routed to the versioned crisis template and other
-prohibited requests are routed to the generic refusal template.  Allowed
-questions continue to the schema-constrained local model.
+The local SLM service must refuse high-severity requests even when the UI is
+not available.  This module deliberately uses a small, reviewable rule
+set: crisis language is routed to the versioned crisis template, prohibited
+and off-topic requests are routed to the generic refusal template, and only
+recognised MindSense evidence questions continue to the local model.
 
 This is a development guardrail, not a clinical risk assessment.  The rule
 set and participant-facing wording still require Evaluation/client review
@@ -18,7 +18,7 @@ from enum import Enum
 
 from pydantic import BaseModel, ConfigDict
 
-REQUEST_POLICY_VERSION = "0.1.1"
+REQUEST_POLICY_VERSION = "0.2.0"
 
 
 class RequestDisposition(str, Enum):
@@ -29,6 +29,7 @@ class RequestDisposition(str, Enum):
 
 class RequestCategory(str, Enum):
     IN_SCOPE = "in_scope"
+    OFF_TOPIC = "off_topic"
     CRISIS_SELF_HARM = "crisis_self_harm"
     DIAGNOSIS_SEEKING = "diagnosis_seeking"
     CAUSAL_INFERENCE_SEEKING = "causal_inference_seeking"
@@ -154,6 +155,63 @@ _PROHIBITED_PATTERNS: tuple[
     ),
 )
 
+# The two-part rule is intentionally conservative: ordinary questions need a
+# MindSense feature plus evidence-analysis intent. Short contextual questions
+# that are meaningful in an evidence view are listed separately. Unmatched or
+# ambiguous requests fail closed without invoking the model.
+_DOMAIN_PATTERNS = (
+    re.compile(
+        r"\b(?:gps|movement|mobility|unlock(?:s|ed|ing)?|phq[- ]?4|"
+        r"well[- ]?being|behavio(?:u)?r)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\bphone (?:use|usage|activity|unlock(?:s|ed|ing)?)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\b(?:tracked|location) (?:data|pattern|history)\b|\bscreen time\b",
+        re.IGNORECASE,
+    ),
+)
+_EVIDENCE_INTENT_PATTERNS = (
+    re.compile(
+        r"\b(?:baseline|pattern|history|evidence|data|score|trend|uncertainty|"
+        r"relationship|association|correlation|chang(?:e|ed|ing)|different|"
+        r"compare|comparison|higher|lower|usual|normal|unusual|frequent|"
+        r"conclude|enough|observed|window)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(r"\bhow (?:was|is|has) my\b", re.IGNORECASE),
+)
+_CONTEXTUAL_IN_SCOPE_PATTERNS = (
+    re.compile(r"\bwhat changed\b", re.IGNORECASE),
+    re.compile(r"\bhow am i doing\b", re.IGNORECASE),
+    re.compile(
+        r"\b(?:describe|explain|compare) my (?:recent |tracked )?activity\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\bis this (?:higher|lower|different) (?:or (?:higher|lower) )?"
+        r"than (?:normal|usual) for me\b",
+        re.IGNORECASE,
+    ),
+    re.compile(r"\bwhat uncertainty should i keep in mind\b", re.IGNORECASE),
+    re.compile(r"\bis there enough (?:data|history)\b", re.IGNORECASE),
+    re.compile(
+        r"\bwhat does the word (?:depressed|anxious|depression|anxiety) mean\b",
+        re.IGNORECASE,
+    ),
+)
+
+
+def _is_in_scope(question: str) -> bool:
+    if any(pattern.search(question) for pattern in _CONTEXTUAL_IN_SCOPE_PATTERNS):
+        return True
+    return any(pattern.search(question) for pattern in _DOMAIN_PATTERNS) and any(
+        pattern.search(question) for pattern in _EVIDENCE_INTENT_PATTERNS
+    )
+
 
 def classify_request(question: str) -> RequestPolicyDecision:
     """Classify one untrusted question without inspecting participant data."""
@@ -173,6 +231,13 @@ def classify_request(question: str) -> RequestPolicyDecision:
                 category=category,
                 reason_code=reason_code,
             )
+
+    if not clean_question or not _is_in_scope(clean_question):
+        return RequestPolicyDecision(
+            disposition=RequestDisposition.REFUSE,
+            category=RequestCategory.OFF_TOPIC,
+            reason_code="off_topic_request_detected",
+        )
 
     return RequestPolicyDecision(
         disposition=RequestDisposition.ALLOW,
