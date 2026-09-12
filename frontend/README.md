@@ -4,10 +4,10 @@ React 19 + TypeScript 6, built with **Vite 8**. Owned by the Conversational
 Interface Lead (Sheng Wang) — see `skills/frontend-react.md` and
 `docs/ui/chat-states-design.md`.
 
-**Status (2026-09-06 working tree):** Week 5 frontend prototype implemented.
-The normal flow calls the local `/respond` API and all six backend response
-modes, plus loading, map to distinct UI states. The original Vite scaffold and
-API bridge remain attributable to their authors in git history.
+**Status (2026-09-07):** Week 5 UI merged in PR #10. The Week 6 normal-chat
+flow retains prior turns, accepts follow-up questions, and calls the same local
+`/respond` contract for every turn. FastAPI can now be launched with Richard's
+manifest-pinned Ollama service instead of the deterministic demo client.
 
 ## Rules (do not deviate — see skills/frontend-react.md and build-reference.md)
 
@@ -40,10 +40,18 @@ npm install
 npm run dev
 ```
 
-In another terminal, start the local backend from the repository root:
+In another terminal, start the local backend from the repository root. For a
+frontend-only demo:
 
 ```
 uvicorn backend.api.app:app --reload
+```
+
+For the real local model:
+
+```
+ollama pull phi4-mini:3.8b
+MINDSENSE_SLM_RUNTIME=ollama python -m uvicorn backend.api.app:app --reload
 ```
 
 The frontend posts `{ evidence_packet, question }` to
