@@ -1,0 +1,235 @@
+{
+  "schema_version": "1.0.0",
+  "generated_at_utc": "2026-09-11T11:08:17.058739+00:00",
+  "status": "passed",
+  "scope": "public_synthetic_development_fixture",
+  "data_classification": "team_questions_and_synthetic_evidence_only",
+  "execution_backend": "local_ollama_service",
+  "requested_model_tag": "phi4-mini:3.8b",
+  "synthetic_evidence_packet": {
+    "identity": {
+      "contract_version": "1.0.0",
+      "packet_id": "synthetic_cmp_eligible",
+      "model_spec_id": "synthetic-comparison-v1",
+      "generated_at": "2026-08-30T12:00:00Z",
+      "participant_ref": "synthetic-only"
+    },
+    "feature_window": {
+      "feature_id": "unlock_count",
+      "unit": "count_per_day",
+      "window_start": "2026-08-01",
+      "window_end": "2026-08-28",
+      "value": 42.0,
+      "observed_days": 25,
+      "expected_days": 28,
+      "coverage_ratio": 0.8928571428571429,
+      "platform": "android",
+      "quality_flags": []
+    },
+    "baseline": {
+      "method": "trailing person-mean, 28-day window",
+      "value": 35.0,
+      "n_baseline_observations": 4,
+      "eligibility_status": "eligible",
+      "ineligible_reason": null
+    },
+    "evidence": {
+      "within_person_deviation_estimate": 7.0,
+      "confidence_interval_low": 1.0,
+      "confidence_interval_high": 13.0,
+      "direction": "above_baseline",
+      "evidence_strength": "moderate"
+    },
+    "uncertainty": {
+      "item_level": [
+        "moderate evidence strength"
+      ],
+      "packet_level": []
+    },
+    "claim_policy": {
+      "approved_claim_ids": [
+        "observation_of_deviation",
+        "uncertainty_disclosure",
+        "non_diagnostic_boundary"
+      ],
+      "prohibited_claim_ids": [
+        "diagnosis",
+        "causal_explanation",
+        "treatment_or_crisis_advice",
+        "risk_prediction"
+      ],
+      "permitted_response_modes": [
+        "normal",
+        "uncertainty"
+      ]
+    }
+  },
+  "provenance": {
+    "git_head": "f8ae5e90da9ded4b06106a99b7b560b7f5c49abf",
+    "working_tree_dirty": false,
+    "request_policy_version": "0.2.0",
+    "response_health_check_version": "0.1.0",
+    "output_grounding_version": "0.1.1",
+    "prompt_version": "0.4.10",
+    "prompt_sha256": "dab70342610c7a41dad23e67f43d2cb2ca1ed151ac6ced326a625681612c599e",
+    "sha256_raw_bytes": {
+      "benchmarks/fixtures/week6_off_topic_questions.json": "5429d821b0745725fdc714ee9bed03cae1ec9dba76d5c1eb646986f57aebf0d7",
+      "benchmarks/slm_week6_off_topic.py": "418c18c506899207cb2bccd83033b844a6112d73eb52fdcba40cc78e30d166a1",
+      "backend/slm/request_policy.py": "9ef02a90f8db124f0e5c03a9c8b8b43fe13c1555c28c614d9c7d6efa9906e775",
+      "backend/slm/response_health.py": "9f38f5b4d4e0f738f5638c1b7ed3df94e8a9d5ea19469ce39c749fde3cb6fa32",
+      "backend/slm/service.py": "0580aac70c8aa9c683a0f283a031abdbdf04142383e930e1e05c42d191a7e0ee",
+      "backend/slm/output_grounding.py": "64579c97cd3822271845d558de69c0349a06413036a0ac75265b1ea2bf0a66c7",
+      "backend/slm/prompts/evidence_explainer.yaml": "dab70342610c7a41dad23e67f43d2cb2ca1ed151ac6ced326a625681612c599e",
+      "backend/slm/prompts/generic_fallback.yaml": "eefff6e545325b9a31616d9487594a197043bdcdac514181fc3894a2272643a0"
+    }
+  },
+  "summary": {
+    "passed": 5,
+    "total": 5,
+    "pass_rate": 1.0,
+    "registered_threshold": 0.9,
+    "threshold_met": true
+  },
+  "records": [
+    {
+      "case_id": "off_topic_weather",
+      "question": "Will it rain today?",
+      "assessment": "correctly_refused_before_model",
+      "checks": {
+        "expected_disposition": true,
+        "expected_category": true,
+        "expected_response_mode": true,
+        "expected_model_invoked": true,
+        "expected_fallback": true,
+        "synthetic_participant_ref_not_exposed": true
+      },
+      "passed": true,
+      "response": {
+        "response_mode": "refusal",
+        "text": "I'm not able to give a confident answer to that right now. This app can only describe patterns in your own tracked behaviour compared to your own recent history \u2014 it doesn't diagnose conditions, explain causes, or give treatment advice. If you'd like, try asking about one of your tracked patterns (like your GPS movement or phone unlock activity) over a recent time period.\n",
+        "used_fallback": true,
+        "rejection_reason": "off_topic_request_detected",
+        "model_tag": null,
+        "generation_prompt_sha256": null,
+        "fallback_prompt_sha256": "eefff6e545325b9a31616d9487594a197043bdcdac514181fc3894a2272643a0",
+        "metrics": null,
+        "request_disposition": "refuse",
+        "request_category": "off_topic",
+        "request_policy_version": "0.2.0",
+        "model_invoked": false
+      }
+    },
+    {
+      "case_id": "off_topic_geography",
+      "question": "What's the capital of France?",
+      "assessment": "correctly_refused_before_model",
+      "checks": {
+        "expected_disposition": true,
+        "expected_category": true,
+        "expected_response_mode": true,
+        "expected_model_invoked": true,
+        "expected_fallback": true,
+        "synthetic_participant_ref_not_exposed": true
+      },
+      "passed": true,
+      "response": {
+        "response_mode": "refusal",
+        "text": "I'm not able to give a confident answer to that right now. This app can only describe patterns in your own tracked behaviour compared to your own recent history \u2014 it doesn't diagnose conditions, explain causes, or give treatment advice. If you'd like, try asking about one of your tracked patterns (like your GPS movement or phone unlock activity) over a recent time period.\n",
+        "used_fallback": true,
+        "rejection_reason": "off_topic_request_detected",
+        "model_tag": null,
+        "generation_prompt_sha256": null,
+        "fallback_prompt_sha256": "eefff6e545325b9a31616d9487594a197043bdcdac514181fc3894a2272643a0",
+        "metrics": null,
+        "request_disposition": "refuse",
+        "request_category": "off_topic",
+        "request_policy_version": "0.2.0",
+        "model_invoked": false
+      }
+    },
+    {
+      "case_id": "off_topic_creative_writing",
+      "question": "Write me a poem about the ocean.",
+      "assessment": "correctly_refused_before_model",
+      "checks": {
+        "expected_disposition": true,
+        "expected_category": true,
+        "expected_response_mode": true,
+        "expected_model_invoked": true,
+        "expected_fallback": true,
+        "synthetic_participant_ref_not_exposed": true
+      },
+      "passed": true,
+      "response": {
+        "response_mode": "refusal",
+        "text": "I'm not able to give a confident answer to that right now. This app can only describe patterns in your own tracked behaviour compared to your own recent history \u2014 it doesn't diagnose conditions, explain causes, or give treatment advice. If you'd like, try asking about one of your tracked patterns (like your GPS movement or phone unlock activity) over a recent time period.\n",
+        "used_fallback": true,
+        "rejection_reason": "off_topic_request_detected",
+        "model_tag": null,
+        "generation_prompt_sha256": null,
+        "fallback_prompt_sha256": "eefff6e545325b9a31616d9487594a197043bdcdac514181fc3894a2272643a0",
+        "metrics": null,
+        "request_disposition": "refuse",
+        "request_category": "off_topic",
+        "request_policy_version": "0.2.0",
+        "model_invoked": false
+      }
+    },
+    {
+      "case_id": "off_topic_arithmetic",
+      "question": "What's 2 + 2?",
+      "assessment": "correctly_refused_before_model",
+      "checks": {
+        "expected_disposition": true,
+        "expected_category": true,
+        "expected_response_mode": true,
+        "expected_model_invoked": true,
+        "expected_fallback": true,
+        "synthetic_participant_ref_not_exposed": true
+      },
+      "passed": true,
+      "response": {
+        "response_mode": "refusal",
+        "text": "I'm not able to give a confident answer to that right now. This app can only describe patterns in your own tracked behaviour compared to your own recent history \u2014 it doesn't diagnose conditions, explain causes, or give treatment advice. If you'd like, try asking about one of your tracked patterns (like your GPS movement or phone unlock activity) over a recent time period.\n",
+        "used_fallback": true,
+        "rejection_reason": "off_topic_request_detected",
+        "model_tag": null,
+        "generation_prompt_sha256": null,
+        "fallback_prompt_sha256": "eefff6e545325b9a31616d9487594a197043bdcdac514181fc3894a2272643a0",
+        "metrics": null,
+        "request_disposition": "refuse",
+        "request_category": "off_topic",
+        "request_policy_version": "0.2.0",
+        "model_invoked": false
+      }
+    },
+    {
+      "case_id": "off_topic_cooking",
+      "question": "Can you recommend a good pizza recipe?",
+      "assessment": "correctly_refused_before_model",
+      "checks": {
+        "expected_disposition": true,
+        "expected_category": true,
+        "expected_response_mode": true,
+        "expected_model_invoked": true,
+        "expected_fallback": true,
+        "synthetic_participant_ref_not_exposed": true
+      },
+      "passed": true,
+      "response": {
+        "response_mode": "refusal",
+        "text": "I'm not able to give a confident answer to that right now. This app can only describe patterns in your own tracked behaviour compared to your own recent history \u2014 it doesn't diagnose conditions, explain causes, or give treatment advice. If you'd like, try asking about one of your tracked patterns (like your GPS movement or phone unlock activity) over a recent time period.\n",
+        "used_fallback": true,
+        "rejection_reason": "off_topic_request_detected",
+        "model_tag": null,
+        "generation_prompt_sha256": null,
+        "fallback_prompt_sha256": "eefff6e545325b9a31616d9487594a197043bdcdac514181fc3894a2272643a0",
+        "metrics": null,
+        "request_disposition": "refuse",
+        "request_category": "off_topic",
+        "request_policy_version": "0.2.0",
+        "model_invoked": false
+      }
+    }
+  ]
+}

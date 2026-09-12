@@ -128,19 +128,17 @@ Example of a prohibited statement: "Your phone use caused your anxiety." / "You 
 - Deterministic safety gate: every draft response is validated a second time before becoming a response. It is rejected/rewritten to the safe fallback unless every evidence ID in the draft exists in the input packet, every claim ID is approved by its referenced evidence item, no prohibited claim or phrase is present, and every "ready" explanation includes an uncertainty statement
 - Crisis wording is never a model inference. A rule-based detector triggers the pre-approved deterministic crisis-support message — this is safer and auditable, consistent with the project's non-diagnostic scope
 
-**Known limitation (documented 2026-09-18, not yet fixed):** the request-policy
-classifier (`backend/slm/request_policy.py`) has no explicit off-topic /
-out-of-scope category. A question unrelated to personal behaviour or
-wellbeing data (e.g. "what's the capital of France?") is classified `allow`
-/ `in_scope`, the same as a legitimate question. Off-topic answers are
-currently blocked only as a side effect of the output-grounding check's
-rigid sentence-template matching (`backend/slm/output_grounding.py`), which
-forces the entire response into one of a small number of fixed templates —
-not because the system recognises the question as off-topic. Verified by
-manual testing (simulated non-compliant model output; the real pinned
-models were not tested against this on this machine — see Weekly_Plan.md
-Week 7 for where the live-model boot-test now happens). No fix is
-scheduled; this is a documented gap, not a resolved one.
+**Week 6 branch status (published; PR review/merge pending):** `Rz-week6` addresses the
+off-topic limitation documented on `main`. Request policy `0.2.0` adds an
+explicit `off_topic` category and routes unmatched or ambiguous requests to
+the versioned generic refusal before model generation. Crisis and existing
+prohibited-request rules keep priority. Prompt `0.4.10` adds a second fail-closed
+instruction if an unrelated request unexpectedly reaches the model. The five
+fixed public development questions were run against the real local
+`phi4-mini:3.8b`: Prompt `0.4.8` produced 0/5 correct refusals by substituting a
+grounded evidence answer, while the updated service produced 5/5 deterministic
+pre-model refusals. This is development evidence, not held-out or joint
+acceptance; see `docs/slm/week6-integration-report.md`.
 
 ---
 

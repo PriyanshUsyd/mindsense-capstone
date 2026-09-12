@@ -24,6 +24,7 @@ from backend.slm.request_policy import (
     RequestPolicyDecision,
     classify_request,
 )
+from backend.slm.response_health import ResponseHealthReport, check_response_health
 from backend.slm.safety_gate import validate_draft
 
 
@@ -94,6 +95,13 @@ class SLMService:
         request_decision = classify_request(question)
         if request_decision.disposition != RequestDisposition.ALLOW:
             return self._policy_response(request_decision)
+        health = self.check_response_health(packet)
+        if not health.healthy:
+            return self._fallback(
+                health.rejection_reason or "evidence_contract_violation",
+                request_decision=request_decision,
+                model_invoked=False,
+            )
         if packet.baseline.eligibility_status in {
             EligibilityStatus.INELIGIBLE_INSUFFICIENT_WINDOW,
             EligibilityStatus.INELIGIBLE_INSUFFICIENT_BASELINE,
@@ -150,6 +158,11 @@ class SLMService:
             model_invoked=True,
         )
 
+    def check_response_health(self, packet: EvidencePacket) -> ResponseHealthReport:
+        """Expose the SLM boundary health check for Integration/QA wiring."""
+
+        return check_response_health(packet)
+
     def _policy_response(self, decision: RequestPolicyDecision) -> SafeSLMResponse:
         if decision.disposition == RequestDisposition.CRISIS:
             template = self.crisis_fallback
@@ -198,6 +211,7 @@ class SLMService:
         *,
         request_decision: RequestPolicyDecision,
         generation: GenerationResult | None = None,
+        model_invoked: bool = True,
     ) -> SafeSLMResponse:
         return SafeSLMResponse(
             response_mode=ResponseMode.GENERIC_FALLBACK,
@@ -211,5 +225,5 @@ class SLMService:
             request_disposition=request_decision.disposition,
             request_category=request_decision.category,
             request_policy_version=request_decision.policy_version,
-            model_invoked=True,
+            model_invoked=model_invoked,
         )
