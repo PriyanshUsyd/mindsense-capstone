@@ -28,7 +28,7 @@ subsections 1.3–1.4.
 | **Statistical model** | Linear **mixed-effects model** (LMM), Gaussian, with **person-level random intercepts** + random slope on the primary within-person predictor. Time-varying predictors are **person-mean-centred** (within-person centring) with the person mean re-entered as a between-person term (within–between / Mundlak specification). |
 | **Primary outcome** | **PHQ-4 total score (0–12)** from `general_ema.csv`, measured repeatedly per person (~weekly). Secondary: PHQ-4 anxiety (items 1–2) and depression (items 3–4) subscales; PAM (1–16); single-item `stress`; state self-esteem (`sse3`). |
 | **Predictor → outcome alignment window** | **14 days** ending on the EMA date (inclusive) for **PHQ-4 total / anxiety / depression** — matches the instrument's "over the last 2 weeks" recall period. **Same day (1 day)** for the momentary outcomes (PAM, `stress`, `sse3`). Alignment window requires **≥ 7 valid sensor-days** (14-day windows) or a valid EMA-day (momentary). A **7-day** version of the PHQ-4 alignment is run as a **pre-registered sensitivity analysis**. |
-| **Feature cleaning (GPS / `loc_dist`)** | Per participant-day: drop to `NA` if `quality_loc < 8` h; drop to `NA` (not cap) if daily distance `> 500,000 m`; then **per-person winsorise** to the participant's [1st, 99th] percentile; model on **`log(distance + 1000)`**. Genuine zero-travel days (with `quality_loc ≥ 8` h) are kept. Sensitivity: re-run cap at 250 km and 1,000 km. |
+| **Feature cleaning (GPS / `loc_dist`)** | Per participant-day: drop to `NA` if `quality_loc < 8` h; drop to `NA` (not cap) if daily distance `> 500,000 m`; then **per-person winsorise** to the participant's [1st, 99th] percentile; model on **`log(distance + 1000)`**. Genuine zero-travel days (with `quality_loc ≥ 8` h) are kept. Sensitivity: re-run cap at 250 km and 1,000 km. **Note (Week 5):** the `quality_loc` threshold was updated from 8 h to 12 h after this document was locked; see Week 5 deliverable §2.2. The 8 h figure above is superseded. |
 | **Per-person statements** | Driven by **empirical-Bayes (BLUP) person-specific estimates** from the single population model — not separate per-person regressions. Shrinkage is what makes cold-start behaviour safe. |
 | **Multiple-comparison control** | **Confirmatory family** (≤ 3 Tier-1 features × 1 primary outcome × lag 0): **Holm–Bonferroni**, FWER = 0.05, pre-registered. **Exploratory tests and per-person multi-statement reports:** **Benjamini–Hochberg FDR, q = 0.05**. Unadjusted p-values are never surfaced. |
 | **Comparison (recency) window — user-facing** | **7 days**, aligned to the weekly EMA cadence; recomputed weekly; excluded from the baseline window to avoid overlap. This governs the *wording shown to the user* ("your recent week"), not the model fit. |
@@ -148,6 +148,12 @@ audit** and is the first concrete instance.
    quality is below threshold. For location features: `quality_loc < 8` h → `NA`.
    *(Pending: Data Pipeline Lead to report the day-count cost of an 8 h vs 12 h
    threshold; we take the stricter option if the cost is small.)*
+
+   > **Amendment (Week 5):** updated to `quality_loc < 12 h`. The change costs
+   > 1.63% of valid sensor-days. Decided in discussion during Week 4 but never
+   > written back into this document or into `cleaning.py`; corrected in Week 5.
+   > Rationale and discovery path: Week 5 deliverable §2.2.
+
 2. **Physical-implausibility filter → `NA` (not capped).** Values that cannot reflect
    real routine behaviour are set missing, because they are sensor error and, even when
    they reflect a genuine rare event (e.g. a cross-country flight), they are not
@@ -396,7 +402,7 @@ statements additionally require the 56-day gate **and** the evidence-strength ga
 | **Integration & QA (evidence contract)** | State enum {A, B, C} per feature; `baseline_history_days`; `valid_sensor_days_in_window`; `ema_count_in_window`; `alignment_window_days` (14 for PHQ-4, 1 for momentary); `permitted_claims` / `prohibited_claims` derived from state; adjusted p / q and evidence-strength label fields. |
 | **SLM Integration Lead** | The three locked templates in §5 (State A message, State B "too early" clause, State C structured block). These are the *content*; the generic-refusal and crisis-aware templates remain SLM-lead-owned. |
 | **Conversational Interface Lead** | Required UI states map 1:1: cold-start (A), insufficient-data / "too early to compare" (B), normal + uncertainty (C). |
-| **Data Pipeline Lead** | Implement the §1.4 cleaning pipeline; expose `valid_sensor_days` per feature per trailing window (7-day, 14-day, 28-day, 56-day); return the two GPS diagnostics in §1.4; report the 8 h vs 12 h `quality_loc` day-count cost. |
+| **Data Pipeline Lead** | Implement the §1.4 cleaning pipeline; expose `valid_sensor_days` per feature per trailing window (7-day, 14-day, 28-day, 56-day); return the two GPS diagnostics in §1.4; report the 8 h vs 12 h `quality_loc` day-count cost. **Closed (Week 5):** cost measured at 1.63% of valid sensor-days; threshold updated to 12 h. See Week 5 deliverable §2.2. |
 | **Evaluation Design Lead** | Evidence-strength thresholds (§7) feed the adversarial cases for "asserts baseline when none available" and "overstates evidence". |
 
 ---
