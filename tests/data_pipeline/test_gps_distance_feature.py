@@ -38,7 +38,7 @@ def test_summarize_on_synthetic_data_has_expected_shape():
     assert result["n_participant_days_total"] == 5
     assert result["n_participant_days_raw_present"] == 5
     assert result["n_participant_days_after_cleaning"] == 3  # a/day1, a/day4, b/day1
-    assert result["dropped_breakdown"]["quality_gate_below_8h"] == 1
+    assert result["dropped_breakdown"]["quality_gate_below_12h"] == 1
     assert result["dropped_breakdown"]["implausibility_filter_over_500km"] == 1
     assert result["genuine_zero_travel_days_kept"] == 1
 

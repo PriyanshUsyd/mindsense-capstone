@@ -33,14 +33,23 @@ As real branches were pushed, commits `40bbf00` (Moe's real statistics
 work), `b5c0e13` (Yuktha's real privacy work), and `2e8e48c` (Chonghao's real
 evaluation plan) used AI assistance to merge each person's actual
 contribution in and remove or supersede the corresponding AI placeholder.
-Commit `24809a1` did a further reconciliation pass. Two roles' work was
-never received and their AI-authored placeholders were never replaced:
-**Sheng Wang** (UI — no commit from Sheng exists anywhere in this
-repository's history) and **Honglin Lu** (Documentation — no commit from
-Honglin exists anywhere either; the `honglin/docs-week4` branch turned out
-to be a duplicate of Yuktha's branch, not separate work). This is stated
-here plainly because an AI Acknowledgement statement is exactly where that
-kind of gap belongs, not somewhere it gets rounded up to "Complete."
+Commit `24809a1` did a further reconciliation pass. At that time, two
+roles' work had not yet been received and their AI-authored placeholders
+had not been replaced: Sheng Wang (UI) and Honglin Lu (Documentation).
+**Update, 2026-09-12:** both have since landed. Sheng Wang's real UI work
+merged on time (`39ec4db`, Week 5, PR #10) and again for Week 6 (PR #14).
+Honghao Li's real Data Pipeline work (CES verification, GPS-distance
+feature builder, Tier-1 pipeline) was pushed under the GitHub account
+`AllenLi845 <nddjthd@gmail.com>` — this was not recognised as his account
+when this statement was first drafted (2026-09-05), which is why the table
+below previously read "0 commits" for him. That account is now confirmed
+to be Honghao. His work was complete in content by the Week 5 deadline
+(`f30fce5`, 2026-08-27, and further commits dated 2026-09-06), but it was
+**not merged into `main` until 2026-09-12, via PR #13 — six days after the
+Week 5 deadline (2026-09-06)**. This statement records that plainly rather
+than rounding it up to "on time": the work existed in content before the
+deadline, but did not land on `main`, where it counts, until nearly a week
+later.
 
 **3. Independent cross-checks and verification (Weeks 4-5).** The CES
 dataset re-verification script (`backend/data_pipeline/verify_ces.py`) was
@@ -74,10 +83,11 @@ project's own technical skill files before merging them into `main`).
   project — the named statistical model, the safety-gate rules, the
   pass-threshold lock, and the feature list were all decisions made (or, in
   the two flagged cases above, not yet made) by the named human role owner.
-- It has not (as of this writing) resolved the specific gaps this statement
-  names — Sheng Wang's and Honglin Lu's missing contributions remain
-  missing; this document reports that fact rather than fixing it, since
-  that is a team/process decision, not an AI one.
+- As of the 2026-09-12 update above, the gaps originally named here for
+  Sheng Wang and Honghao Li (misattributed at the time to a missing
+  account) have both been resolved by real, merged work — this statement
+  reports that resolution, including the six-day-late merge for Honghao,
+  rather than silently marking the row "Complete" with no further detail.
 
 ## A caveat about this document's own limits
 
@@ -101,8 +111,8 @@ Per real, verified git history (`git log --all --format='%an'`):
 | Chonghao Shen | 3 | Real, independent commits (evaluation plan, Week 5 review). |
 | Yuktha Naveen | 3 | Real, independent commits (privacy architecture, benchmark). |
 | Moe Tanaka | 1 | One real, independent commit (Week 4 statistics deliverable). |
-| Honghao Li | 0 | No commit from Honghao exists anywhere in this repository. |
-| Sheng Wang | 0 | No commit from Sheng exists anywhere in this repository. |
+| Honghao Li | 5+ (account `AllenLi845`) | Real, independent commits (CES verification, GPS-distance feature builder, Tier-1 pipeline). Confirmed 2026-09-12 to be Honghao's account — this table previously read "0" because that account was not yet recognised. Content complete by the Week 5 deadline (2026-09-06); not merged into `main` until 2026-09-12 (PR #13), six days late. |
+| Sheng Wang | 2+ | Real, independent commits (Week 5 chat prototype, Week 6 chat integration). |
 | Honglin Lu | 0 | No commit from Honglin exists anywhere in this repository. |
 
 *Please review and edit this before it goes into the Group Proposal Report

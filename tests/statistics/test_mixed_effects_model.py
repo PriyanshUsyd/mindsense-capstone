@@ -17,10 +17,12 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from backend.data_pipeline.cleaning import GPS_LOG_OFFSET_M
 from backend.statistics import r_bridge
 from backend.statistics.mixed_effects_model import (
     ALIGNMENT_WINDOW_DAYS,
     OCCASION_MIN_VALID_SENSOR_DAYS,
+    TRAILING_WINDOW_LAG_DAYS,
     _between_within_denominator_df,
     adjust_confirmatory_family,
     adjust_exploratory_family,
@@ -47,25 +49,42 @@ DATASET_DIR = Path(__file__).resolve().parents[2] / "dataset"
 def _synthetic_sensing(uid: str, n_days: int, value: float = 5.0) -> pd.DataFrame:
     start = pd.Timestamp("2020-01-01")
     days = [int((start + pd.Timedelta(days=i)).strftime("%Y%m%d")) for i in range(n_days)]
-    return pd.DataFrame({"uid": uid, "day": days, "loc_dist_ep_0_log": value})
+    return pd.DataFrame({"uid": uid, "day": days, "loc_dist_ep_0_clean": value})
 
 
 def test_locked_constants_match_the_spec():
     assert ALIGNMENT_WINDOW_DAYS == 14
     assert OCCASION_MIN_VALID_SENSOR_DAYS == 7
+    assert TRAILING_WINDOW_LAG_DAYS == 1
 
 
 def test_trailing_predictor_computes_calendar_correct_rolling_mean():
+    """x_it is log(mean(clean value) + offset) over the trailing 14-day
+    window ending the day BEFORE the row's own date (Moe's 2026-09-12 fix:
+    log-of-mean, not mean-of-log; window lagged by 1 day, not inclusive of
+    the row's own day)."""
     sensing = _synthetic_sensing("a", n_days=20, value=10.0)
     # Introduce a gap and a different value for the last few days.
-    sensing.loc[sensing.index[-3:], "loc_dist_ep_0_log"] = 20.0
+    sensing.loc[sensing.index[-3:], "loc_dist_ep_0_clean"] = 20.0
 
     out = build_trailing_predictor(sensing, window_days=14)
     last_row = out.iloc[-1]
-    # Trailing 14-day window ending on the last day: 11 days at 10.0, 3 days at 20.0.
-    expected = (11 * 10.0 + 3 * 20.0) / 14
-    assert last_row["x_it"] == pytest.approx(expected)
+    # The last row's date is day 20; its window ends day 19 (lag=1), i.e.
+    # the 14 days ending on day 19: 12 days at 10.0, 2 days at 20.0 (only
+    # the last 2 of the 3 overridden days fall inside that window).
+    expected_mean = (12 * 10.0 + 2 * 20.0) / 14
+    assert last_row["x_it"] == pytest.approx(np.log(expected_mean + GPS_LOG_OFFSET_M))
     assert last_row["valid_sensor_days_in_window"] == 14
+
+
+def test_trailing_predictor_first_day_in_range_has_no_prior_window():
+    """The lag means a person's very first observed day has nothing to
+    look back on yet — x_it must be NaN there, not silently 0 or same-day."""
+    sensing = _synthetic_sensing("a", n_days=5, value=10.0)
+    out = build_trailing_predictor(sensing, window_days=14)
+    first_row = out.iloc[0]
+    assert np.isnan(first_row["x_it"])
+    assert first_row["valid_sensor_days_in_window"] == 0
 
 
 def test_trailing_predictor_reindexes_gaps_as_invalid_not_missing_rows():
@@ -73,7 +92,7 @@ def test_trailing_predictor_reindexes_gaps_as_invalid_not_missing_rows():
         {
             "uid": ["a", "a"],
             "day": [20200101, 20200110],  # 9-day gap
-            "loc_dist_ep_0_log": [5.0, 5.0],
+            "loc_dist_ep_0_clean": [5.0, 5.0],
         }
     )
     out = build_trailing_predictor(sensing, window_days=14)

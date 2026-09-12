@@ -41,10 +41,31 @@ formula, reduced to its primary and time-trend terms):
                  `extra_fixed_effects` requests them)
               + u0_i + u1_i * x_within_it + e_it
 
-where `x_it` is the trailing 14-day mean of the cleaned, log-transformed
-GPS-distance feature ending on the EMA date (Section 1.3), gated on
+where `x_it` is `log(mean(cleaned GPS-distance) + 1000)` over the trailing
+14-day window ending the day BEFORE the EMA date (Section 1.3), gated on
 >= 7 valid sensor-days in that window (occasions failing the gate are
 excluded, never imputed — per spec).
+
+**Fixed 2026-09-12 (Moe Tanaka's confirmed correction, applied here on her
+behalf — flagged for her review):** this module previously computed
+`x_it` as the trailing-window MEAN of a per-day LOG-transformed value —
+i.e. mean(log(x)) — and let that window include the EMA's own day. Both
+were wrong against the locked spec (`analysis/cleaning.py`'s "ORDER OF
+OPERATIONS" note, and `CLAUDE.md`'s "Finalised decisions"):
+
+1. **Transform order.** By Jensen's inequality, mean(log(x)) != log(mean(x))
+   for a concave function like log — these are different quantities, not a
+   rounding difference. The locked order is: clean each day -> average the
+   *raw* (untransformed) values over the trailing window -> log the mean.
+   `build_trailing_predictor` below now averages `loc_dist_ep_0_clean`
+   (metres) and applies `log(mean + 1000)` once, after averaging — not
+   before.
+2. **Window lag.** The window must end the day BEFORE the assessment,
+   not include it — using the EMA day's own sensor reading as a predictor
+   of that same day's mood is same-day information leaking into what is
+   supposed to be a *trailing*, retrospective predictor. `TRAILING_WINDOW_
+   LAG_DAYS = 1` is applied by shifting the rolling-window series forward
+   one calendar day before merging onto EMA occasions.
 
 IMPLEMENTED, with the engine/library/method and any remaining
 approximation named explicitly (spec's own bar: flag a workaround clearly
@@ -181,10 +202,12 @@ from statsmodels.genmod.generalized_estimating_equations import GEE, GEEResultsW
 from statsmodels.regression.mixed_linear_model import MixedLM, MixedLMResultsWrapper
 from statsmodels.stats.multitest import multipletests
 
+from backend.data_pipeline.cleaning import GPS_LOG_OFFSET_M
 from backend.statistics import r_bridge
 
 ALIGNMENT_WINDOW_DAYS = 14  # PHQ-4's "last 2 weeks" recall period, spec Section 1.3
 OCCASION_MIN_VALID_SENSOR_DAYS = 7  # spec Section 1.3 occasion-validity gate
+TRAILING_WINDOW_LAG_DAYS = 1  # Fixed 2026-09-12 (Moe's confirmed fix) — see build_trailing_predictor
 
 # spec Section 1.2 term_phase heuristic (APPROXIMATION — see module
 # docstring): (start_month-day, end_month-day) ranges, inclusive, treated
@@ -203,34 +226,61 @@ def _to_datetime(day_col: pd.Series) -> pd.Series:
 
 def build_trailing_predictor(
     cleaned_sensing_days: pd.DataFrame,
-    log_col: str = "loc_dist_ep_0_log",
+    value_col: str = "loc_dist_ep_0_clean",
     window_days: int = ALIGNMENT_WINDOW_DAYS,
+    lag_days: int = TRAILING_WINDOW_LAG_DAYS,
     uid_col: str = "uid",
     day_col: str = "day",
+    log_offset: float = GPS_LOG_OFFSET_M,
 ) -> pd.DataFrame:
     """For every calendar day in each participant's observed date range,
-    computes the trailing `window_days`-day mean of `log_col` (ending on
-    that day, inclusive) and the count of valid (non-NaN) sensor-days in
-    that window.
+    computes `x_it = log(mean(value_col over the trailing window) +
+    log_offset)`, where the window is `window_days` long and ends
+    `lag_days` day(s) before that date (default: the day before — see
+    module docstring's 2026-09-12 fix), plus the count of valid (non-NaN)
+    sensor-days in that window.
+
+    `value_col` must be the CLEANED, UNTRANSFORMED value (e.g.
+    `loc_dist_ep_0_clean`, in metres) — averaging happens first, the log
+    transform is applied once, after averaging (log-of-mean, not
+    mean-of-log; see module docstring). Passing a pre-logged column here
+    would silently reproduce the old mean(log(x)) bug at one remove; there
+    is no runtime guard against this, so it is only ever called with a
+    `_clean` column in this codebase.
 
     Reindexes each participant to a *continuous* daily date range first,
     so the rolling window is calendar-correct (a day with no sensing row
     counts as a gap, not as "outside the window").
 
     Returns one row per (uid, date) with columns:
-      - `x_it`: trailing window mean of `log_col` (NaN if no valid days)
-      - `valid_sensor_days_in_window`: count of valid days in that window
+      - `x_it`: `log(trailing-window mean of value_col + log_offset)`,
+        NaN if the window (after the lag shift) has no valid days at all
+        — including, by construction, every participant's first
+        `lag_days` day(s) in their observed range, which have no prior
+        day to look back on yet.
+      - `valid_sensor_days_in_window`: count of valid days in that
+        (lag-shifted) window.
     """
     parts = []
     for uid, group in cleaned_sensing_days.groupby(uid_col):
         dates = _to_datetime(group[day_col])
-        series = pd.Series(group[log_col].to_numpy(), index=dates).sort_index()
+        series = pd.Series(group[value_col].to_numpy(), index=dates).sort_index()
         series = series[~series.index.duplicated(keep="first")]
         full_range = pd.date_range(series.index.min(), series.index.max(), freq="D")
         daily = series.reindex(full_range)
 
-        x_it = daily.rolling(window=window_days, min_periods=1).mean()
-        valid_days = daily.rolling(window=window_days, min_periods=1).count()
+        mean_raw = daily.rolling(window=window_days, min_periods=1).mean()
+        valid_days_raw = daily.rolling(window=window_days, min_periods=1).count()
+
+        # Lag: the window attached to day D must end on day D - lag_days,
+        # not on D itself. Shifting the whole rolling-window series
+        # forward by lag_days achieves this without changing the merge
+        # logic downstream (build_model_frame still merges on the EMA's
+        # own date; it now transparently receives the lagged window).
+        mean_lagged = mean_raw.shift(lag_days)
+        valid_days_lagged = valid_days_raw.shift(lag_days)
+
+        x_it = np.log(mean_lagged + log_offset)
 
         parts.append(
             pd.DataFrame(
@@ -238,7 +288,7 @@ def build_trailing_predictor(
                     uid_col: uid,
                     "date": full_range,
                     "x_it": x_it.to_numpy(),
-                    "valid_sensor_days_in_window": valid_days.to_numpy().astype(int),
+                    "valid_sensor_days_in_window": valid_days_lagged.fillna(0).to_numpy().astype(int),
                 }
             )
         )
@@ -288,7 +338,7 @@ def build_model_frame(
     cleaned_sensing_days: pd.DataFrame,
     ema: pd.DataFrame,
     outcome_col: str = "phq4_score",
-    log_col: str = "loc_dist_ep_0_log",
+    value_col: str = "loc_dist_ep_0_clean",
     uid_col: str = "uid",
     day_col: str = "day",
     window_days: int = ALIGNMENT_WINDOW_DAYS,
@@ -309,7 +359,7 @@ def build_model_frame(
     guessed silently).
     """
     predictor = build_trailing_predictor(
-        cleaned_sensing_days, log_col=log_col, window_days=window_days, uid_col=uid_col, day_col=day_col
+        cleaned_sensing_days, value_col=value_col, window_days=window_days, uid_col=uid_col, day_col=day_col
     )
 
     occasions = ema[[uid_col, day_col, outcome_col]].dropna(subset=[outcome_col]).copy()
