@@ -26,11 +26,16 @@ Remove the line once it has been reflected. Record the date, the affected file, 
   and `backend/data_pipeline/cleaning.py`; per-person evidence-strength +
   BH-FDR/Holm family-213 correction + binary collapse ported into new
   `backend/statistics/evidence.py`, wired to `fit_ar1_effect`'s R-backed
-  BLUPs). **Could not update `analysis/preregistration.md`** — that file
-  does not exist anywhere in this repository (checked: not on `main`, not
-  on any branch); someone owning this doc needs to create it first, or
-  confirm the Group Proposal / Week 5 deliverable is meant to serve as its
-  replacement. **`Week5_Statistical_Analysis_Deliverable.md` not yet
+  BLUPs). **`analysis/preregistration.md` did not exist anywhere in this
+  repository** (checked: not on `main`, not on any branch) — confirmed
+  again 2026-09-12. It has since been created by compiling Moe Tanaka's
+  already-locked decisions (Week 4/5 deliverables, `analysis/archive/`,
+  `backend/statistics/`) into preregistration form; sections it has no
+  existing decision for are left explicitly marked "pending Moe's input"
+  (see that file's §10) rather than invented. Still needs Moe's review
+  before being treated as final, and still needs a decision on whether it
+  stands alone or the Group Proposal / Week 5 deliverable replaces it.
+  **`Week5_Statistical_Analysis_Deliverable.md` not yet
   updated either** — pending Moe Tanaka's review of
   `backend/statistics/evidence.py` (she offered to do this specific port
   herself; one flagged gap remains — see that module's docstring on
