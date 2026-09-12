@@ -41,24 +41,47 @@ Rather than fabricate a per-person p-value from a standard error we
 cannot actually derive yet — which in a safety-relevant, mental-health-
 adjacent system means confidently labelling someone's data as
 `evidence_available` on an invented number — `extract_person_slopes`
-below leaves `slope_se` / `slope_p` as `None`, and `reclassify_family213`
-therefore classifies every person "insufficient" (-> "no_claim") until
-this is closed. This is a deliberate fail-safe default, not a bug: it
-matches this codebase's existing convergence-policy philosophy of
-flagging a real gap clearly rather than quietly guessing at a number
-that determines a mental-health-adjacent claim. Closing it requires
-extending `backend.statistics.r_bridge.fit_lme_ar1` with a real per-person
-conditional variance for the `x_within` BLUP (or an agreed alternative) —
-Moe Tanaka owns this model and offered to complete this specific port;
-this gap is for her review, not resolved here.
+below still leaves `slope_se` / `slope_p` as `None` by default, and
+`reclassify_family213` therefore still classifies every person
+"insufficient" (-> "no_claim") unless a caller explicitly opts into the
+method below.
+
+**2026-09-12 — a candidate fix, NOT a finalised statistical decision,
+implemented and FLAGGED FOR MOE TANAKA'S SIGN-OFF before any per-person
+"evidence_available" is shown to a real user on the strength of it:**
+`bootstrap_person_slopes` below estimates each person's `slope_se` via a
+**cluster (case) bootstrap over participants** — resample participants
+with replacement, refit the real R AR(1) model on each resample, and use
+the empirical standard deviation of a person's `slope_i` across resamples
+as `slope_se`. This is a standard, well-established technique for exactly
+this situation (no analytical per-subject variance available from the
+fitting package — Van der Leeden, Meijer & Busing 2008; Goldstein 2011,
+on bootstrapping multilevel models) and does not require guessing a
+number: it is a real, cited, defensible method. It is flagged rather than
+treated as settled because (a) it is still a *methodology choice* among
+more than one legitimate option (an alternative would be a parametric/
+delta-method approximation combining `vcov(model)` with an approximation
+of the random-effect posterior variance; that is not implemented here),
+(b) the number of bootstrap replicates trades off directly against
+compute cost and precision of the SE estimate, and (c) it has not been
+run against the real dataset in an environment where R is actually
+available (this codebase's own sandbox does not have R installed —
+`r_bridge.r_bridge_available()` is `False` here — so this function's real
+behaviour has only been exercised via dependency-injected fake fits in
+`tests/statistics/test_evidence.py`, not against a genuine R `nlme::lme`
+refit). Moe Tanaka owns this model and offered to complete this specific
+port; treat this as "implemented using a cluster bootstrap, needs her
+sign-off," not as a closed item.
 """
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 
 import numpy as np
 import pandas as pd
+from scipy import stats as scipy_stats
 from statsmodels.stats.multitest import multipletests
 
 from backend.statistics.mixed_effects_model import Ar1EffectResult, classify_evidence_strength
@@ -131,6 +154,148 @@ def extract_person_slopes(
                 n_occasions=int(n_occasions_by_uid.get(uid, 0)),
                 slope_se=None,  # see module docstring's flagged SE gap
                 slope_p=None,
+            )
+        )
+    return person_slopes
+
+
+def _default_ar1_fit_fn(
+    frame: pd.DataFrame,
+    outcome_col: str,
+    uid_col: str,
+    extra_fixed_effects: list[str] | None,
+) -> Ar1EffectResult:
+    """The real fitting call `bootstrap_person_slopes` uses by default —
+    forces the R engine (`prefer_r=True` is `fit_ar1_effect`'s default,
+    made explicit here) because bootstrap SEs are only meaningful built on
+    the same real per-person BLUPs `extract_person_slopes` requires."""
+    from backend.statistics.mixed_effects_model import fit_ar1_effect
+
+    return fit_ar1_effect(
+        frame, outcome_col=outcome_col, uid_col=uid_col, extra_fixed_effects=extra_fixed_effects, prefer_r=True
+    )
+
+
+def bootstrap_person_slopes(
+    model_frame: pd.DataFrame,
+    outcome_col: str = "phq4_score",
+    uid_col: str = "uid",
+    x_within_term: str = X_WITHIN_TERM,
+    extra_fixed_effects: list[str] | None = None,
+    n_bootstrap: int = 200,
+    seed: int = 0,
+    fit_fn: Callable[[pd.DataFrame, str, str, list[str] | None], Ar1EffectResult] | None = None,
+) -> list[PersonSlope]:
+    """**Candidate fix for the SE gap above — FLAGGED FOR MOE TANAKA'S
+    SIGN-OFF, not a finalised statistical decision** (see module
+    docstring). Estimates each person's `slope_se` via a cluster (case)
+    bootstrap over participants, then derives a two-sided normal-
+    approximation `slope_p` from `slope_i / slope_se` — the same
+    Var(slope_i)-based approach Moe's original
+    `analysis/archive/evidence_model.py` used, just with the variance
+    itself now coming from a bootstrap instead of an approximation this
+    codebase cannot compute analytically for the R `nlme` engine.
+
+    Procedure, one bootstrap replicate at a time:
+      1. Resample participant `uid`s **with replacement**, same count as
+         the original cohort (a case/cluster bootstrap: the unit of
+         resampling is the *person*, not the occasion — resampling
+         occasions directly would break each person's own within-person
+         structure, which is the entire estimand here).
+      2. Re-label a participant sampled more than once with a distinct
+         suffix (e.g. `"u007__1"`) so the refit treats each copy as its
+         own group — reusing the same `uid_col` value for both would
+         silently collapse two independent bootstrap draws into one
+         random-effect group.
+      3. Refit via `fit_fn` (default: `fit_ar1_effect(..., prefer_r=True)`
+         — requires the real R engine; raises if BLUPs aren't available,
+         same fail-safe posture as `extract_person_slopes`).
+      4. Map each relabelled group's `slope_i = beta + BLUP_i` back to its
+         real `uid` and accumulate it across replicates.
+
+    After all replicates, `slope_se` for a person is the sample standard
+    deviation (`ddof=1`) of their accumulated bootstrap `slope_i` values.
+    A person who was never drawn in any replicate (possible, though
+    unlikely at `n_bootstrap=200` for a ~200-participant cohort) gets
+    `slope_se=None` — reported honestly as "still insufficient," not
+    silently defaulted to 0 or dropped.
+
+    `n_bootstrap` (default 200): a real, disclosed tradeoff, not a hidden
+    constant — more replicates narrow the bootstrap's own Monte Carlo
+    error on the SE estimate, at directly proportional compute cost (each
+    replicate is a full R `nlme::lme` AR(1) refit on ~28k occasions,
+    which is not cheap; a smaller `n_bootstrap` is defensible for a quick
+    check, a larger one for a number that will actually be reported).
+
+    The returned `slope_i` point estimate is always the ORIGINAL fit's
+    value (from `extract_person_slopes` on the non-bootstrapped
+    `model_frame`), never the bootstrap mean — the bootstrap contributes
+    only the standard error, not a re-estimated point.
+    """
+    from backend.statistics.mixed_effects_model import fit_ar1_effect
+
+    fit_fn = fit_fn or _default_ar1_fit_fn
+    rng = np.random.default_rng(seed)
+
+    original_ar1 = fit_ar1_effect(model_frame, outcome_col=outcome_col, uid_col=uid_col, prefer_r=True)
+    original_slopes = {
+        p.uid: p for p in extract_person_slopes(original_ar1, model_frame, uid_col=uid_col, x_within_term=x_within_term)
+    }
+
+    uids = model_frame[uid_col].unique()
+    bootstrap_slopes: dict[str, list[float]] = {uid: [] for uid in uids}
+
+    for _ in range(n_bootstrap):
+        sampled_uids = rng.choice(uids, size=len(uids), replace=True)
+
+        parts = []
+        relabel_to_original: dict[str, str] = {}
+        draw_counts: dict[str, int] = {}
+        for original_uid in sampled_uids:
+            draw_counts[original_uid] = draw_counts.get(original_uid, 0) + 1
+            relabelled_uid = f"{original_uid}__{draw_counts[original_uid]}"
+            relabel_to_original[relabelled_uid] = original_uid
+
+            person_rows = model_frame.loc[model_frame[uid_col] == original_uid].copy()
+            person_rows[uid_col] = relabelled_uid
+            parts.append(person_rows)
+
+        bootstrap_frame = pd.concat(parts, ignore_index=True)
+
+        boot_ar1 = fit_fn(bootstrap_frame, outcome_col, uid_col, extra_fixed_effects)
+        if boot_ar1.blups is None:
+            raise ValueError(
+                "bootstrap_person_slopes requires per-person BLUPs on every "
+                f"replicate, got engine={boot_ar1.engine!r} on one replicate — "
+                "the R engine must be usable for the entire bootstrap run, "
+                "not just the original fit."
+            )
+
+        beta_boot = boot_ar1.params[x_within_term]
+        for relabelled_uid, effects in boot_ar1.blups.items():
+            original_uid = relabel_to_original.get(relabelled_uid)
+            if original_uid is None:
+                continue  # shouldn't happen; defensive, not silently wrong
+            u_i = effects.get(x_within_term, 0.0)
+            bootstrap_slopes[original_uid].append(beta_boot + u_i)
+
+    person_slopes = []
+    for uid, original in original_slopes.items():
+        draws = bootstrap_slopes.get(uid, [])
+        if len(draws) >= 2:
+            se = float(np.std(draws, ddof=1))
+            z = original.slope_i / se if se > 0 else np.nan
+            p = float(2 * scipy_stats.norm.sf(abs(z))) if np.isfinite(z) else None
+        else:
+            se = None
+            p = None
+        person_slopes.append(
+            PersonSlope(
+                uid=uid,
+                slope_i=original.slope_i,
+                n_occasions=original.n_occasions,
+                slope_se=se,
+                slope_p=p,
             )
         )
     return person_slopes
