@@ -23,7 +23,7 @@ than rounding it up:
 | Component | Status |
 |---|---|
 | GPS distance feature (`gps_distance`) | **Real, end-to-end.** Cleaning (`backend/data_pipeline/cleaning.py`), trailing-window predictor and model fit (`backend/statistics/mixed_effects_model.py`), tested against the real CES dataset. |
-| Phone-unlock feature (`unlock_count`) | **Not implemented.** It exists only as a *named example* in `backend/contracts/evidence.py`'s docstring and in SLM prompt templates (`backend/slm/prompts/evidence_explainer.yaml`) — there is no `backend/data_pipeline/` cleaning module or `backend/statistics/` model wiring for it anywhere in the repository. The "2-feature Tier 1 set" the plan describes is, in working code, a 1-feature set with a second feature's *name* wired into the contract and prompt layer ahead of the data actually existing. |
+| Phone-unlock feature (`unlock_num_ep_0`) | **Updated 2026-09-12 — now real, end-to-end.** As of this date, `backend/data_pipeline/cleaning.py::clean_unlock_frequency` + `backend/data_pipeline/unlock_frequency_feature.py` clean it, and `backend/statistics/mixed_effects_model.py` fits it via the same `build_model_frame`/`fit_mixed_effects_model`/`fit_ar1_effect` path GPS uses (`backend/statistics/run_tier1_evidence.py` runs both together against the real dataset). **This closes the gap this document previously described** ("not implemented... only a named example"), which is now stale as of that fix — see the commit "Wire unlock_frequency into backend statistics, same as GPS distance." **Still flagged for Moe Tanaka's sign-off**, unlike GPS: unlock's cleaning thresholds (no quality gate available; `log(mean + 1)` transform) are a methodology port from the one prior standalone implementation, not a spec Week 4/5 ever locked concrete numbers for — see `clean_unlock_frequency`'s docstring. Per-person evidence classification (Section 7) for either feature still requires the R engine, which this sandbox does not have installed, so it has only been exercised via a dependency-injected fake in tests — see `backend/statistics/evidence.py::bootstrap_person_slopes`'s docstring. |
 | Cold-start / three-state eligibility | **Real.** `backend/statistics/eligibility.py` implements State A/B/C per the locked Week 4 spec, wired to the evidence contract's `EligibilityStatus` enum. |
 | Both fallback UI states | **Real.** `frontend/src/features/chat/` has distinct components for cold-start, insufficient-data, refusal, and generic/crisis fallback (built across Sheng Wang's Week 5 and Week 6 PRs). |
 | Off-topic / out-of-scope request routing | **Real**, added Week 6: `backend/statistics` — actually `backend/slm/request_policy.py` — gained a real `RequestCategory.OFF_TOPIC` classifier (Richard Zhao, PR #15, merged 2026-09-12), not just a prompt-text change. |
@@ -71,21 +71,26 @@ commit messages) — not an aspirational version.
 ## 3. What "frozen" should mean going forward
 
 Per Weekly_Plan.md, Week 6 was meant to be a hard freeze: "Anything beyond
-[the signed-off feature list] is Tier 2/stretch." Given the unlock_count gap
-above, a literal reading of "frozen Tier 1 architecture" as two working
-features is not yet accurate. Two honest options, for the team (not this
-document) to decide:
+[the signed-off feature list] is Tier 2/stretch." This section originally
+presented the team with a choice between freezing at one feature or
+extending the freeze until `unlock_num_ep_0` was really wired in — as of
+2026-09-12 that wiring exists (see the table above), so the "freeze at one
+feature" option is moot. What is still genuinely open, and still not this
+document's call to make:
 
-1. **Freeze at one feature.** Treat `gps_distance` as the sole Tier 1
-   feature actually delivered, and move `unlock_count` explicitly to Tier 2 /
-   a documented stretch goal — updating `build-reference.md`'s "hard cap:
-   maximum 2 cross-platform features" language and the evaluation criteria
-   that assume two features accordingly.
-2. **Extend the freeze.** Treat the freeze as not yet actually reached, and
-   assign someone to build `unlock_count`'s cleaning + statistics wiring
-   before calling Tier 1 frozen.
+1. **Statistical sign-off.** Unlike GPS, unlock's cleaning thresholds were
+   never locked in the Week 4/5 deliverables — the implementation ported
+   the one prior standalone version rather than inventing numbers, but
+   Moe Tanaka still needs to confirm or override the specific choices
+   (no quality gate available; the `log(mean + 1)` transform offset).
+2. **Per-person evidence for either feature** still degrades safely to
+   "insufficient" for everyone in an environment without R installed —
+   this sandbox included — regardless of which Tier-1 feature is in
+   question; that isn't specific to unlock.
 
-This document does not make that call — it surfaces the gap so the team can.
+Given both of the above, "frozen" should currently be read as "both
+Tier-1 features are really wired into the same pipeline," not yet as
+"both are statistically finalised and ready to report."
 
 ## 4. Per-role documentation this doc does NOT replace
 
