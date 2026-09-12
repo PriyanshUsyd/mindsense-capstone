@@ -47,10 +47,10 @@ const quickQuestions = [
     title: 'Ask about my recent movement',
   },
   {
-    accent: 'unlock',
-    description: 'Explore the other locked Tier 1 feature',
-    question: 'How did my phone unlock activity compare with my baseline?',
-    title: 'Explore my unlock pattern',
+    accent: 'baseline',
+    description: 'Understand the comparison with my own history',
+    question: 'What is my personal movement baseline?',
+    title: 'Explain my baseline',
   },
   {
     accent: 'evidence',

@@ -1,4 +1,4 @@
-# UI — Chat States Design and Week 5 Prototype
+# UI — Chat States Design and Week 6 Normal Conversation
 
 **Filled in by Priyansh Khandelwal (Integration/QA) — Sheng Wang did not
 deliver this, per Weekly_Plan.md Week 4: "Design (not build yet) the 7
@@ -6,12 +6,11 @@ required chat states ... Set up the Vite + React + TypeScript scaffold."**
 No commit from Sheng Wang exists anywhere in this repository as of
 2026-09-05.
 
-**Status update (2026-09-06): implementation candidate in the
-`sheng-week5-ui` working branch.** The earlier planning document and scaffold
-remain attributable to Priyansh in git history. The frontend now implements
-the seven visible interaction states and wires the Week 5 normal flow to the
-local `/respond` endpoint. Review, commit authorship, and PR submission remain
-with Sheng Wang.
+**Status update (2026-09-07):** the Week 5 interface was merged in PR #10. The
+Week 6 implementation turns the normal path into a continuing conversation and
+adds an explicit FastAPI startup path for Richard's local Ollama service. The
+earlier planning document and scaffold remain attributable to Priyansh in git
+history.
 
 Per `skills/frontend-react.md`, each state is its own component, sharing a
 common visual language, and must be **visually distinct enough that a user
@@ -71,3 +70,10 @@ state (matching `FeatureWindow.coverage_ratio` from the evidence contract).
 - Every backend `response_mode` selects the corresponding distinct component.
 - A local API error becomes generic fallback with technical context and retry.
 - The layout remains usable at phone and desktop widths without remote assets.
+- A second normal question appends a new turn without removing the first
+  question or validated response.
+- Enter submits, Shift+Enter creates a new line, and duplicate submissions are
+  blocked while a response is pending.
+- The header shows the returned local `model_tag` when generation succeeds.
+- `MINDSENSE_SLM_RUNTIME=ollama` routes `/respond` through Richard's pinned
+  Ollama client; the default remains deterministic for tests.

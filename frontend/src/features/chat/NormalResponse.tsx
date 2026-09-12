@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import { respond, type EvidencePacket, type SafeSLMResponse } from '../../api/client'
 import { AppShell } from '../../components/AppShell'
@@ -14,22 +14,22 @@ import {
   type EvidenceSummaryView,
 } from './ChatStates'
 
-// Synthetic fixture matching the frozen Week 5 EvidencePacket contract.
-// It exercises the same /respond route as participant data without exposing
-// personal information in the frontend demo.
+// Synthetic fixture matching the frozen EvidencePacket contract. The browser
+// sends this minimum evidence object to FastAPI; only the backend may call the
+// local Ollama model.
 const EXAMPLE_ELIGIBLE_GPS_PACKET = {
   identity: {
     contract_version: '1.0.0',
-    packet_id: 'synthetic_week5_gps_001',
+    packet_id: 'synthetic_week6_gps_001',
     model_spec_id: 'synthetic-shadow-v1',
-    generated_at: '2026-09-01T12:00:00Z',
+    generated_at: '2026-09-07T12:00:00Z',
     participant_ref: 'synthetic-only',
   },
   feature_window: {
     feature_id: 'gps_distance',
     unit: 'kilometres_per_day',
-    window_start: '2026-08-01',
-    window_end: '2026-08-28',
+    window_start: '2026-08-10',
+    window_end: '2026-09-06',
     value: 3.8,
     observed_days: 25,
     expected_days: 28,
@@ -98,11 +98,16 @@ const EVIDENCE_SUMMARY: EvidenceSummaryView = {
   uncertainty: EXAMPLE_ELIGIBLE_GPS_PACKET.uncertainty.packet_level,
 }
 
-type LoadState =
-  | { status: 'idle' }
-  | { status: 'loading'; question: string }
-  | { status: 'error'; message: string; question: string }
-  | { status: 'success'; question: string; response: SafeSLMResponse }
+interface ConversationTurn {
+  id: number
+  question: string
+  response: SafeSLMResponse
+}
+
+interface RequestFailure {
+  message: string
+  question: string
+}
 
 const responseLabels: Record<SafeSLMResponse['response_mode'], string> = {
   crisis_aware_fallback: 'Safety support',
@@ -115,48 +120,54 @@ const responseLabels: Record<SafeSLMResponse['response_mode'], string> = {
 
 export function NormalResponse() {
   const [draft, setDraft] = useState(DEFAULT_QUESTION)
-  const [state, setState] = useState<LoadState>({ status: 'idle' })
+  const [turns, setTurns] = useState<ConversationTurn[]>([])
+  const [pendingQuestion, setPendingQuestion] = useState<string | null>(null)
+  const [requestFailure, setRequestFailure] = useState<RequestFailure | null>(null)
+  const requestInFlight = useRef(false)
+  const nextTurnId = useRef(1)
+  const conversationEnd = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    conversationEnd.current?.scrollIntoView?.({ behavior: 'smooth', block: 'end' })
+  }, [pendingQuestion, requestFailure, turns])
 
   async function handleAsk(rawQuestion = draft) {
     const question = rawQuestion.trim()
-    if (!question || state.status === 'loading') return
+    if (!question || requestInFlight.current) return
 
+    requestInFlight.current = true
     setDraft(question)
-    setState({ status: 'loading', question })
+    setRequestFailure(null)
+    setPendingQuestion(question)
 
     try {
       const response = await respond(EXAMPLE_ELIGIBLE_GPS_PACKET, question)
-      setState({ status: 'success', question, response })
+      const turn = { id: nextTurnId.current, question, response }
+      nextTurnId.current += 1
+      setTurns((currentTurns) => [...currentTurns, turn])
+      setDraft('')
     } catch (error) {
-      setState({
-        status: 'error',
+      setRequestFailure({
         message: error instanceof Error ? error.message : 'unknown error',
         question,
       })
+    } finally {
+      requestInFlight.current = false
+      setPendingQuestion(null)
     }
   }
 
-  function renderConversation() {
-    if (state.status === 'idle') {
-      return <WelcomeState disabled={false} onAsk={handleAsk} />
-    }
+  function handleNewConversation() {
+    if (requestInFlight.current) return
+    setTurns([])
+    setRequestFailure(null)
+    setPendingQuestion(null)
+    setDraft(DEFAULT_QUESTION)
+    nextTurnId.current = 1
+  }
 
-    if (state.status === 'loading') {
-      return <LoadingState question={state.question} />
-    }
-
-    if (state.status === 'error') {
-      return (
-        <GenericFallbackState
-          message="MindSense could not reach the local response service. Your data was not sent to an external service."
-          onRetry={() => handleAsk(state.question)}
-          question={state.question}
-          technicalDetail={state.message}
-        />
-      )
-    }
-
-    const { question, response } = state
+  function renderTurn(turn: ConversationTurn) {
+    const { question, response } = turn
     switch (response.response_mode) {
       case 'normal':
         return (
@@ -181,27 +192,57 @@ export function NormalResponse() {
     }
   }
 
-  const status =
-    state.status === 'loading'
-      ? { label: 'Reviewing evidence', tone: 'working' as const }
-      : state.status === 'success'
+  const latestResponse = turns.at(-1)?.response
+  const latestModelTag = turns.findLast((turn) => turn.response.model_tag)?.response.model_tag
+  const status = pendingQuestion
+    ? { label: 'Reviewing evidence', tone: 'working' as const }
+    : requestFailure
+      ? { label: 'Local service unavailable', tone: 'caution' as const }
+      : latestResponse
         ? {
-            label: responseLabels[state.response.response_mode],
+            label: responseLabels[latestResponse.response_mode],
             tone:
-              state.response.response_mode === 'normal'
+              latestResponse.response_mode === 'normal'
                 ? ('normal' as const)
-                : state.response.response_mode === 'crisis_aware_fallback' ||
-                    state.response.response_mode === 'refusal'
+                : latestResponse.response_mode === 'crisis_aware_fallback' ||
+                    latestResponse.response_mode === 'refusal'
                   ? ('boundary' as const)
                   : ('caution' as const),
           }
-        : state.status === 'error'
-          ? { label: 'Local service unavailable', tone: 'caution' as const }
-          : { label: 'Ready', tone: 'ready' as const }
+        : { label: 'Ready', tone: 'ready' as const }
+
+  const showWelcome = turns.length === 0 && !pendingQuestion && !requestFailure
 
   return (
-    <AppShell statusLabel={status.label} statusTone={status.tone}>
-      <div className="conversation-scroll">{renderConversation()}</div>
+    <AppShell
+      modelLabel={latestModelTag ? `Local model · ${latestModelTag}` : undefined}
+      onNewConversation={
+        turns.length > 0 && !pendingQuestion ? handleNewConversation : undefined
+      }
+      statusLabel={status.label}
+      statusTone={status.tone}
+    >
+      <div className="conversation-scroll">
+        {showWelcome && <WelcomeState disabled={false} onAsk={handleAsk} />}
+
+        {turns.map((turn) => (
+          <div className="conversation-turn" key={turn.id}>
+            {renderTurn(turn)}
+          </div>
+        ))}
+
+        {pendingQuestion && <LoadingState question={pendingQuestion} />}
+
+        {requestFailure && (
+          <GenericFallbackState
+            message="MindSense could not reach the local response service. Your data was not sent to an external service."
+            onRetry={() => handleAsk(requestFailure.question)}
+            question={requestFailure.question}
+            technicalDetail={requestFailure.message}
+          />
+        )}
+        <div ref={conversationEnd} />
+      </div>
 
       <form
         className="composer"
@@ -214,24 +255,31 @@ export function NormalResponse() {
           Ask MindSense about your behavioural data
         </label>
         <textarea
-          disabled={state.status === 'loading'}
+          disabled={pendingQuestion !== null}
           id="chat-question"
+          maxLength={2000}
           onChange={(event) => setDraft(event.target.value)}
-          placeholder="Ask about your recent patterns…"
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
+              event.preventDefault()
+              event.currentTarget.form?.requestSubmit()
+            }
+          }}
+          placeholder="Ask another question about your recent patterns…"
           rows={1}
           value={draft}
         />
         <button
           className="send-button"
-          disabled={state.status === 'loading' || draft.trim().length === 0}
+          disabled={pendingQuestion !== null || draft.trim().length === 0}
           type="submit"
         >
-          <span>{state.status === 'loading' ? 'Asking…' : 'Ask MindSense'}</span>
+          <span>{pendingQuestion ? 'Asking…' : 'Ask MindSense'}</span>
           <span aria-hidden="true">↑</span>
         </button>
         <p>
-          <span aria-hidden="true">⌁</span> Processed locally · MindSense explains patterns,
-          not diagnoses
+          <span aria-hidden="true">⌁</span> Enter to send · Shift+Enter for a new line ·
+          Processed locally
         </p>
       </form>
     </AppShell>

@@ -6,6 +6,8 @@ type StatusTone = 'ready' | 'working' | 'normal' | 'caution' | 'boundary'
 
 interface AppShellProps {
   children: ReactNode
+  modelLabel?: string
+  onNewConversation?: () => void
   statusLabel: string
   statusTone: StatusTone
 }
@@ -17,7 +19,13 @@ const navigation = [
   { symbol: '✓', label: 'Privacy' },
 ]
 
-export function AppShell({ children, statusLabel, statusTone }: AppShellProps) {
+export function AppShell({
+  children,
+  modelLabel = 'Local SLM · on device',
+  onNewConversation,
+  statusLabel,
+  statusTone,
+}: AppShellProps) {
   return (
     <div className="app-shell">
       <aside className="sidebar" aria-label="Primary navigation">
@@ -67,7 +75,12 @@ export function AppShell({ children, statusLabel, statusTone }: AppShellProps) {
             <span>Understand your own behavioural patterns</span>
           </div>
           <div className="header-badges">
-            <span className="local-badge">Local SLM · on device</span>
+            {onNewConversation && (
+              <button className="new-conversation-button" onClick={onNewConversation} type="button">
+                New conversation
+              </button>
+            )}
+            <span className="local-badge">{modelLabel}</span>
             <span className="state-badge" data-tone={statusTone}>
               {statusLabel}
             </span>
