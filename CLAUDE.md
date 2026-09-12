@@ -17,7 +17,25 @@ If reflecting the change is difficult, append it to the "Unreflected changes" se
 (Append here any item where code was changed but the documentation could not be updated.
 Remove the line once it has been reflected. Record the date, the affected file, and the change made.)
 
-None currently.
+- **2026-09-12** — `analysis/baseline.py`, `analysis/cleaning.py`,
+  `analysis/evidence_model.py` moved to `analysis/archive/` (retired, not
+  deleted — see `analysis/archive/README.md`) and their logic ported/
+  reconciled into `backend/statistics/` (transform order fixed to
+  `log(mean)`, trailing window fixed to end the day before assessment,
+  quality gate fixed to 12h in `backend/statistics/mixed_effects_model.py`
+  and `backend/data_pipeline/cleaning.py`; per-person evidence-strength +
+  BH-FDR/Holm family-213 correction + binary collapse ported into new
+  `backend/statistics/evidence.py`, wired to `fit_ar1_effect`'s R-backed
+  BLUPs). **Could not update `analysis/preregistration.md`** — that file
+  does not exist anywhere in this repository (checked: not on `main`, not
+  on any branch); someone owning this doc needs to create it first, or
+  confirm the Group Proposal / Week 5 deliverable is meant to serve as its
+  replacement. **`Week5_Statistical_Analysis_Deliverable.md` not yet
+  updated either** — pending Moe Tanaka's review of
+  `backend/statistics/evidence.py` (she offered to do this specific port
+  herself; one flagged gap remains — see that module's docstring on
+  per-person standard errors — before its numbers should be written up as
+  final).
 
 ## Finalised decisions (changes require Statistical Analysis Lead approval)
 

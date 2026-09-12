@@ -16,24 +16,23 @@ Locked `loc_dist_ep_0` thresholds (spec's table, verbatim):
 
 | Step               | Rule                                              |
 |---------------------|----------------------------------------------------|
-| Quality gate        | `quality_loc >= 8` h required, else NA             |
+| Quality gate        | `quality_loc >= 12` h required, else NA            |
 | Implausibility      | daily distance `> 500,000 m` (500 km) -> NA        |
 | Winsorisation       | per-person [1st, 99th] percentile                  |
 | Transform           | `log(loc_dist_ep_0 + 1000)` (log1p, 1 km offset)   |
-| Zeros               | kept if `quality_loc >= 8` h (genuine stay-home)   |
+| Zeros               | kept if `quality_loc >= 12` h (genuine stay-home)  |
 
-AMBIGUOUS / DELIBERATELY NOT GUESSED — flagged rather than invented:
-
-- Spec step 1's general note says: "Pending: Data Pipeline Lead to report
-  the day-count cost of an 8h vs 12h threshold; we take the stricter
-  option if the cost is small." No such day-count-cost report exists
-  anywhere in this repo yet (checked docs/data-pipeline/ and
-  weekly_update/ — nothing). This module therefore uses the **8h**
-  threshold, because that is the number explicitly locked in the
-  `loc_dist_ep_0`-specific table (not the ambiguous general-pipeline
-  note), but the 8h-vs-12h decision itself is NOT re-derived here — that
-  diagnostic is still owed to the team per the spec's own "Diagnostics
-  required from the Data Pipeline Lead" list (§1.4).
+**Fixed 2026-09-12 — the 8h-vs-12h question this module used to flag as
+open is now closed.** The pending day-count-cost report the general spec
+note asked for came back at **1.63% of valid days** (see
+`analysis/cleaning.py` and `CLAUDE.md`'s "Finalised decisions"), which the
+Statistical Analysis Lead judged small enough to take the stricter option,
+per the spec's own tie-breaking rule ("we take the stricter option if the
+cost is small"). This module previously used 8h because the day-count-cost
+report didn't exist *in this module's own tree* yet — `analysis/cleaning.py`
+had already finalised 12h independently, and this module had drifted from
+it. `QUALITY_LOC_MIN_HOURS` below is now 12, matching that decision; the
+two modules should not diverge on this constant again.
 - Spec step 3's *general* pipeline offers an alternative winsorisation
   rule ("median +/- 5*MAD, whichever is more stable in the run") for
   cases where percentile winsorisation is unstable. For `loc_dist_ep_0`
@@ -54,7 +53,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-QUALITY_LOC_MIN_HOURS = 8  # locked in the loc_dist_ep_0 table; see module docstring re: 8h vs 12h
+QUALITY_LOC_MIN_HOURS = 12  # Finalised 2026-09-12 (was 8h); see module docstring — cost is 1.63% of valid days
 GPS_IMPLAUSIBILITY_THRESHOLD_M = 500_000  # 500 km/day -> NA, per spec (not capped)
 GPS_WINSORIZE_LOWER_QUANTILE = 0.01
 GPS_WINSORIZE_UPPER_QUANTILE = 0.99
