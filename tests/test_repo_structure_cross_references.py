@@ -97,16 +97,20 @@ def test_chonghao_real_evaluation_plan_is_referenced_from_the_flagged_conflict_n
     assert "evaluation_plan_v0.1.md" in threshold_text
 
 
-def test_archived_taxonomy_draft_exists_and_evaluation_plan_points_to_it():
-    """2026-08-29: adversarial-taxonomy.md was archived once Chonghao's real
-    5-category taxonomy became the working version. Confirms the archive
-    exists and his real file references it (not a silently vanished file)."""
+def test_response_quality_and_adversarial_safety_frameworks_are_separate():
+    """The active safety groups complement, rather than replace, Chonghao's
+    five-category response-quality framework; the AI draft remains archived."""
     archived_path = REPO_ROOT / "docs/evaluation/archive/adversarial-taxonomy-ai-draft-SUPERSEDED.md"
+    active_path = REPO_ROOT / "docs/evaluation/adversarial-taxonomy.md"
     assert archived_path.is_file()
-    assert not (REPO_ROOT / "docs/evaluation/adversarial-taxonomy.md").exists()
+    assert active_path.is_file()
 
     plan_text = _read("backend/evaluation/evaluation_plan_v0.1.md")
-    assert "adversarial-taxonomy-ai-draft-SUPERSEDED.md" in plan_text
+    assert "five categories" in plan_text
+    assert "adversarial-taxonomy.md" in plan_text
+    safety_text = _read(active_path.relative_to(REPO_ROOT).as_posix())
+    assert "not the response-quality taxonomy" in safety_text
+    assert "not the human-evaluation questionnaire dimensions" in safety_text
 
 
 def test_honghao_reconciliation_note_is_referenced_from_ces_reverification_doc():
@@ -172,20 +176,21 @@ def test_repository_structure_status_is_starting_content_not_pending_honglin():
     assert "still has no artifact authored by Honglin himself" not in text
 
 
-def test_evaluation_plan_flags_locked_default_verbatim():
-    """Exact required locked-default note text (whitespace-normalized,
-    since the banner hand-wraps across lines in the source markdown)."""
+def test_evaluation_plan_declares_the_three_framework_layers():
     text = _read_unwrapped("backend/evaluation/evaluation_plan_v0.1.md")
-    assert "Locked Week 4 default: 100% high-severity / 90% standard" in text
-    assert "Evaluation Design Lead may propose a change via normal PR review if needed, but this is not a blocker" in text
+    assert "working response-quality framework" in text
+    assert "separate adversarial safety-test groups" in text
+    assert "client's ten human-evaluation dimensions" in text
 
 
-def test_pass_threshold_doc_is_locked_not_parked():
+def test_pass_threshold_doc_records_scope_and_non_retrospective_approval():
     text = _read_unwrapped("docs/evaluation/pass-threshold.md")
-    assert "LOCKED WEEK 4 DEFAULT" in text
-    assert "Locked Week 4 default: 100% high-severity / 90% standard" in text
-    assert "PARKED" not in text
-    assert "unresolved conflict" not in text.lower()
+    assert "Approved for future evaluation from 13 September 2026" in text
+    assert "Critical safety cases | **100% pass.**" in text
+    assert "Standard response-quality cases | **At least 90% pass**" in text
+    assert "Off-topic cases | **At least 90% pass**" in text
+    assert "not a retrospective claim" in text
+    assert "Status: Approved for future evaluation" in text
 
 
 def test_week4_milestone_status_has_a_row_for_every_role_with_an_honest_status():
