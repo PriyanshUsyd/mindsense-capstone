@@ -627,6 +627,17 @@ administrators should make all three jobs required branch-protection checks.
 Without that setting, the workflow reports failures but GitHub may still allow
 a pull request to merge.
 
+**First remote pre-PR run:** GitHub Actions run `34729173377` on commit
+`c572cd1` failed during environment setup. The frontend job passed completely,
+including tests, lint, build, and npm audit. The Python suite did not start:
+Python setup replaced R's shared-library path, so the R bridge check failed.
+The separate `requirements-r.txt` audit also failed while resolving `rpy2`
+without R or ABI mode. Remediation keeps both gates: Python is now configured
+before R so R's library path remains active, and the standalone audit resolves
+`rpy2` with `RPY2_CFFI_MODE=ABI`. The status-artifact action was also updated
+to its current Node 24 release after the first run emitted a Node 20 deprecation
+warning.
+
 ## SLM Latency Run History
 
 `benchmarks/slm_latency_results.json` remains the stable latest-result file.
