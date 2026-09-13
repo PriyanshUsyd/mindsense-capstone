@@ -626,6 +626,30 @@ administrators should make all three jobs required branch-protection checks.
 Without that setting, the workflow reports failures but GitHub may still allow
 a pull request to merge.
 
+## SLM Latency Run History
+
+`benchmarks/slm_latency_results.json` remains the stable latest-result file.
+Every available earlier run is preserved under
+`benchmarks/history/slm_latency/`; future executions create a timestamped copy
+automatically.
+
+| Local time | Run | Status | Minimum | Mean | Median | Sample p95 | Maximum | Historical evidence |
+|---|---|---|---:|---:|---:|---:|---:|---|
+| 27 Aug 2026 19:13:40 AEST | Initial `llama3.2:3b` attempt | Blocked: Ollama unavailable | - | - | - | - | - | `2026-08-27T191340+1000_blocked-llama3-2.json` |
+| 27 Aug 2026 19:42:25 AEST | Confirmed Phi-4 Mini attempt | Blocked: Ollama unavailable | - | - | - | - | - | `2026-08-27T194225+1000_blocked-phi4-mini-3-8b.json` |
+| 29 Aug 2026 13:01:13 AEST | Week 4 baseline | Passed 5/5 | 911.82 ms | 2220.03 ms | 2344.50 ms | 3282.67 ms | 3463.26 ms | `2026-08-29T130113+1000_week4.json` |
+| 5 Sep 2026 12:56:40 AEST | Week 5 confirmation | Passed 5/5 | 1261.09 ms | 2568.90 ms | 2988.77 ms | 3878.20 ms | 4061.79 ms | `2026-09-05T125640+1000_week5.json` |
+| 12 Sep 2026, exact time unavailable | Week 6 initial | Passed 5/5 | 743.83 ms | 1919.76 ms | 1988.51 ms | 3031.99 ms | 3268.65 ms | `2026-09-12_week6-initial-summary-only.json` |
+| 12 Sep 2026 21:17:08 AEST | Week 6 post-merge | Passed 5/5 | 927.70 ms | 2224.58 ms | 2395.99 ms | 3802.87 ms | 4084.96 ms | `2026-09-12T211708+1000_week6-post-merge.json` |
+
+The Week 6 initial raw result was overwritten before commit. Its history entry
+contains only the verified metrics previously recorded here and explicitly
+marks unavailable prompt-level evidence. Two versions of the Prompt 0.4.8
+grounding result and scorecard are also preserved under
+`benchmarks/history/slm_grounding_prompt048/`: the 4 September pre-joint-review
+run and the 6 September consensus update. No other machine-readable benchmark
+result had been overwritten in Git history as of 13 September 2026.
+
 ## Meaning of the Combined Results
 
 ### Week 4
@@ -708,6 +732,9 @@ Latency benchmark, with local Ollama already serving the pinned model:
   --out benchmarks/slm_latency_results.json
 ```
 
+The command updates the stable latest-result file and automatically creates a
+new timestamped file under `benchmarks/history/slm_latency/`.
+
 ## Weekly Update Rule
 
 At the end of each week, append one dated record containing:
@@ -738,6 +765,9 @@ this register even when machine-readable result files are updated.
 - `frontend/src/api/client.test.ts`
 - `benchmarks/slm_latency_benchmark.py`
 - `benchmarks/slm_latency_results.json`
+- `benchmarks/history/README.md`
+- `benchmarks/history/slm_latency/`
+- `benchmarks/history/slm_grounding_prompt048/`
 - `benchmarks/slm_prohibited_request_baseline_results.json`
 - `benchmarks/slm_shadow_smoke_results.json`
 - `benchmarks/slm_evaluation_alignment_results.json`
