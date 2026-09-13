@@ -20,7 +20,4 @@ analysis/output/**/occasion_gate_keys.csv
 analysis/output/reconciliation/mine_keys_*.csv
 
 # Dataset (not distributed with the repo)
-Sensing/
-EMA/
-Demographics/
-Raw Sensing/
+dataset/
