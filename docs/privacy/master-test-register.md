@@ -627,24 +627,9 @@ administrators should make all three jobs required branch-protection checks.
 Without that setting, the workflow reports failures but GitHub may still allow
 a pull request to merge.
 
-**First remote pre-PR run:** GitHub Actions run `34729173377` on commit
-`c572cd1` failed during environment setup. The frontend job passed completely,
-including tests, lint, build, and npm audit. The Python suite did not start:
-Python setup replaced R's shared-library path, so the R bridge check failed.
-The separate `requirements-r.txt` audit also failed while resolving `rpy2`
-without R or ABI mode. Remediation keeps both gates: Python is now configured
-before R so R's library path remains active, and the standalone audit resolves
-`rpy2` with `RPY2_CFFI_MODE=ABI`. The status-artifact action was also updated
-to its current Node 24 release after the first run emitted a Node 20 deprecation
-warning.
-
-**Second remote pre-PR run:** GitHub Actions run `34729354173` on commit
-`3cb25bb` confirmed that the frontend and both Python dependency audits pass.
-R 4.6.1 and the approved R packages also installed successfully, but `rpy2`
-could not load `libR.so` because the runner still exposed only Python's shared
-library directory. The workflow now obtains `R_HOME` from the installed R
-executable and prepends its `lib` directory to `LD_LIBRARY_PATH` before Python
-dependencies and tests run. The R gate remains mandatory.
+Working-branch GitHub run IDs and outcomes are retained only in GitHub Actions
+logs and status-only artifacts. They are not copied into this master register,
+which prevents branch-specific run history from being merged into `main`.
 
 ## SLM Latency Run History
 
