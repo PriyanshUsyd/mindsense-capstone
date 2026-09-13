@@ -18,3 +18,9 @@ analysis/output/**/cold_start_states.csv
 analysis/output/**/evidence_per_person.csv
 analysis/output/**/occasion_gate_keys.csv
 analysis/output/reconciliation/mine_keys_*.csv
+
+# Dataset (not distributed with the repo)
+Sensing/
+EMA/
+Demographics/
+Raw Sensing/
