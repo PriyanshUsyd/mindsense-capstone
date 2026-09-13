@@ -4,13 +4,16 @@
 
 This document describes the final Tier-1 digital phenotyping pipeline implemented for the College Experience Study (CES) dataset.
 
-The final Tier-1 features are:
+**The locked, signed-off Tier-1 feature set is 2 features** (`feature-list-signoff.md`,
+confirmed by Priyansh Khandelwal on 26 August 2026, per the hard cap in
+`Weekly_Plan.md` Week 4 / `freeze-decision.md`):
 
 1. GPS distance travelled (`loc_dist_ep_0`)
-2. Home duration (`loc_home_dur`)
-3. Phone unlock count (`unlock_num_ep_0`)
+2. Phone unlock count (`unlock_num_ep_0`)
 
-These features are aligned to repeated PHQ-4 assessments using a 14-day trailing comparison window.
+Both are aligned to repeated PHQ-4 assessments using a 14-day trailing comparison window.
+
+**Home duration (`loc_home_dur`) is documented separately below as an implemented-but-not-locked candidate feature** (see "Home Duration Cleaning" and "Status" sections) — `scripts/build_gps_feature.py` builds and tests it alongside the two locked features because they share the same cleaning/alignment machinery, but it was never part of the 26 August sign-off and must not be treated as final or "locked" pending a fresh team decision to add a third feature under the same standard the other two met.
 
 ---
 
@@ -53,7 +56,15 @@ The estimated association remained negative and statistically significant under 
 
 ---
 
-## Home Duration Cleaning
+## Home Duration Cleaning (candidate feature, not part of the locked Tier-1 set)
+
+**Not locked.** `feature-list-signoff.md` and `freeze-decision.md` cap the
+signed-off Tier-1 set at 2 features (GPS distance, unlock count). Home
+duration is implemented and tested in the same pipeline script because it
+shares the same cleaning/alignment code, and is kept here for reference in
+case the team later agrees a third feature meets the same cross-platform +
+completeness standard — but it has no such agreement today and must not be
+described as final, locked, or part of the production Tier-1 output.
 
 Source column:
 
@@ -144,16 +155,18 @@ The production pipeline creates:
 
 `outputs/data-pipeline/tier1_feature_windows.csv`
 
-The final output contains:
-
-- 106,044 FeatureWindow rows
-- 35,348 rows for each of the three Tier-1 features
+The script generates 35,348 FeatureWindow rows per feature it processes,
+106,044 in total across all three features it currently computes (GPS
+distance, unlock count, and the not-locked home-duration candidate above).
+**Of this, the locked Tier-1 output is 2 features / 70,696 rows** (GPS
+distance + unlock count); the home-duration rows are additional candidate
+output, not part of the signed-off set.
 
 Valid windows:
 
-- Home duration: 33,994
-- GPS distance: 28,337
-- Unlock frequency: 34,235
+- GPS distance: 28,337 (locked)
+- Unlock frequency: 34,235 (locked)
+- Home duration: 33,994 (candidate, not locked)
 
 The GPS valid-window count matches the independently validated final 500 km preprocessing pipeline.
 
@@ -188,8 +201,12 @@ Current test result:
 
 The Tier-1 feature pipeline is implemented and tested end-to-end.
 
-Locked Tier-1 features:
+**Locked Tier-1 features (2, per `feature-list-signoff.md`):**
 
 - GPS distance travelled
-- Home duration
 - Phone unlock count
+
+**Implemented but not locked (candidate only):**
+
+- Home duration — built and tested here for convenience; requires a fresh
+  team decision before it can be described as locked or final.
