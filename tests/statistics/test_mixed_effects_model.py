@@ -239,7 +239,7 @@ def test_compute_time_covariates_term_phase_flags_known_break_and_term_dates():
         {
             "uid": ["a", "a", "a"],
             # Dec 25 (winter break), Jan 20 (in-term), Jul 1 (summer break).
-            "date": pd.to_datetime(["2020-12-25", "2021-01-20", "2021-07-01"]),
+            "date": pd.to_datetime(["2020-12-25", "2021-01-20", "2021-07-01"], format="%Y-%m-%d"),
         }
     )
     out = compute_time_covariates(frame)
