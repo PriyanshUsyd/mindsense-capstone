@@ -39,13 +39,23 @@ EXPECTED_DIRS = [
     "frontend/src/components",
     "frontend/src/features/chat",
     "tests",
-    "dataset",
 ]
 
 
 def test_every_build_reference_folder_exists():
     missing = [d for d in EXPECTED_DIRS if not (REPO_ROOT / d).is_dir()]
     assert not missing, f"folders missing vs build-reference.md Section 8: {missing}"
+
+
+def test_local_dataset_is_excluded_from_version_control():
+    """The CES dataset is required for local analysis but must not be
+    required in a clean clone or uploaded to GitHub-hosted CI."""
+    entries = {
+        line.strip()
+        for line in _read(".gitignore").splitlines()
+        if line.strip() and not line.lstrip().startswith("#")
+    }
+    assert "dataset/" in entries
 
 
 def test_backend_db_py_not_yet_required_but_no_other_file_imports_sqlite3():

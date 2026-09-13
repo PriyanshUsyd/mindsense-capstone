@@ -2,7 +2,7 @@
 
 Owner: Yuktha Naveen, Privacy and Security Lead  
 Coverage: Week 4 onward  
-Last updated: 6 September 2026  
+Last updated: 8 September 2026
 Status: authoritative index of executed project checks; update this file every week
 
 ## Purpose
@@ -29,6 +29,21 @@ is not approval for clinical use or participant deployment.
 | 5 | Frontend lint and production build | Passed | The tested UI met static checks and produced a deployable local build. |
 | 5 | Dependency security and consistency | All checks passed; 0 known vulnerabilities | Declared Python, optional R bridge, installed Python, and npm dependencies had no advisories known to the scanners at test time. |
 | 5 | Phi-4 Mini latency confirmation | 5/5 requests completed; mean 2.57 s; sample p95 3.88 s | The Week 4 local model remained operational after the merged changes. |
+| 6 | Pre-gate Python baseline | 345/345 passed; 45 convergence warnings | Existing tests still passed on the Week 6 branch before adding the new privacy gate. |
+| 6 | Raw CES identifier gate | Failed: 370,120 raw-UID rows across 20 CSVs | Newly merged analysis outputs expose the original 220 CES identifiers and must not be approved for participant-data handling. |
+| 6 | Pre-gate frontend baseline | 11/11 passed; lint and build passed | The expanded UI passed its existing component and build checks. |
+| 6 | Frontend redirect privacy gate | Failed: redirect rejection is not configured | The loopback URL is fixed, but browser redirects could move a request away from the local service. |
+| 6 | Dependency security and consistency | All checks passed; 0 known vulnerabilities | No dependency manifest changes or known advisories were found at test time. |
+| 6 | Phi-4 Mini latency confirmation | 5/5 requests completed; mean 1.92 s; sample p95 3.03 s | The pinned local model remained available and was faster than the Week 5 sample on the same Mac. |
+| 6 | Post-fast-forward Python suite | 390 passed, 1 privacy failure; 45 warnings | New functionality passed, but the raw-identifier output gate still blocks privacy approval. |
+| 6 | Post-fast-forward focused suite | 56 passed, 1 privacy failure; 45 warnings | Privacy, transport, R, and statistical checks passed except the raw-identifier output gate. |
+| 6 | Post-fast-forward frontend suite | 13 passed, 1 privacy failure; lint and build passed | New UI behaviour passed, but browser redirect rejection remains absent. |
+| 6 | Post-fast-forward dependency scan | All checks passed; 0 known vulnerabilities | Python, R bridge, installed Python, and npm advisories remained clear on 12 September. |
+| 6 | Post-fast-forward latency confirmation | 5/5 requests completed; mean 2.22 s; sample p95 3.80 s | Local Phi-4 Mini remained operational after all Week 6 merges. |
+| 6 | Raw-identifier remediation | Passed; 0 sensitive CSVs tracked | Twenty participant-level CSVs remain local and are excluded from Git; aggregate outputs remain tracked. |
+| 6 | Frontend redirect remediation | Passed | The browser transport now rejects redirects while retaining the fixed loopback destination. |
+| 6 | Post-remediation Python suite | 391/391 passed; 45 warnings | Both privacy fixes integrate with the complete backend and test suite. |
+| 6 | Post-remediation frontend suite | 14/14 passed; lint and build passed | The redirect control and expanded UI work together without frontend regressions. |
 
 The Week 5 latency sample was about 15.7% slower on mean latency than Week 4.
 Five prompts are too small a sample to establish a performance regression or a
@@ -327,6 +342,323 @@ small sample.
 **Limit:** benchmark prompts are synthetic and raw benchmark output bypasses
 the product safety gate. Results vary with machine load and model warm-up.
 
+## Week 6 Initial Record - 8 September 2026
+
+### Scope and Environment
+
+**Branch and baseline:** `yuktha/privacy-week6`, created from `origin/main` at
+commit `3423e43a302287f857e91ef7b19bd50190deec60`. The working tree was clean
+before the audit. No Week 6 changes were committed or pushed during this run.
+
+**Environment:** macOS 26.6.2 on Apple arm64; Python 3.14.0; R 4.6.1 with the
+real `rpy2` ABI path active; Node 22.19.0; npm 10.9.3; Ollama 0.33.2; and local
+`phi4-mini:3.8b` model id `78fad5d182a7`.
+
+**Changes reviewed since the Week 5 baseline:** merged statistics analysis
+code and generated outputs, the expanded frontend, and SLM/evaluation evidence
+updates. `requirements.txt`, `requirements-r.txt`, `frontend/package.json`,
+and `frontend/package-lock.json` had no changes in this comparison.
+
+### Existing-Suite Baseline
+
+**Why necessary:** the Week 5 register predated later merges into `main`, so a
+fresh baseline was needed before adding new privacy checks.
+
+**Assumptions before testing:** the checked-out commit was the latest fetched
+`origin/main`; project dependencies were already installed; `pytest.ini`
+enforced loopback-only Python sockets; real R was available; frontend packages
+matched the lockfile; and test fixtures were synthetic unless a test explicitly
+used the local CES dataset.
+
+**Result:** the valid full Python run passed 345/345 tests with 45 statistical
+convergence warnings. The focused privacy, transport, R bridge, and mixed-model
+run passed 55/55 with the same 45 warnings. The existing frontend suite passed
+11/11; lint and production build passed. An initial sandboxed Python run had
+five loopback-server permission failures; rerunning with normal local loopback
+permission passed all five, confirming they were environment-only rather than
+project failures.
+
+**What it proved:** behaviour already covered by the Week 5 suites survived the
+later merges. It did not prove that newly committed analysis outputs were safe
+or that browser redirects were blocked because neither condition had an
+existing regression test.
+
+### New Raw-Identifier Output Gate
+
+**Why necessary:** the merged `analysis/output/` tree added participant-level
+CSV artefacts after the previous privacy baseline. Project policy requires an
+opaque `participant_ref` and prohibits raw CES identifiers in shared output.
+
+**Assumptions before testing:** a 32-character lowercase hexadecimal value in a
+CSV `uid` column follows the raw CES identifier format; approved pseudonyms use
+an explicitly distinguishable opaque format; and files under
+`analysis/output/` are shared because Git tracks them.
+
+**Conducted:** added
+`tests/privacy/test_analysis_output_privacy.py`, which streams every generated
+CSV with a `uid` column and rejects raw CES-format identifiers. One detected
+identifier was independently matched to the local demographics, sensing,
+unlock, and EMA source files.
+
+**Result:** failed. The gate found 370,120 raw-UID rows in 20 tracked CSV files,
+covering 220 distinct CES identifiers. Affected artefacts include
+`analysis/output/latest/cold_start_states.csv`, `evidence_per_person.csv`,
+`occasion_gate_keys.csv`, reconciliation files, and historical run outputs.
+
+**Meaning and required action:** this is a real repository privacy failure, not
+a laptop issue. Participant-level outputs must be removed from Git or regenerated
+with an approved non-linkable identifier policy. Because the values already
+exist in Git history, the team must also decide whether history remediation and
+credential/access review are required. Privacy approval is withheld for these
+artefacts until remediation and a passing rerun.
+
+### New Frontend Redirect Gate
+
+**Why necessary:** the expanded UI now sends an evidence packet and question
+from the browser to the local API. A loopback destination alone is insufficient
+if the browser is permitted to follow an HTTP redirect to another origin.
+
+**Assumptions before testing:** the Fetch API follows redirects by default; a
+redirect response from a compromised or misconfigured local service could move
+sensitive request data away from loopback; and the intended policy is to fail
+closed rather than follow redirects.
+
+**Conducted:** added `frontend/src/api/client.test.ts` to verify the exact
+`http://127.0.0.1:8000/respond` destination and require
+`redirect: 'error'` in the fetch options.
+
+**Result:** failed. The destination was correctly fixed to loopback, but
+`redirect: 'error'` was absent. The complete frontend result with the new gate
+was 11 passed and 1 failed. Frontend lint remained clean.
+
+**Meaning and required action:** add explicit redirect rejection to the
+frontend request and rerun the 12-test frontend suite. Privacy approval for the
+browser transport remains conditional until this gate passes.
+
+### Dependency and Local-Model Checks
+
+**Assumptions before testing:** manifests accurately describe the intended
+environment; the advisory services were current; zero known vulnerabilities
+does not mean vulnerability-free; the five benchmark prompts remained
+synthetic and unchanged; and Ollama was reached only at
+`127.0.0.1:11434`.
+
+**Result:** `pip check` found no broken requirements. Audits of
+`requirements.txt`, `requirements-r.txt`, the installed Python environment,
+and the npm graph reported zero known vulnerabilities. No dependency manifests
+changed since the Week 5 privacy baseline. Phi-4 Mini completed 5/5 prompts:
+minimum 743.83 ms, mean 1919.76 ms, median 1988.51 ms, sample p95 3031.99 ms,
+and maximum 3268.65 ms. Mean latency was about 25.3% lower than Week 5, but the
+five-prompt sample remains too small for a performance guarantee.
+
+### Security/Privacy Lead Review References
+
+No commit added after the Week 5 master-register commit (`c624a08`) explicitly
+assigns a new review or approval to the Security/Privacy Lead. The unmerged
+Honghao Tier-1 and Sheng Week 6 commit messages also contain no such request.
+
+Existing governance references remain active:
+
+- Commit `82d9c14` records Yuktha's Privacy Lead approval of the Week 5 SLM
+  dependency review.
+- `docs/slm/week5-dependency-privacy-review.md` contains the named Privacy Lead
+  sign-off.
+- `privacy/privacy_architecture_principles.md` requires privacy review before
+  merging privacy-relevant changes.
+- `.github/pull_request_template.md` requires a dependency privacy spot-check.
+- `privacy/initial_dependency_audit.md` assigns the SLM and Privacy Leads an
+  integrated public-network-disabled verification that remains outstanding.
+
+### Week 6 Initial Decision
+
+**Result: privacy release gate failed.** Existing functional, dependency, and
+local-model checks passed, but the newly added tests exposed two genuine gaps:
+raw CES identifiers in tracked analysis outputs and missing browser redirect
+rejection. These are not environment failures and must not be converted into
+passes by skipping or weakening the tests.
+
+### Post-Fast-Forward Verification - 12 September 2026
+
+**Why necessary:** `origin/main` advanced by 22 commits to
+`fbf7cf2de619802caaa918b2bf8bfc3a90c78131` after the initial Week 6 audit.
+Those commits changed the frontend client, backend API, SLM request and health
+logic, statistical evidence code, data pipeline, and test suite. The earlier
+result therefore could not be treated as evidence for the updated repository.
+
+**Assumptions before testing:** the Week 6 branch was fast-forwarded without
+conflicts; the four uncommitted Privacy Lead files were preserved; real R and
+the local model remained available; `pytest.ini` enforced the intended socket
+policy; frontend dependencies matched the lockfile; and advisory databases were
+current at the time queried.
+
+**Conducted:** reran the complete Python suite, focused privacy/transport/R/
+statistics suite, complete frontend suite, frontend lint and production build,
+`pip check`, all three Python dependency audits, npm audit, Ruff on the new
+Python privacy test, and the five-prompt local Phi-4 Mini benchmark.
+
+**Results:**
+
+- Complete Python: 390 passed, 1 failed, 45 convergence warnings.
+- Focused privacy/transport/R/statistics: 56 passed, 1 failed, 45 warnings.
+- Frontend: 13 passed, 1 failed; lint and production build passed.
+- Dependency consistency: no broken Python requirements.
+- Dependency advisories: zero known vulnerabilities in `requirements.txt`,
+  `requirements-r.txt`, the installed Python environment, and npm.
+- Ruff: the new Python privacy test passed static checks.
+- Phi-4 Mini: 5/5 completed; minimum 927.70 ms, mean 2224.58 ms, median
+  2395.99 ms, sample p95 3802.87 ms, and maximum 4084.96 ms.
+
+**Failure assessment:** both failures are unchanged product issues, not laptop
+or sandbox problems. The raw-identifier gate still finds 370,120 raw CES UID
+rows in 20 CSV files. The frontend still uses the loopback endpoint but does
+not set `redirect: 'error'`. The incoming `.gitignore` change ignores only a
+top-level `outputs/` directory and does not remove or ignore the tracked
+`analysis/output/` files.
+
+**Decision:** the updated code is functionally stable under existing tests, but
+the privacy release gate remains failed. Do not approve participant-data use or
+represent the repository as privacy-clean until both new gates pass.
+
+### Remediation and Passing Rerun - 12 September 2026
+
+**Changes made on `yuktha/privacy-week6` only:**
+
+- Added narrow `.gitignore` rules for participant-level cold-start, evidence,
+  occasion-key, and reconciliation CSVs under `analysis/output/`.
+- Removed the 20 affected CSVs from Git tracking while preserving every file in
+  the local working directory.
+- Created a separate local-only backup of all 20 CSVs and verified every copy
+  against a SHA-256 manifest before completing the removal from Git tracking.
+- Added an aggregate-only reconciliation summary and updated the statistical
+  output documentation so shared evidence contains no participant identifiers
+  or dates.
+- Updated `tests/privacy/test_analysis_output_privacy.py` to scan files that are
+  tracked or would be shared by Git, while excluding deliberately ignored local
+  analysis data.
+- Added `redirect: 'error'` to `frontend/src/api/client.ts`; the request remains
+  fixed to `http://127.0.0.1:8000/respond`.
+
+**Assumptions before rerunning:** ignored participant-level outputs remain
+available only in the local workspace; aggregate reports are safe to keep in
+Git; the Git index accurately represents what a future branch commit would
+share; browser Fetch honours `redirect: 'error'`; and the same Python, R, Node,
+and frontend environments used in the post-fast-forward run remained active.
+
+**Results:**
+
+- Raw-identifier privacy gate: 1/1 passed; zero sensitive CSVs remain tracked.
+- Local retention verification: 20/20 CSVs backed up with zero checksum
+  mismatches; the manifest contains 20 entries.
+- Frontend loopback/redirect gate: 1/1 passed.
+- Complete Python suite: 391/391 passed with 45 convergence warnings.
+- Complete frontend suite: 14/14 passed.
+- Ruff on the new privacy test, frontend lint, and frontend production build
+  passed. A repository-wide Ruff baseline is not yet clean.
+
+**What it proved:** the proposed branch state no longer shares the detected
+participant-level CSVs, future files with those sensitive output names stay
+local, a verified local copy exists for authorised analysis, aggregate evidence
+remains available in the repository, the privacy test protects other shared
+analysis CSVs, and the browser fails closed instead of following redirects away
+from the local API.
+
+**Residual limits:** these uncommitted branch changes do not alter `main`. The
+raw identifiers also remain in existing Git history even after their staged
+removal from the branch tip. Repository administrators and the project team
+must decide whether history rewriting, access review, or notification is
+required. This remediation supports a conditional pass for synthetic local
+development; it does not approve participant deployment.
+
+### Continuous Integration Automation - 12 September 2026
+
+**Why necessary:** the privacy and security checks had been run manually after
+merges. That leaves a window in which a later pull request can change network,
+dependency, logging, model, or data-handling behaviour without repeating the
+same controls.
+
+**Implemented:** `.github/workflows/privacy-security-ci.yml` runs on pull
+requests targeting `main`, on every push to `main` (including a merged pull
+request), on `yuktha/**` branch pushes for pre-PR verification, and by manual
+dispatch. It provides three independent jobs:
+
+- the complete Python suite with the real R bridge required and `pip check`;
+- frontend tests, lint, production build, and high/critical npm advisory gate;
+- strict advisory audits of both Python requirements files.
+
+Every run also publishes a status-only Markdown summary and a 90-day GitHub
+Actions artifact. The separate operating register is
+`docs/privacy/automated-ci-run-register.md`; CI does not write to the master
+register or commit generated records to the repository.
+
+**Security and privacy assumptions:** GitHub-hosted runners are acceptable for
+synthetic test fixtures but not participant data; the CES dataset and local
+Ollama model are absent; no repository secrets are supplied; checkout has
+read-only permissions and does not retain credentials; network access during
+setup is limited to downloading declared tools/packages and querying advisory
+services; and pytest then enforces the project's loopback-only socket policy.
+External actions are pinned to immutable commit hashes.
+
+**CI dependency privacy spot-check:** `actions/checkout`,
+`actions/setup-python`, and `actions/setup-node` are official GitHub actions;
+`r-lib/actions/setup-r` is the established R setup action; and
+`actions/upload-artifact` stores only the generated status record. Setup and
+audit steps make expected public network calls for tools, packages, caches, and
+advisory data. They receive no participant dataset or application secrets.
+Checkout is read-only with credential persistence disabled. The uploaded file
+contains run metadata and job outcomes only and is retained for 90 days.
+
+**Expected omissions:** dataset-backed tests skip because `dataset/` remains
+local and gitignored. The Phi-4 Mini latency benchmark remains a local-machine
+check because a standard runner does not have the approved model or comparable
+hardware. Repository-wide Ruff is not yet a required gate because the existing
+tree has 36 pre-existing findings; the new privacy test itself passes Ruff.
+
+**Local preflight result:** workflow YAML parsing and Git diff validation
+passed. Using the workflow's Python/R environment settings, the complete suite
+passed 391/391 with 45 statistical convergence warnings. Frontend tests passed
+14/14; frontend lint and production build passed. Both Python requirements
+audits and the npm high/critical audit reported zero known vulnerabilities.
+Five localhost redirect cases initially failed only because the restricted
+test sandbox denied binding a temporary loopback server; the permitted rerun
+passed all five. No GitHub-hosted result exists until the workflow is pushed.
+
+**Operational requirement:** after this workflow reaches `main`, repository
+administrators should make all three jobs required branch-protection checks.
+Without that setting, the workflow reports failures but GitHub may still allow
+a pull request to merge.
+
+Working-branch GitHub run IDs and outcomes are retained only in GitHub Actions
+logs and status-only artifacts. They are not copied into this master register,
+which prevents branch-specific run history from being merged into `main`.
+After a workflow runs on `main`, its reviewed result is added to
+`docs/privacy/automated-ci-run-register.md`; significant outcomes are appended
+here during the next Privacy Lead documentation update. CI remains read-only
+and never writes directly to `main`.
+
+## SLM Latency Run History
+
+`benchmarks/slm_latency_results.json` remains the stable latest-result file.
+Every available earlier run is preserved under
+`benchmarks/history/slm_latency/`; future executions create a timestamped copy
+automatically.
+
+| Local time | Run | Status | Minimum | Mean | Median | Sample p95 | Maximum | Historical evidence |
+|---|---|---|---:|---:|---:|---:|---:|---|
+| 27 Aug 2026 19:13:40 AEST | Initial `llama3.2:3b` attempt | Blocked: Ollama unavailable | - | - | - | - | - | `2026-08-27T191340+1000_blocked-llama3-2.json` |
+| 27 Aug 2026 19:42:25 AEST | Confirmed Phi-4 Mini attempt | Blocked: Ollama unavailable | - | - | - | - | - | `2026-08-27T194225+1000_blocked-phi4-mini-3-8b.json` |
+| 29 Aug 2026 13:01:13 AEST | Week 4 baseline | Passed 5/5 | 911.82 ms | 2220.03 ms | 2344.50 ms | 3282.67 ms | 3463.26 ms | `2026-08-29T130113+1000_week4.json` |
+| 5 Sep 2026 12:56:40 AEST | Week 5 confirmation | Passed 5/5 | 1261.09 ms | 2568.90 ms | 2988.77 ms | 3878.20 ms | 4061.79 ms | `2026-09-05T125640+1000_week5.json` |
+| 12 Sep 2026, exact time unavailable | Week 6 initial | Passed 5/5 | 743.83 ms | 1919.76 ms | 1988.51 ms | 3031.99 ms | 3268.65 ms | `2026-09-12_week6-initial-summary-only.json` |
+| 12 Sep 2026 21:17:08 AEST | Week 6 post-merge | Passed 5/5 | 927.70 ms | 2224.58 ms | 2395.99 ms | 3802.87 ms | 4084.96 ms | `2026-09-12T211708+1000_week6-post-merge.json` |
+
+The Week 6 initial raw result was overwritten before commit. Its history entry
+contains only the verified metrics previously recorded here and explicitly
+marks unavailable prompt-level evidence. Two versions of the Prompt 0.4.8
+grounding result and scorecard are also preserved under
+`benchmarks/history/slm_grounding_prompt048/`: the 4 September pre-joint-review
+run and the 6 September consensus update. No other machine-readable benchmark
+result had been overwritten in Git history as of 13 September 2026.
+
 ## Meaning of the Combined Results
 
 ### Week 4
@@ -342,6 +674,15 @@ Week 5 retested the expanded repository after integration, reviewed new npm
 and R dependencies, added enforceable R-memory controls, and confirmed model
 speed. The result is **conditional approval for local development with
 synthetic or de-identified data**. It is not participant deployment approval.
+
+### Week 6 Initial Audit
+
+Week 6 confirmed that existing functionality remains stable and dependencies
+have no currently known advisories, while identifying new privacy exposure
+introduced after the Week 5 baseline. The current decision is **not approved
+for participant-data use and not privacy-clean for merge** until raw identifiers
+are removed from shared outputs and browser redirects are rejected. Synthetic
+local development may continue without using the affected outputs.
 
 Before participant-facing use, the project still needs:
 
@@ -400,6 +741,9 @@ Latency benchmark, with local Ollama already serving the pinned model:
   --out benchmarks/slm_latency_results.json
 ```
 
+The command updates the stable latest-result file and automatically creates a
+new timestamped file under `benchmarks/history/slm_latency/`.
+
 ## Weekly Update Rule
 
 At the end of each week, append one dated record containing:
@@ -425,10 +769,17 @@ this register even when machine-readable result files are updated.
 - `privacy/week5_post_merge_dependency_review.md`
 - `tests/privacy/test_no_network_egress.py`
 - `tests/privacy/test_r_bridge_privacy.py`
+- `tests/privacy/test_analysis_output_privacy.py`
 - `tests/slm/test_transport_privacy.py`
+- `frontend/src/api/client.test.ts`
 - `benchmarks/slm_latency_benchmark.py`
 - `benchmarks/slm_latency_results.json`
+- `benchmarks/history/README.md`
+- `benchmarks/history/slm_latency/`
+- `benchmarks/history/slm_grounding_prompt048/`
 - `benchmarks/slm_prohibited_request_baseline_results.json`
 - `benchmarks/slm_shadow_smoke_results.json`
 - `benchmarks/slm_evaluation_alignment_results.json`
 - `.github/pull_request_template.md`
+- `.github/workflows/privacy-security-ci.yml`
+- `docs/privacy/automated-ci-run-register.md`
