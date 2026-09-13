@@ -59,7 +59,7 @@ decisions remain easy to find after the 90-day artifact period.
 
 | Date | Run ID | Trigger | Commit | Automatic result | Local checks required | Reviewed by | Notes |
 |---|---:|---|---|---|---|---|---|
-| Pending first remote run | - | - | - | Not yet executed on GitHub | Dataset, latency, offline integration | Yuktha Naveen | Workflow currently exists only as an uncommitted Week 6 branch change. |
+| 13 Sep 2026 | [34729173377](https://github.com/PriyanshUsyd/mindsense-capstone/actions/runs/34729173377) | Push to `yuktha/privacy-week6` | `c572cd1` | Failed during CI setup | Dataset, latency, offline integration | Yuktha Naveen | Frontend passed. Python tests did not start because Python setup displaced R's shared-library path; the standalone R requirements audit lacked ABI mode. Both are workflow-environment issues, not product failures. |
 
 ## Review Rule
 
