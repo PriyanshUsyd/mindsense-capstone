@@ -76,16 +76,18 @@ Implement the signed-off feature list. Hard freeze at week's end. Build both fal
 
 Pilot (team-only, rostered pairs drawn from the 8 team members) against a frozen build, using the tested rubric and session runbook. No external recruitment — per client feedback, all evaluation stays within the team. Internal rostering for the main evaluation starts now. In parallel, confirm the build is demo-ready on Richard's machine (Ollama and the pinned models are already running there from Week 4-6) and schedule a live screen-share call with Tianyi by **2026-09-25** (2 weeks from her request) — not deployed or hosted anywhere, consistent with the local-only claim.
 
+**Client feedback incorporated this week:** per subsequent client (Tianyi Zhang) feedback, (1) the human-evaluation workload for Weeks 7-10 can be reduced — one to two weeks of sessions, not a requirement to complete every planned session, with representative examples/case studies/patterns an acceptable substitute for full completion; (2) fine-tuning is now confirmed declined (GPU access unavailable — see `build-reference.md` Section 10, this settles what was previously a conditional stretch goal); and (3) the client asked the team to explore RAG and/or agentic architectures instead, comparing up to four variants (Base LLM with a fixed data summary, RAG-enhanced, agentic, RAG+agent combined) ahead of the evaluation procedure. This comparison direction is adopted as the confirmed Week 7+ architectural direction, per client mandate and group-lead decision (see `build-reference.md` Section 6 for the variant list and what remains an open technical decision).
+
 | Person | Task |
 |---|---|
-| **Honghao Li** | No new features (frozen). Fix only critical/blocking bugs on a separate branch. |
+| **Honghao Li** | No new features (frozen). Fix only critical/blocking bugs on a separate branch. Begin scoping any data-store/retrieval-source work the RAG/agentic comparison will need (see `build-reference.md` Section 6) — a new, separate exploration thread, not a reopening of the Tier 1 freeze. |
 | **Moe Tanaka** | Support the pilot; log calibration concerns for Week 8, no live changes. |
-| **Richard Zhao** | Re-test guardrails (scripted run) against the frozen build; held-out set stays reserved. Continue fallback refinement. Preload and boot-test the local SLM (Ollama, phi4-mini:3.8b / qwen3:4b) on my own machine ahead of the Tianyi demo call — this machine hosts the live demo, since Ollama is already installed and running here. |
+| **Richard Zhao** | Re-test guardrails (scripted run) against the frozen build; held-out set stays reserved. Continue fallback refinement. Preload and boot-test the local SLM (Ollama, phi4-mini:3.8b / qwen3:4b) on my own machine ahead of the Tianyi demo call — this machine hosts the live demo, since Ollama is already installed and running here. Begin the client-requested RAG/agentic variant comparison (see `build-reference.md` Section 6) as a new work thread, starting from the already-built Base LLM variant — specific technical choices (embedding model, retrieval method) are not yet decided and remain to be scoped. |
 | **Sheng Wang** | Support the pilot; log UI issues for Week 8. Support Richard in confirming the frontend runs cleanly end-to-end on his machine (the demo machine) ahead of the Tianyi screen-share call. |
 | **Yuktha Naveen** | Run the full privacy check against the frozen build. |
-| **Chonghao Shen** | Run the pilot using the session runbook and crisis-response script, with team members in rostered pairs (one operating the build, one facilitating/observing) standing in for external participants. Check protocol health after the first rostered pair. Begin scheduling the internal rostered-pair sessions for the main evaluation in parallel — no external recruitment. |
+| **Chonghao Shen** | Run the pilot using the session runbook and crisis-response script, with team members in rostered pairs (one operating the build, one facilitating/observing) standing in for external participants. Check protocol health after the first rostered pair. Begin scheduling the internal rostered-pair sessions for the main evaluation in parallel — no external recruitment. Per client feedback, the main evaluation does not need a fixed, complete schedule: one to two weeks of sessions, with representative examples/case studies/patterns standing in for full completion, is acceptable — schedule accordingly rather than over-committing session count. |
 | **Honglin Lu** | Begin the Progress Report outline using real pilot findings. |
-| **Priyansh Khandelwal** | Pilot-fix intake with triage: critical/blocking issues get a full linked-issue process; minor polish items go into a simple batch checklist. Coordinate with Richard to confirm the frozen Tier 1 build runs end-to-end on his machine (where Ollama and the pinned models already run), rather than mine. Schedule and host the live screen-share call with Tianyi to demo Richard's running build by **2026-09-25** — no deployment or hosting. |
+| **Priyansh Khandelwal** | Pilot-fix intake with triage: critical/blocking issues get a full linked-issue process; minor polish items go into a simple batch checklist. Coordinate with Richard to confirm the frozen Tier 1 build runs end-to-end on his machine (where Ollama and the pinned models already run), rather than mine. Schedule and host the live screen-share call with Tianyi to demo Richard's running build by **2026-09-25** — no deployment or hosting. Coordinate the new RAG/agentic comparison thread (Richard: model/variant work; Honghao: data-store/retrieval-source work) as the confirmed Week 7+ direction, per client mandate and group-lead decision — an integration/coordination role only, no technical implementation choices dictated here. |
 
 ---
 
@@ -100,7 +102,7 @@ Hardening from pilot feedback. Both fallback templates tested end-to-end, includ
 | **Richard Zhao** | Fix guardrail failures using the Week 4 pre-registered thresholds (not renegotiated after the fact). Confirm fail-safe defaults to the safe template on ambiguous cases. Draft the zero-shot-vs-few-shot and conversational-multi-turn-reasoning methodology plus empty results-table templates (documentation only — no build or prompt changes yet; see `build-reference.md`). |
 | **Sheng Wang** | Fix UI issues found during the pilot. |
 | **Yuktha Naveen** | Run the final privacy verification. |
-| **Chonghao Shen** | Confirm the internal rostered-pair schedule is on track; finalise 2-person rostered pairs (drawn from the 8 team members) for the main sessions. Test both fallback templates end-to-end — simulate a generic SLM failure and a crisis-trigger case. |
+| **Chonghao Shen** | Confirm the internal rostered-pair schedule remains workable under the now-reduced, client-approved evaluation scope; finalise 2-person rostered pairs (drawn from the 8 team members) for the main sessions, sized to a one-to-two week window rather than a fixed full schedule. Test both fallback templates end-to-end — simulate a generic SLM failure and a crisis-trigger case. |
 | **Honglin Lu** | Prepare and submit Project Status Checking 2, with honest reporting of any deviation. |
 | **Priyansh Khandelwal** | Review/merge PRs; confirm the release-candidate checklist is met. Lock the rule: all Week 9 sessions complete at least 2 working days before the Progress Report deadline. |
 
@@ -112,14 +114,14 @@ Main evaluation on a version-locked build, submitted after sessions are genuinel
 
 | Person | Task |
 |---|---|
-| **Honghao Li** | Freeze the pipeline; record the feature-code version. |
+| **Honghao Li** | Freeze the pipeline; record the feature-code version. Continue any data-store/retrieval-source work needed for the RAG-enhanced/agentic variants (see `build-reference.md` Section 6) on its own thread — the freeze applies to the Tier 1 pipeline only, not to this exploration. |
 | **Moe Tanaka** | Support logistics; provide the quantitative angle to the master analysis (Chonghao owns it). |
-| **Richard Zhao** | Ensure a fixed, reproducible SLM + prompt version runs throughout; confirm prompts are version-controlled files, not undocumented inline edits. |
+| **Richard Zhao** | Ensure a fixed, reproducible SLM + prompt version runs throughout; confirm prompts are version-controlled files, not undocumented inline edits. Continue the RAG/agentic variant comparison begun in Week 7 (Section 6); keep each variant's build reproducible and version-controlled, same as the base SLM. |
 | **Sheng Wang** | Support sessions; log issues without live-patching. |
 | **Yuktha Naveen** | Confirm and record exactly what was checked for the no-data-leaves-local claim, including any dependencies added since Week 4. |
-| **Chonghao Shen** | Run the main evaluation as 10-15 rostered-pair sessions using the 8 team members (each member completing multiple sessions in rotating pair combinations; no external participants). Own the master analysis; record the full version manifest. |
-| **Honglin Lu** | Write the Progress Report using genuinely complete session data. |
-| **Priyansh Khandelwal** | Review/merge PRs; submit the Progress Report. |
+| **Chonghao Shen** | Run the main evaluation over a one-to-two week window using rostered-pair sessions with the 8 team members (rotating pair combinations; no external participants) — per client feedback, completing every planned session is not required; representative examples, case studies, and patterns are an acceptable substitute for full completion. Own the master analysis, honestly scoped to what was actually run; record the full version manifest, including which of the four architecture variants (Base LLM, RAG, agentic, RAG+agent — see `build-reference.md` Section 6) each session's build corresponds to. |
+| **Honglin Lu** | Write the Progress Report using genuinely-run session data — per client feedback this no longer requires a fixed, fully-completed schedule; report honestly what was actually run, including partial coverage, rather than overclaiming completeness. |
+| **Priyansh Khandelwal** | Review/merge PRs; submit the Progress Report. Coordinate the RAG/agentic comparison thread's integration points across Richard's and Honghao's work, per the confirmed Week 7+ direction. |
 
 ---
 
@@ -129,12 +131,12 @@ Targeted fixes and an honestly-framed smoke-test round. First of two cross-train
 
 | Person | Task |
 |---|---|
-| **Honghao Li** | Fix pipeline issues found during the main evaluation. |
+| **Honghao Li** | Fix pipeline issues found during the main evaluation. Continue data-store/retrieval-source work for the RAG/agentic comparison in parallel (`build-reference.md` Section 6). |
 | **Moe Tanaka** | Complete the statistical write-up of the main evaluation results. |
-| **Richard Zhao** | Fix guardrail/response-quality issues — most important category. If ahead of schedule, try few-shot examples in the prompt as a first, cheap improvement, and run the zero-shot-vs-few-shot comparison harness, filling in the Week 8 results table. Build and test the conversational multi-turn "memory" feature only inside a separate, standalone benchmark/test script — do NOT wire it into the real app used for the Tianyi demo (Week 7), so the demo build stays untouched and stable. Jointly with Yuktha Naveen, review this multi-turn work specifically for cross-message data leakage before it goes any further. |
+| **Richard Zhao** | Fix guardrail/response-quality issues — most important category. If ahead of schedule, try few-shot examples in the prompt as a first, cheap improvement, and run the zero-shot-vs-few-shot comparison harness, filling in the Week 8 results table. Build and test the conversational multi-turn "memory" feature only inside a separate, standalone benchmark/test script — do NOT wire it into the real app used for the Tianyi demo (Week 7), so the demo build stays untouched and stable. Jointly with Yuktha Naveen, review this multi-turn work specifically for cross-message data leakage before it goes any further. Continue the RAG/agentic variant comparison (Section 6) in parallel, on its own branch — same non-interference rule as the multi-turn memory work: it does not touch the Tianyi demo build unless/until explicitly promoted. |
 | **Sheng Wang** | Fix UI issues found during the main evaluation. |
 | **Yuktha Naveen** | Write up the privacy-perception findings. Jointly with Richard, review the standalone multi-turn conversational-memory test script for cross-message/participant data leakage — this stays out of the demo build. |
-| **Chonghao Shen** | Run a small second round (5-8 rostered team sessions, same 8 team members rotating pairs) re-testing the exact failed scenarios — framed as a directional smoke-test, not proof. |
+| **Chonghao Shen** | Run a small second round (5-8 rostered team sessions, same 8 team members rotating pairs) re-testing the exact failed scenarios — framed as a directional smoke-test, not proof. Consistent with the client's reduced-workload allowance, this stays a small, honestly-framed round, not expanded back into a fixed full schedule. |
 | **Honglin Lu** | Begin drafting the Final Report's core sections. Organise cross-training session 1 of 2 (45-60 minutes). |
 | **Priyansh Khandelwal** | Review/merge PRs; run full regression tests. |
 
@@ -148,10 +150,10 @@ Run the LAST guardrail check early, against the previously-untouched held-out pr
 |---|---|
 | **Honghao Li** | Final pipeline pass and methodology documentation. |
 | **Moe Tanaka** | Final statistical methodology write-up. |
-| **Richard Zhao** | Run the final guardrail check early this week using the held-out prompt set for the first time. Fix and re-verify with time to spare. Fold the Week 10 zero-shot-vs-few-shot and standalone conversational-multi-turn-reasoning results into the final methodology write-up. See the fine-tuning note in `build-reference.md` for the conditional stretch goal (deferred, not tested — cloud GPU time reopens the unresolved local-only privacy question from Status Checking 1). |
+| **Richard Zhao** | Run the final guardrail check early this week using the held-out prompt set for the first time. Fix and re-verify with time to spare. Fold the Week 10 zero-shot-vs-few-shot, standalone conversational-multi-turn-reasoning, and Base-LLM/RAG/agentic variant-comparison results into the final methodology write-up. Fine-tuning: now settled as declined per client confirmation (GPU access unavailable — see `build-reference.md` Section 10); not a conditional stretch goal to revisit this week. |
 | **Sheng Wang** | Final UI polish and consistency pass. |
 | **Yuktha Naveen** | Write the Final Report's privacy, limitations, and risks discussion. |
-| **Chonghao Shen** | Finalise the evaluation results section; cross-check consistency across all documents. |
+| **Chonghao Shen** | Finalise the evaluation results section, including the Base-LLM/RAG/agentic variant comparison honestly scoped to what was actually run under the client-approved reduced evaluation workload; cross-check consistency across all documents. |
 | **Honglin Lu** | Draft the bulk of the Final Report; script and record the demo video. Draft the Presentation slides now. Organise cross-training session 2 of 2. |
 | **Priyansh Khandelwal** | Review/merge PRs; run a full end-to-end regression test. Preload and boot-test the model on the actual demo machine. |
 
