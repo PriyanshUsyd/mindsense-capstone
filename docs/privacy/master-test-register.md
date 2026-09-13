@@ -638,6 +638,14 @@ before R so R's library path remains active, and the standalone audit resolves
 to its current Node 24 release after the first run emitted a Node 20 deprecation
 warning.
 
+**Second remote pre-PR run:** GitHub Actions run `34729354173` on commit
+`3cb25bb` confirmed that the frontend and both Python dependency audits pass.
+R 4.6.1 and the approved R packages also installed successfully, but `rpy2`
+could not load `libR.so` because the runner still exposed only Python's shared
+library directory. The workflow now obtains `R_HOME` from the installed R
+executable and prepends its `lib` directory to `LD_LIBRARY_PATH` before Python
+dependencies and tests run. The R gate remains mandatory.
+
 ## SLM Latency Run History
 
 `benchmarks/slm_latency_results.json` remains the stable latest-result file.

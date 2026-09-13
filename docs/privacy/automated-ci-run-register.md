@@ -60,6 +60,7 @@ decisions remain easy to find after the 90-day artifact period.
 | Date | Run ID | Trigger | Commit | Automatic result | Local checks required | Reviewed by | Notes |
 |---|---:|---|---|---|---|---|---|
 | 13 Sep 2026 | [34729173377](https://github.com/PriyanshUsyd/mindsense-capstone/actions/runs/34729173377) | Push to `yuktha/privacy-week6` | `c572cd1` | Failed during CI setup | Dataset, latency, offline integration | Yuktha Naveen | Frontend passed. Python tests did not start because Python setup displaced R's shared-library path; the standalone R requirements audit lacked ABI mode. Both are workflow-environment issues, not product failures. |
+| 13 Sep 2026 | [34729354173](https://github.com/PriyanshUsyd/mindsense-capstone/actions/runs/34729354173) | Push to `yuktha/privacy-week6` | `3cb25bb` | Failed during R bridge setup | Dataset, latency, offline integration | Yuktha Naveen | Frontend and both Python audits passed. R and its approved packages installed, but `rpy2` could not load `libR.so`; the Python tests therefore did not start. The workflow now exports the detected R home and shared-library path explicitly. |
 
 ## Review Rule
 
