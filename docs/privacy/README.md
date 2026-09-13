@@ -19,7 +19,7 @@ Yuktha Naveen owns this area as Privacy and Security Lead. The operational polic
 - [Week 4 Privacy Lead Report](week4-privacy-lead-report.pdf): six-page rendered report covering the completed Week 4 assignment.
 - [Week 5 Privacy and Security Report](week5-privacy-security-report.pdf): six-page rendered post-merge privacy, transport, telemetry, logging, dependency, safety, and latency review.
 - [Week 5 post-merge dependency review](../../privacy/week5_post_merge_dependency_review.md): retrospective review of the frontend test stack and local R toolchain added by PRs #7 and #8.
-- [Latency benchmark](../../benchmarks/slm_latency_benchmark.py) and [latest measured results](../../benchmarks/slm_latency_results.json): reproducible local benchmark and the current Week 5 result.
+- [Latency benchmark](../../benchmarks/slm_latency_benchmark.py), [latest measured results](../../benchmarks/slm_latency_results.json), and [run history](../../benchmarks/history/README.md): reproducible local benchmark, current Week 6 result, and immutable earlier evidence.
 
 ## Current assurance boundary
 
