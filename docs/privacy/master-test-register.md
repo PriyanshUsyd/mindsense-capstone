@@ -578,7 +578,8 @@ same controls.
 
 **Implemented:** `.github/workflows/privacy-security-ci.yml` runs on pull
 requests targeting `main`, on every push to `main` (including a merged pull
-request), and by manual dispatch. It provides three independent jobs:
+request), on `yuktha/**` branch pushes for pre-PR verification, and by manual
+dispatch. It provides three independent jobs:
 
 - the complete Python suite with the real R bridge required and `pip check`;
 - frontend tests, lint, production build, and high/critical npm advisory gate;
