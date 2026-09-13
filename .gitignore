@@ -11,3 +11,10 @@ node_modules/
 .Rhistory
 # Generated pipeline outputs
 outputs/
+
+# Participant-level statistics exports contain sensitive longitudinal records.
+# Keep aggregate diagnostics/reports tracked, but keep these files local only.
+analysis/output/**/cold_start_states.csv
+analysis/output/**/evidence_per_person.csv
+analysis/output/**/occasion_gate_keys.csv
+analysis/output/reconciliation/mine_keys_*.csv
