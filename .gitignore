@@ -11,3 +11,8 @@ node_modules/
 .Rhistory
 # Generated pipeline outputs
 outputs/
+# Dataset (not distributed with the repo)
+Sensing/
+EMA/
+Demographics/
+Raw Sensing/
