@@ -630,6 +630,10 @@ a pull request to merge.
 Working-branch GitHub run IDs and outcomes are retained only in GitHub Actions
 logs and status-only artifacts. They are not copied into this master register,
 which prevents branch-specific run history from being merged into `main`.
+After a workflow runs on `main`, its reviewed result is added to
+`docs/privacy/automated-ci-run-register.md`; significant outcomes are appended
+here during the next Privacy Lead documentation update. CI remains read-only
+and never writes directly to `main`.
 
 ## SLM Latency Run History
 

@@ -51,13 +51,25 @@ The following cannot be treated as ordinary GitHub-hosted CI checks:
 | Repository-wide Ruff baseline | The current tree has 36 pre-existing findings. Enabling it as a required gate now would block unrelated PRs; new Privacy Lead Python tests are checked locally until the baseline is cleaned. |
 | Human privacy and safety review | Automated checks cannot establish clinical appropriateness, informed consent, retention decisions, or incident-response readiness. |
 
-## Branch Run Records
+## Run Record Policy
 
 GitHub Actions history and per-run Markdown artifacts are the authoritative
 automatic records for working-branch runs. Results from
-`yuktha/privacy-week6` are deliberately not copied into repository files, so
-they cannot be included in a later merge to `main`. Each run remains available
+`yuktha/**` branches are deliberately not copied into repository files, so they
+cannot be included in a later merge to `main`. Each run remains available
 through its GitHub Actions logs and 90-day status-only artifact.
+
+Every run on `main` is also recorded automatically in GitHub Actions and its
+status-only artifact. During the next Privacy Lead review, append the reviewed
+`main` result to the index below and summarize any significant outcome in
+`docs/privacy/master-test-register.md`. Make that documentation update through
+a normal branch and pull request; the workflow must remain read-only and must
+never commit directly to `main`.
+
+## Reviewed Main Run Index
+
+| Date | Run ID | Commit | Automatic result | Local checks required | Reviewed by | Notes |
+|---|---:|---|---|---|---|---|
 
 ## Review Rule
 
@@ -65,9 +77,10 @@ through its GitHub Actions logs and 90-day status-only artifact.
 2. Download or view the generated Markdown run record.
 3. Confirm expected skips are limited to tests needing the gitignored dataset.
 4. Do not commit working-branch run IDs or outcomes to the repository.
-5. Run the local-only checks when the changed files affect data processing,
+5. For a reviewed `main` run, append its result to the main-run index above.
+6. Run the local-only checks when the changed files affect data processing,
    model runtime, network behaviour, or release readiness.
-6. Record significant local results and the combined release decision in the
+7. Record significant `main` and local results and the combined release decision in the
    master test register.
 
 A green automatic run permits review to continue; it does not by itself approve
