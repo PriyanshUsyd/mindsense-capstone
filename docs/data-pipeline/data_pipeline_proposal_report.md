@@ -15,11 +15,12 @@ The proposed data pipeline consists of two main stages.
 
 First, a scripted data-contract validation checks participant coverage, minimum observation days, repeated PHQ-4 measurements, required sensing fields, and Tier-1 feature availability.
 
-Second, the pipeline cleans and processes the three final Tier-1 behavioural features agreed with the Statistical Analysis Lead:
+Second, the pipeline cleans and processes the 2 locked Tier-1 behavioural features signed off by Integration/QA on 26 August 2026 (`feature-list-signoff.md`, `freeze-decision.md`):
 
 - GPS distance travelled (`loc_dist_ep_0`)
-- Home duration (`loc_home_dur`)
 - Phone unlock frequency (`unlock_num_ep_0`)
+
+Home duration (`loc_home_dur`) cleaning is also implemented in the same script, sharing the same cleaning/alignment machinery, but it is a candidate feature only — it was never part of the 26 August sign-off and is not locked or final.
 
 The cleaned daily features are aggregated into 14-day windows preceding each PHQ-4 assessment, excluding the assessment day. Each FeatureWindow records the feature value, observed and expected days, coverage ratio, platform, and quality flags.
 
@@ -27,9 +28,9 @@ The cleaned daily features are aggregated into 14-day windows preceding each PHQ
 
 The CES data-contract validation and the Tier-1 feature pipeline have been implemented.
 
-The validation script verifies the real CES dataset against the project requirements, including participant coverage, longitudinal sensing duration, repeated PHQ-4 measurements, and availability of the three final Tier-1 fields.
+The validation script verifies the real CES dataset against the project requirements, including participant coverage, longitudinal sensing duration, repeated PHQ-4 measurements, and availability of the 2 locked Tier-1 fields (plus the home-duration candidate field, checked for completeness but not part of the locked scope).
 
-Cleaning and processing logic has also been implemented for GPS distance, home duration, and unlock frequency. The pipeline can generate FeatureWindow records suitable for downstream statistical analysis while preserving coverage and data-quality information.
+Cleaning and processing logic has also been implemented for GPS distance and unlock frequency (the 2 locked features), plus home duration as a candidate feature sharing the same pipeline machinery. The pipeline can generate FeatureWindow records suitable for downstream statistical analysis while preserving coverage and data-quality information.
 
 ## 4. Work in Progress / Planned
 
@@ -39,13 +40,13 @@ Further work will focus on ensuring that the generated FeatureWindow representat
 
 ## 5. Confirmed Results and Test Outcomes
 
-Validation of the real CES dataset identified 220 sensing participants. Of these, 214 satisfy the current source-data contract requiring at least 30 sensing observation days, at least two PHQ-4 measurements, and at least 30 valid days for all three final Tier-1 fields.
+Validation of the real CES dataset identified 220 sensing participants. Of these, 214 satisfy the current source-data contract requiring at least 30 sensing observation days, at least two PHQ-4 measurements, and at least 30 valid days for the 2 locked Tier-1 fields (the home-duration candidate field is checked on the same basis but is not part of the locked scope).
 
 GPS distance required the most substantial cleaning. Approximately 20.1% of raw `loc_dist_ep_0` observations are missing. Location data are restricted to records with at least 12 hours of location quality coverage, values above 500 km/day are treated as invalid, and per-participant P1–P99 winsorisation is applied.
 
 Sensitivity checks using 250 km, 500 km, and 1000 km daily GPS cut-offs produced consistent substantive statistical conclusions.
 
-The completed Tier-1 pipeline generates 106,044 FeatureWindow records across the three Tier-1 features. The current automated data-pipeline test suite passes all 11 tests.
+The completed pipeline generates 106,044 FeatureWindow records across all three features it computes (35,348 each); of this, 70,696 records are the 2 locked Tier-1 features (GPS distance, unlock frequency), with the remaining 35,348 belonging to the not-locked home-duration candidate. The current automated data-pipeline test suite passes all 11 tests (`tests/data_pipeline/test_ces_contract.py`: 5/5; `tests/data_pipeline/test_tier1_features.py`: 6/6) — verified 2026-09-13.
 
 ## 6. Key Risks and Limitations
 
