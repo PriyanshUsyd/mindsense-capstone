@@ -51,23 +51,20 @@ The following cannot be treated as ordinary GitHub-hosted CI checks:
 | Repository-wide Ruff baseline | The current tree has 36 pre-existing findings. Enabling it as a required gate now would block unrelated PRs; new Privacy Lead Python tests are checked locally until the baseline is cleaned. |
 | Human privacy and safety review | Automated checks cannot establish clinical appropriateness, informed consent, retention decisions, or incident-response readiness. |
 
-## Reviewed Run Index
+## Branch Run Records
 
-The GitHub Actions history and per-run Markdown artifacts are the authoritative
-automatic record. After reviewing a run, add one row here so important merge
-decisions remain easy to find after the 90-day artifact period.
-
-| Date | Run ID | Trigger | Commit | Automatic result | Local checks required | Reviewed by | Notes |
-|---|---:|---|---|---|---|---|---|
-| 13 Sep 2026 | [34729173377](https://github.com/PriyanshUsyd/mindsense-capstone/actions/runs/34729173377) | Push to `yuktha/privacy-week6` | `c572cd1` | Failed during CI setup | Dataset, latency, offline integration | Yuktha Naveen | Frontend passed. Python tests did not start because Python setup displaced R's shared-library path; the standalone R requirements audit lacked ABI mode. Both are workflow-environment issues, not product failures. |
-| 13 Sep 2026 | [34729354173](https://github.com/PriyanshUsyd/mindsense-capstone/actions/runs/34729354173) | Push to `yuktha/privacy-week6` | `3cb25bb` | Failed during R bridge setup | Dataset, latency, offline integration | Yuktha Naveen | Frontend and both Python audits passed. R and its approved packages installed, but `rpy2` could not load `libR.so`; the Python tests therefore did not start. The workflow now exports the detected R home and shared-library path explicitly. |
+GitHub Actions history and per-run Markdown artifacts are the authoritative
+automatic records for working-branch runs. Results from
+`yuktha/privacy-week6` are deliberately not copied into repository files, so
+they cannot be included in a later merge to `main`. Each run remains available
+through its GitHub Actions logs and 90-day status-only artifact.
 
 ## Review Rule
 
 1. Open the GitHub Actions run and inspect every failed or skipped check.
 2. Download or view the generated Markdown run record.
 3. Confirm expected skips are limited to tests needing the gitignored dataset.
-4. Add the reviewed run to the index above.
+4. Do not commit working-branch run IDs or outcomes to the repository.
 5. Run the local-only checks when the changed files affect data processing,
    model runtime, network behaviour, or release readiness.
 6. Record significant local results and the combined release decision in the
