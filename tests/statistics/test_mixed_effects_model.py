@@ -44,6 +44,10 @@ requires_r = pytest.mark.skipif(
 )
 
 DATASET_DIR = Path(__file__).resolve().parents[2] / "dataset"
+requires_dataset = pytest.mark.skipif(
+    not (DATASET_DIR / "Sensing" / "sensing.csv").exists(),
+    reason="real CES dataset not present locally (gitignored) - cannot run end-to-end",
+)
 
 
 def _synthetic_sensing(uid: str, n_days: int, value: float = 5.0) -> pd.DataFrame:
@@ -413,6 +417,7 @@ def test_r_bridge_ar1_bypasses_the_gee_fallback_entirely():
 
 
 @requires_r
+@requires_dataset
 def test_end_to_end_r_backed_fit_against_the_real_dataset():
     """Real dataset, real R fit — the primary path, not synthetic data."""
     from backend.data_pipeline.gps_distance_feature import build_gps_distance_feature, load_sensing_days

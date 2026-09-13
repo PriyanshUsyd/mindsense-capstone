@@ -1,0 +1,43 @@
+{
+  "schema_version": "1.0",
+  "created_date": "2026-09-12",
+  "privacy_classification": "Aggregate-only; contains no participant identifiers or dates",
+  "source_summaries": [
+    {
+      "local_file": "mine_keys_8h_lag0.csv",
+      "occasion_count": 28662,
+      "participant_count": 214,
+      "sha256": "b63d487cd8e63bf95e1050f67f8deed74f9d2fc61524ed62466a78b7f9032fb8"
+    },
+    {
+      "local_file": "mine_keys_12h_lag1_buggy.csv",
+      "occasion_count": 28326,
+      "participant_count": 214,
+      "sha256": "7b8dd42835edbb40efb91a864bcbef5e6e7dc9a181fc1ae4e63d726775c330b0"
+    },
+    {
+      "local_file": "mine_keys_12h_lag1.csv",
+      "occasion_count": 28337,
+      "participant_count": 214,
+      "sha256": "fca07b973937fe845160b8def9684b1b4e81a78aacb41b616c203c8bff14989d"
+    },
+    {
+      "local_file": "analysis/output/latest/occasion_gate_keys.csv",
+      "occasion_count": 28337,
+      "participant_count": 214,
+      "sha256": "fca07b973937fe845160b8def9684b1b4e81a78aacb41b616c203c8bff14989d"
+    }
+  ],
+  "comparison_results": {
+    "final_reconciliation_only": 0,
+    "pipeline_only": 0,
+    "matching_sets": true,
+    "bug_fix_net_added_occasions": 11,
+    "net_change_from_8h_lag0_to_12h_lag1": -325
+  },
+  "retention": {
+    "participant_level_csvs_tracked_in_git": false,
+    "local_backup_verified": true,
+    "local_backup_manifest": "SHA256SUMS.txt"
+  }
+}
