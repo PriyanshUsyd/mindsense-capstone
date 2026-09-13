@@ -513,7 +513,7 @@ def quality_gate_diagnostic(df):
         else 0
     )
 
-    print("\n8 h → 12 h additional cost:")
+    print("\n8 h -> 12 h additional cost:")
     print(
         f"  GPS days lost: "
         f"{additional_loss:,}"
@@ -2088,7 +2088,7 @@ def run_final_cutoff_sensitivity(
 
         print(
             f"\n{'=' * 60}\n"
-            f"FINAL SPEC — {label}\n"
+            f"FINAL SPEC -- {label}\n"
             f"{'=' * 60}"
         )
 
@@ -2282,7 +2282,7 @@ def prepare_model_data(window_df, transform="log"):
         - df["gps_person_mean"]
     )
 
-    print(f"\nModel preparation — transform: {transform}")
+    print(f"\nModel preparation -- transform: {transform}")
     print(f"Model-ready occasions: {len(df):,}")
     print(
         f"Participants: "
@@ -2299,7 +2299,7 @@ def fit_primary_lmm(df, label):
         random intercept + random slope
     """
 
-    print(f"\n=== PRIMARY LMM — {label} ===")
+    print(f"\n=== PRIMARY LMM -- {label} ===")
 
     model = smf.mixedlm(
         f"{PHQ4_COL} ~ gps_within",
@@ -2477,7 +2477,7 @@ def save_tier1_feature_windows(
 def main():
 
     print("=" * 60)
-    print("CES GPS DISTANCE — END-TO-END PIPELINE")
+    print("CES GPS DISTANCE -- END-TO-END PIPELINE")
     print("=" * 60)
 
     gps = load_gps()
