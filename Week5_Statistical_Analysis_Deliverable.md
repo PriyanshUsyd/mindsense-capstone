@@ -5,16 +5,56 @@
 one feature using the named statistical model. Join the Tier-1 feature-list
 proposal (jointly with Data Pipeline Lead).
 **Status:** Baseline/evidence logic implemented and run end-to-end on the real
-dataset for `loc_dist_ep_0` (the feature vertical-slice audited in Week 4).
-Three specification deviations found and corrected during the week; occasion
-counts independently reconciled with the Data Pipeline Lead. Pre-registration
-drafted and ready for sign-off.
+dataset for `loc_dist_ep_0` (the feature vertical-slice audited in Week 4),
+**using Moe Tanaka's local pipeline described in Section 1 — not the version
+currently committed to this repository.** Three specification deviations
+found and corrected during the week; occasion counts independently
+reconciled with the Data Pipeline Lead. The results in Section 3 are real
+and stand as reported. **What is committed and runnable today differs from
+what this document originally described as built — see the correction note
+at the top of Section 1 before relying on any file path below.** A
+preregistration document now exists at `analysis/preregistration.md`, but it
+is a 2026-09-12 compilation of Moe's already-locked decisions by another
+contributor, not the file this section originally referred to — still
+pending her review (see Section 1's note).
 
 ---
 
 ## 1. What was built
 
-Code lives in `analysis/` (run with `python analysis/run_week5_pipeline.py`):
+**Correction (added after this document was first written; see
+`CLAUDE.md`'s "Unreflected changes" and `analysis/archive/README.md`):**
+the table below describes the pipeline as it was originally built and run,
+on Moe Tanaka's own machine, to produce the results in Section 3. It does
+**not** describe what is committed to this repository today. As committed:
+
+- `cleaning.py`, `evidence_model.py`, and `baseline.py` were moved to
+  `analysis/archive/` on 2026-09-12 (retired, not deleted) and are **not
+  runnable as checked in** — `baseline.py` imports `from predictors import
+  ALIGN_WINDOW_DAYS, ALIGN_WINDOW_LAG_DAYS, OCCASION_MIN_VALID_DAYS`, and
+  `predictors.py` has never existed anywhere in this repository's history,
+  on any branch. The `analysis/output/` artefacts already in this repo
+  (including the numbers reported in Section 3) were produced from Moe's
+  local, uncommitted copy of these modules, not from what is checked in.
+- `run_week5_pipeline.py` and `tools/reconcile_occasions.py` were never
+  committed to this repository at all.
+- The **real, currently runnable, canonical implementation** of this
+  logic now lives in `backend/statistics/` (`mixed_effects_model.py`,
+  `eligibility.py`, `evidence.py`) and `backend/data_pipeline/cleaning.py`
+  — ported from Moe's specification and archived code, authored primarily
+  by Priyansh Khandelwal (Integration/QA), and still flagged in
+  `backend/statistics/evidence.py`'s module docstring as pending Moe's own
+  review before being treated as final (see that module's docstring for
+  the specific open gap: per-person standard errors).
+- `preregistration.md` exists at `analysis/preregistration.md`, but as a
+  2026-09-12 compilation of Moe's already-locked decisions by another
+  contributor — not the file originally referred to in this row, and not
+  yet reviewed by her.
+
+Original table, describing the local pipeline that produced Section 3's
+results (run with `python analysis/run_week5_pipeline.py` **on that local
+copy** — this exact invocation is not reproducible from this repository as
+committed):
 
 | File | Implements (Week 4 doc section) |
 |---|---|
@@ -595,11 +635,16 @@ signature of over-truncation, not of a stronger relationship.
 8. **Family size is feature-specific.** The 213-participant family is defined
    for this single feature. Once additional Tier-1 features are modelled, the
    family must be redefined across person × feature rather than person alone.
-9. **Code is not under version control.** The analysis directory is not a git
-   repository, so `run_manifest.json` records a null commit hash and the
-   per-PR review and automated gates defined in the Build Plan do not apply to
-   it. Needs resolution with the Documentation & Report Lead and the
-   Integration & QA Lead.
+9. **Code is not under version control** *(as of when this was written — see
+   the Section 1 correction note for what changed since).* At the time this
+   analysis was run, Moe's `analysis/` directory was not a git repository, so
+   `run_manifest.json` recorded a null commit hash and the per-PR review and
+   automated gates defined in the Build Plan did not apply to it. This
+   repository's own `analysis/` folder is now under version control (the
+   original modules are archived at `analysis/archive/`), but the specific
+   run that produced Section 3's numbers still is not reproducible from a
+   committed commit hash — it predates that archiving and was never itself
+   committed.
 10. **Two model-entry rules existed only in code.** The `week_in_study_it`
     time-trend covariate is part of the fitted confirmatory formula, and
     `MIN_OCCASIONS_PER_PERSON = 3` governs model entry (distinct from the
@@ -747,7 +792,13 @@ Four items require action from other leads.
   would need its own cleaning rules, sanity bounds and validation, none of
   which exist. The Week 4 maximum-of-3 cap was written down in advance
   specifically so this call would not fall to someone under time pressure.
-- `analysis/preregistration.md` is drafted and ready to be frozen at sign-off.
+- `analysis/preregistration.md` exists, but as a 2026-09-12 compilation of
+  Moe's already-locked decisions by another contributor (Priyansh
+  Khandelwal), not a document she drafted herself — sections it has no
+  existing decision for are left explicitly marked "pending Moe's input"
+  rather than invented. It still needs her review, and a decision on
+  whether it stands alone or this deliverable / the Group Proposal replaces
+  it, before it can be described as "ready to be frozen."
 - Open items still needing the team's input: PHQ-4 total as sole primary
   outcome vs. co-primary subscales; final feature list; COVID-era handling;
   sign-off on the two previously-undocumented model-entry rules (limitation

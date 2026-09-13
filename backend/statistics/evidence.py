@@ -63,15 +63,24 @@ more than one legitimate option (an alternative would be a parametric/
 delta-method approximation combining `vcov(model)` with an approximation
 of the random-effect posterior variance; that is not implemented here),
 (b) the number of bootstrap replicates trades off directly against
-compute cost and precision of the SE estimate, and (c) it has not been
-run against the real dataset in an environment where R is actually
-available (this codebase's own sandbox does not have R installed —
-`r_bridge.r_bridge_available()` is `False` here — so this function's real
-behaviour has only been exercised via dependency-injected fake fits in
-`tests/statistics/test_evidence.py`, not against a genuine R `nlme::lme`
-refit). Moe Tanaka owns this model and offered to complete this specific
-port; treat this as "implemented using a cluster bootstrap, needs her
-sign-off," not as a closed item.
+compute cost and precision of the SE estimate, and (c) as of 2026-09-13 it
+has been exercised exactly once against the real dataset in an environment
+where R was genuinely available (`r_bridge.r_bridge_available()` returned
+`True`), as a one-off diagnostic smoke test — `n_bootstrap=3` (far below
+this function's own `n_bootstrap=200` default), 214 participants, 28,320
+occasions. It completed without error in 107.5s, which is the useful
+finding (the mechanism itself runs end-to-end against a genuine R
+`nlme::lme` refit, not just the fake fits in
+`tests/statistics/test_evidence.py`) — but at that deliberately tiny
+replicate count, **45 of 214 participants (21%) received `slope_se=None`**
+because they were never drawn in any of the 3 resamples, exactly the
+failure mode already documented above and a concrete illustration of why a
+real run needs far more than 3 replicates. This was a mechanism check
+only, not a production run, not a validation of the method, and not Moe
+Tanaka's sign-off. Moe Tanaka owns this model and offered to complete this
+specific port; treat this as "implemented using a cluster bootstrap,
+mechanism now confirmed to run against real R, still needs her sign-off on
+method (parametric vs. cluster) and replicate count," not as a closed item.
 """
 
 from __future__ import annotations
