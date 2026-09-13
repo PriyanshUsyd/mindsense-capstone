@@ -12,7 +12,4 @@ node_modules/
 # Generated pipeline outputs
 outputs/
 # Dataset (not distributed with the repo)
-Sensing/
-EMA/
-Demographics/
-Raw Sensing/
+dataset/
