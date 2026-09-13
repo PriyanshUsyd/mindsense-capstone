@@ -32,6 +32,13 @@ directory carries a `run_manifest.json` recording every threshold, window
 definition, correction method and the fitted model formula, read at runtime
 from the named constants rather than duplicated.
 
+**Privacy handling:** participant-level `cold_start_states.csv`,
+`evidence_per_person.csv`, `occasion_gate_keys.csv`, and reconciliation key
+CSVs contain longitudinal identifiers or dates. They are retained locally for
+authorised verification and excluded from Git. Shared repository evidence is
+limited to aggregate diagnostics, model summaries, manifests, reports, and
+`analysis/output/reconciliation/aggregate_summary.json`.
+
 ---
 
 ## 2. Correction log
