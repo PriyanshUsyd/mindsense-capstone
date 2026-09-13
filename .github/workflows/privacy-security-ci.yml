@@ -1,0 +1,193 @@
+name: Privacy and Security CI
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: privacy-security-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python-r-tests:
+    name: Python, privacy, and R tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      PYTHONPATH: .
+      RPY2_CFFI_MODE: ABI
+
+    steps:
+      - name: Check out repository without stored credentials
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Set up R 4.6.1
+        uses: r-lib/actions/setup-r@465b7d8e732ca3921382b1674c59bada9cbf3399 # v2
+        with:
+          r-version: "4.6.1"
+          use-public-rspm: true
+
+      - name: Install approved R packages
+        run: Rscript -e 'install.packages(c("lme4", "lmerTest", "pbkrtest", "nlme"))'
+
+      - name: Set up Python 3.14
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: "3.14"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-r.txt
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt -r requirements-r.txt
+
+      - name: Verify Python dependency consistency
+        run: python -m pip check
+
+      - name: Require the real R bridge
+        run: >-
+          python -c "from backend.statistics.r_bridge import r_bridge_available;
+          assert r_bridge_available(), 'R bridge unavailable in CI'"
+
+      - name: Run Python, privacy, security, and integration tests
+        run: python -m pytest -ra
+
+  frontend-tests:
+    name: Frontend tests, lint, build, and audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out repository without stored credentials
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Node 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install locked frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Run frontend tests
+        working-directory: frontend
+        run: npm test
+
+      - name: Run frontend lint
+        working-directory: frontend
+        run: npm run lint
+
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+
+      - name: Audit frontend dependencies
+        working-directory: frontend
+        run: npm audit --audit-level=high
+
+  python-dependency-audit:
+    name: Python dependency advisory audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository without stored credentials
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Python 3.14
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: "3.14"
+          cache: pip
+
+      - name: Install pip-audit
+        run: python -m pip install pip-audit
+
+      - name: Audit main Python requirements
+        run: python -m pip_audit --strict -r requirements.txt
+
+      - name: Audit R bridge Python requirements
+        run: python -m pip_audit --strict -r requirements-r.txt
+
+  run-record:
+    name: Publish CI run record
+    if: ${{ always() }}
+    needs:
+      - python-r-tests
+      - frontend-tests
+      - python-dependency-audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      PYTHON_R_RESULT: ${{ needs.python-r-tests.result }}
+      FRONTEND_RESULT: ${{ needs.frontend-tests.result }}
+      PYTHON_AUDIT_RESULT: ${{ needs.python-dependency-audit.result }}
+      RUN_EVENT: ${{ github.event_name }}
+      RUN_HEAD_SHA: ${{ github.sha }}
+      RUN_REF: ${{ github.ref }}
+      RUN_REPOSITORY: ${{ github.repository }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+    steps:
+      - name: Generate Markdown run record
+        shell: bash
+        run: |
+          if [[ "$PYTHON_R_RESULT" == "success" && "$FRONTEND_RESULT" == "success" && "$PYTHON_AUDIT_RESULT" == "success" ]]; then
+            overall_result="PASS"
+          else
+            overall_result="FAIL"
+          fi
+
+          {
+            echo "# MindSense Privacy and Security CI Run"
+            echo
+            echo "- Run: $RUN_URL"
+            echo "- Repository: $RUN_REPOSITORY"
+            echo "- Recorded at: $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
+            echo "- Trigger: $RUN_EVENT"
+            echo "- Ref: $RUN_REF"
+            echo "- Commit: $RUN_HEAD_SHA"
+            echo "- Overall result: **$overall_result**"
+            echo
+            echo "## Automatic Gate Results"
+            echo
+            echo "| Gate | Result |"
+            echo "|---|---|"
+            echo "| Python, privacy, security, integration, and R | $PYTHON_R_RESULT |"
+            echo "| Frontend test, lint, build, and npm audit | $FRONTEND_RESULT |"
+            echo "| Python dependency advisory audit | $PYTHON_AUDIT_RESULT |"
+            echo
+            echo "## Scope Limit"
+            echo
+            echo "This automatic run uses synthetic repository fixtures. The gitignored CES dataset, local Ollama latency benchmark, and operating-system offline verification are separate local checks."
+          } > privacy-security-ci-run.md
+
+          cat privacy-security-ci-run.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Preserve Markdown run record
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: privacy-security-ci-run-${{ github.run_id }}-${{ github.run_attempt }}
+          path: privacy-security-ci-run.md
+          if-no-files-found: error
+          retention-days: 90

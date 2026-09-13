@@ -72,6 +72,7 @@ export async function respond(
 ): Promise<SafeSLMResponse> {
   const res = await fetch(`${API_BASE_URL}/respond`, {
     method: 'POST',
+    redirect: 'error',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ evidence_packet: evidencePacket, question }),
   })
