@@ -128,6 +128,31 @@ Example of a prohibited statement: "Your phone use caused your anxiety." / "You 
 - Deterministic safety gate: every draft response is validated a second time before becoming a response. It is rejected/rewritten to the safe fallback unless every evidence ID in the draft exists in the input packet, every claim ID is approved by its referenced evidence item, no prohibited claim or phrase is present, and every "ready" explanation includes an uncertainty statement
 - Crisis wording is never a model inference. A rule-based detector triggers the pre-approved deterministic crisis-support message — this is safer and auditable, consistent with the project's non-diagnostic scope
 
+**Week 7+ architectural direction — RAG / agentic exploration (client-confirmed):**
+Per client (Tianyi Zhang) feedback, with fine-tuning now settled as declined (see
+Section 10), the confirmed next step is exploring retrieval-augmented and/or
+agentic architectures rather than a fine-tuned model. The client asked for a
+comparison of up to four variants ahead of the evaluation procedure:
+
+1. Base LLM with a fixed data summary in the prompt (the current, already-built approach)
+2. RAG-enhanced LLM, retrieving historical sensing patterns and/or scientific knowledge
+3. Agentic system, where an agent decides which data sources/tools to query
+4. RAG + agent combined
+
+The client also sketched an example pipeline (raw sensing → feature
+extraction/aggregation → behavioural summaries/events → searchable personal
+data store → retrieval → LLM context → personalised response). Per her own
+framing, this is **illustrative only, not a locked architecture spec** — it
+does not obligate the team to implement each named stage exactly as drawn.
+
+This direction (comparing the four variants) is confirmed as the Week 7+
+architectural direction, adopted per client mandate and confirmed by the
+group lead. The specific technical implementation — embedding model, storage/
+index format for the searchable personal data store, retrieval method, and
+which concrete "tools"/data sources an agentic variant queries — is a genuine
+open engineering question the client did not specify and the team has not
+yet decided. These remain **to be scoped in Week 7**, not confirmed choices.
+
 **Week 6 branch status (merged to `main` via PR #15, 2026-09-12):** `Rz-week6` addresses the
 off-topic limitation previously documented on `main`. Request policy `0.2.0` adds an
 explicit `off_topic` category and routes unmatched or ambiguous requests to
@@ -260,4 +285,4 @@ the gap.
 | Database | Raw sqlite3 + one wrapper module | SQLAlchemy ORM | Small, stable 3-4 table schema; Pydantic already validates at the API boundary; ORM overhead isn't worth it for a time-boxed student team |
 | Frontend | React + TypeScript | Vanilla HTML/JS | 7 mutually-exclusive chat states benefit from reusable typed components staying visually consistent over a 9-week build with constant backend changes |
 | Charts | Apache ECharts | Chart.js | Native calendar-heatmap support, exact fit for daily/weekly personal trend data |
-| Fine-tuning | Conditional stretch goal only, mid-Week 11 at the earliest | Default cloud fine-tuning | Real, unresolved privacy conflict - the client's spec (GPU requirements section) names Kaggle (30 free GPU-hours/week) and Google Colab as the intended fine-tuning platforms, but training on cloud GPU contradicts the "nothing leaves local" claim unless training data is purely synthetic. Raised with Tianyi; default is prompt-only + few-shot until resolved. |
+| Fine-tuning | **Declined/settled (client-confirmed, Week 7)** — prompt-only + few-shot remains the approach for the rest of the project | Default cloud fine-tuning | Previously a conditional stretch goal pending resolution of a privacy conflict (client's GPU-requirements section named Kaggle/Colab as intended platforms, in tension with the "nothing leaves local" claim). The client (Tianyi Zhang) has since confirmed GPU access is unavailable, so fine-tuning is off the table — this settles the question raised earlier rather than reopening it; no new reasoning beyond the client's stated GPU-availability constraint. |
