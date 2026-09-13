@@ -25,7 +25,8 @@ the runner write access to `main`.
 ## Runs Automatically
 
 These checks run for every pull request targeting `main`, every push to `main`
-including a merged pull request, and every manual workflow dispatch:
+including a merged pull request, every push to a `yuktha/**` working branch for
+pre-PR verification, and every manual workflow dispatch:
 
 | Automatic gate | Included checks |
 |---|---|
