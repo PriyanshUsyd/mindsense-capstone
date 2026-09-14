@@ -1,25 +1,24 @@
 """
-Phone-unlock-frequency feature builder — the second signed-off Tier-1
-feature (`feature-list-signoff.md`: `loc_dist_ep_0` + `unlock_num_ep_0`),
-built the same way `gps_distance_feature.py` builds GPS distance: load one
-row per participant-day, apply the locked cleaning pipeline
+Phone-unlock-frequency feature builder — the second confirmed Tier-1
+feature (`feature-list-signoff.md` / `freeze-decision.md`, 2026-08-26:
+`loc_dist_ep_0` + `unlock_num_ep_0`), built the same way
+`gps_distance_feature.py` builds GPS distance: load one row per
+participant-day, apply the confirmed cleaning pipeline
 (`backend.data_pipeline.cleaning.clean_unlock_frequency`), summarise real
 before/after counts.
 
-**FLAGGED FOR MOE TANAKA'S REVIEW.** Unlike GPS distance, unlock's cleaning
-thresholds are not locked anywhere in the Week 4/5 deliverables (those
-documents only ever list `unlock_num_ep_0` as a *candidate* feature, never
-lock concrete numbers for it the way §1.4 locks GPS's). This module ports
-the existing standalone implementation
-(`scripts/build_gps_feature.py::clean_unlock`) into `backend/` rather than
-inventing new thresholds, but see
-`backend.data_pipeline.cleaning.clean_unlock_frequency`'s docstring for the
-specific methodology calls (no quality gate available; `log(mean + 1)`
-transform) that still need her sign-off before being treated as final.
+Re-implemented 2026-09-14 against the Statistical Analysis Lead's
+confirmed spec (`docs/statistics/preregistration.md` section 1.6),
+replacing an earlier version that carried an unconfirmed `log(mean + 1)`
+transform flagged "FOR MOE TANAKA'S REVIEW" (see `clean_unlock_frequency`'s
+own docstring for the skew/kurtosis numbers ruling that transform out —
+the confirmed spec applies no transform at all, handled at the modelling
+stage by `backend.statistics.feature_specs.UNLOCK_FREQUENCY_SPEC`, not
+baked into cleaning here).
 
 Run: python -m backend.data_pipeline.unlock_frequency_feature
 (same requirements as gps_distance_feature.py: repo root on sys.path, real
-CES dataset downloaded locally per Readme.md.)
+CES dataset downloaded locally per Readme.md — gitignored.)
 """
 
 from __future__ import annotations
@@ -48,15 +47,16 @@ def load_sensing_days() -> pd.DataFrame:
 
 
 def build_unlock_frequency_feature(sensing_days: pd.DataFrame) -> pd.DataFrame:
-    """Impossibility filtering + per-person winsorisation, per
-    `clean_unlock_frequency`. Returns the input frame with
-    `unlock_num_ep_0_clean` / `unlock_num_ep_0_log` columns added."""
+    """Impossibility filtering + per-person (positive-values-only)
+    winsorisation, per `clean_unlock_frequency`. Returns the input frame
+    with `unlock_num_ep_0_clean` added — no `_log` column, unlike
+    `build_gps_distance_feature` (see `clean_unlock_frequency`'s docstring
+    for why: there is no transform to diagnose)."""
     return clean_unlock_frequency(sensing_days, unlock_col=UNLOCK_COL)
 
 
 def summarize(cleaned: pd.DataFrame) -> dict:
     clean_col = f"{UNLOCK_COL}_clean"
-    log_col = f"{UNLOCK_COL}_log"
 
     n_rows_total = len(cleaned)
     n_rows_raw_present = int(cleaned[UNLOCK_COL].notna().sum())
@@ -67,8 +67,6 @@ def summarize(cleaned: pd.DataFrame) -> dict:
     n_genuine_zero_days_kept = int((cleaned[clean_col] == 0).sum())
 
     clean_values = cleaned[clean_col].dropna()
-    log_values = cleaned[log_col].dropna()
-
     per_participant_clean_days = cleaned.dropna(subset=[clean_col]).groupby("uid").size()
 
     return {
@@ -89,12 +87,6 @@ def summarize(cleaned: pd.DataFrame) -> dict:
             "std": round(float(clean_values.std()), 2),
             "min": round(float(clean_values.min()), 2),
             "max": round(float(clean_values.max()), 2),
-        },
-        "log_transformed_stats": {
-            "count": int(log_values.count()),
-            "mean": round(float(log_values.mean()), 4),
-            "median": round(float(log_values.median()), 4),
-            "std": round(float(log_values.std()), 4),
         },
         "median_clean_days_per_participant": float(per_participant_clean_days.median()),
         "min_clean_days_per_participant": int(per_participant_clean_days.min()),

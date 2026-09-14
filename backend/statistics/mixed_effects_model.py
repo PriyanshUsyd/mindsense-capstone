@@ -193,6 +193,7 @@ produces).
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -202,8 +203,8 @@ from statsmodels.genmod.generalized_estimating_equations import GEE, GEEResultsW
 from statsmodels.regression.mixed_linear_model import MixedLM, MixedLMResultsWrapper
 from statsmodels.stats.multitest import multipletests
 
-from backend.data_pipeline.cleaning import GPS_LOG_OFFSET_M
 from backend.statistics import r_bridge
+from backend.statistics.feature_specs import FeatureSpec
 
 ALIGNMENT_WINDOW_DAYS = 14  # PHQ-4's "last 2 weeks" recall period, spec Section 1.3
 OCCASION_MIN_VALID_SENSOR_DAYS = 7  # spec Section 1.3 occasion-validity gate
@@ -226,34 +227,79 @@ def _to_datetime(day_col: pd.Series) -> pd.Series:
 
 def build_trailing_predictor(
     cleaned_sensing_days: pd.DataFrame,
+    transform: Callable[[pd.Series], pd.Series],
     value_col: str = "loc_dist_ep_0_clean",
     window_days: int = ALIGNMENT_WINDOW_DAYS,
     lag_days: int = TRAILING_WINDOW_LAG_DAYS,
     uid_col: str = "uid",
     day_col: str = "day",
-    log_offset: float = GPS_LOG_OFFSET_M,
+    ema_dates: pd.DataFrame | None = None,
 ) -> pd.DataFrame:
     """For every calendar day in each participant's observed date range,
-    computes `x_it = log(mean(value_col over the trailing window) +
-    log_offset)`, where the window is `window_days` long and ends
-    `lag_days` day(s) before that date (default: the day before — see
-    module docstring's 2026-09-12 fix), plus the count of valid (non-NaN)
-    sensor-days in that window.
+    computes `x_it = transform(mean(value_col over the trailing window))`,
+    where the window is `window_days` long and ends `lag_days` day(s)
+    before that date (default: the day before — see module docstring's
+    2026-09-12 fix), plus the count of valid (non-NaN) sensor-days in
+    that window.
+
+    **`transform` has no default and must be supplied explicitly — see
+    `backend.statistics.feature_specs.FeatureSpec`.** FIXED 2026-09-14:
+    this parameter used to be `log_offset: float = GPS_LOG_OFFSET_M`, a
+    GPS-shaped default that `build_model_frame` silently applied to any
+    feature a caller forgot to override it for (commit 4a3379e's own
+    message documents wiring in `unlock_num_ep_0` while hitting exactly
+    this). A required callable closes that gap structurally: there is no
+    value this parameter can silently take on a caller's behalf.
+    `feature_specs.log_transform(offset)` reproduces the old GPS
+    behaviour (`log(mean + offset)`); `feature_specs.identity_transform`
+    applies no transform at all — expressible now, which a bare
+    `log_offset` float could never represent (there is no offset that
+    makes `log(x + offset)` behave like `x` itself for a variable whose
+    scale isn't metres).
 
     `value_col` must be the CLEANED, UNTRANSFORMED value (e.g.
-    `loc_dist_ep_0_clean`, in metres) — averaging happens first, the log
-    transform is applied once, after averaging (log-of-mean, not
-    mean-of-log; see module docstring). Passing a pre-logged column here
-    would silently reproduce the old mean(log(x)) bug at one remove; there
-    is no runtime guard against this, so it is only ever called with a
-    `_clean` column in this codebase.
+    `loc_dist_ep_0_clean`, in metres) — averaging happens first,
+    `transform` is applied once, after averaging (transform-of-mean, not
+    mean-of-transform; see module docstring's Jensen's-inequality note,
+    which applies to any concave/convex transform, not just log). Passing
+    a pre-transformed column here would silently reproduce the old
+    mean(log(x)) bug at one remove; there is no runtime guard against
+    this, so it is only ever called with a `_clean` column in this
+    codebase.
 
     Reindexes each participant to a *continuous* daily date range first,
     so the rolling window is calendar-correct (a day with no sensing row
     counts as a gap, not as "outside the window").
 
+    **Fixed 2026-09-13 — the per-person reindex range used to stop at
+    that person's own sensing date range (`series.index.min()` /
+    `.max()`), so an EMA occasion dated after a participant's last
+    sensing day (or before their first) had no row in this function's
+    output at all: `build_model_frame`'s later merge produced a silent
+    NaN for it regardless of whether the real trailing window actually
+    had enough valid sensing days. This is the exact bug class
+    `analysis/output/reconciliation/README.md` documents as having
+    already been found and fixed in the (now-retired) `analysis/`
+    pipeline's `valid_day_counts()` — that fix was never ported here.
+    Confirmed on the real dataset: 17 real occasions (214 participants,
+    all clustered around the two cohort-wide sensing end dates,
+    2021-06-15 / 2022-06-15, with the EMA landing 1-8 days later) were
+    being silently dropped for exactly this reason, not because their
+    trailing window genuinely lacked data.
+
+    `ema_dates` (optional, columns `[uid_col, "date"]`) is now used to
+    extend each participant's reindex range symmetrically, so their EMA
+    occasions always get a row here (even if that row then legitimately
+    fails the caller's validity gate for lack of real sensing data,
+    which is a different, correct reason to drop it):
+      - end: `max(last sensing day, last EMA day)`
+      - start: `min(first sensing day, first EMA day - window_days)`
+    Passing `None` (the default) reproduces the old, narrower range —
+    kept as the default only for direct callers that don't have EMA
+    dates handy; `build_model_frame` always passes this.
+
     Returns one row per (uid, date) with columns:
-      - `x_it`: `log(trailing-window mean of value_col + log_offset)`,
+      - `x_it`: `transform(trailing-window mean of value_col)`,
         NaN if the window (after the lag shift) has no valid days at all
         — including, by construction, every participant's first
         `lag_days` day(s) in their observed range, which have no prior
@@ -261,12 +307,25 @@ def build_trailing_predictor(
       - `valid_sensor_days_in_window`: count of valid days in that
         (lag-shifted) window.
     """
+    ema_bounds_by_uid: dict = {}
+    if ema_dates is not None and len(ema_dates) > 0:
+        ema_minmax = ema_dates.groupby(uid_col)["date"].agg(["min", "max"])
+        ema_bounds_by_uid = ema_minmax.to_dict(orient="index")
+
     parts = []
     for uid, group in cleaned_sensing_days.groupby(uid_col):
         dates = _to_datetime(group[day_col])
         series = pd.Series(group[value_col].to_numpy(), index=dates).sort_index()
         series = series[~series.index.duplicated(keep="first")]
-        full_range = pd.date_range(series.index.min(), series.index.max(), freq="D")
+
+        range_start = series.index.min()
+        range_end = series.index.max()
+        ema_bounds = ema_bounds_by_uid.get(uid)
+        if ema_bounds is not None:
+            range_start = min(range_start, ema_bounds["min"] - pd.Timedelta(days=window_days))
+            range_end = max(range_end, ema_bounds["max"])
+
+        full_range = pd.date_range(range_start, range_end, freq="D")
         daily = series.reindex(full_range)
 
         mean_raw = daily.rolling(window=window_days, min_periods=1).mean()
@@ -280,7 +339,7 @@ def build_trailing_predictor(
         mean_lagged = mean_raw.shift(lag_days)
         valid_days_lagged = valid_days_raw.shift(lag_days)
 
-        x_it = np.log(mean_lagged + log_offset)
+        x_it = transform(mean_lagged)
 
         parts.append(
             pd.DataFrame(
@@ -337,29 +396,37 @@ def compute_time_covariates(
 def build_model_frame(
     cleaned_sensing_days: pd.DataFrame,
     ema: pd.DataFrame,
+    feature_spec: FeatureSpec,
     outcome_col: str = "phq4_score",
-    value_col: str = "loc_dist_ep_0_clean",
     uid_col: str = "uid",
     day_col: str = "day",
     window_days: int = ALIGNMENT_WINDOW_DAYS,
     min_valid_sensor_days: int = OCCASION_MIN_VALID_SENSOR_DAYS,
-    log_offset: float = GPS_LOG_OFFSET_M,
 ) -> pd.DataFrame:
-    """Joins EMA occasions to the trailing predictor for `value_col`,
-    applies the occasion-validity gate (drop, don't impute), and computes
-    the person-mean-centred within/between terms (spec Section 1.2).
+    """Joins EMA occasions to the trailing predictor for
+    `feature_spec.value_col`, applies the occasion-validity gate (drop,
+    don't impute), and computes the person-mean-centred within/between
+    terms (spec Section 1.2).
 
-    **`log_offset` must match whichever feature `value_col` actually is**
-    — e.g. `GPS_LOG_OFFSET_M` (1000) for GPS distance,
-    `backend.data_pipeline.cleaning.UNLOCK_LOG_OFFSET` (1) for unlock
-    frequency. FIXED 2026-09-12: this parameter did not previously exist —
-    `build_model_frame` always used the GPS-specific default regardless of
-    which feature it was called with, so wiring in a second Tier-1 feature
-    silently reused GPS's `+1000` offset on a count variable until this was
-    added. Now passed through to `build_trailing_predictor` explicitly
-    rather than left implicit, so a caller who forgets it gets the GPS
-    default (backward compatible for existing GPS call sites) rather than
-    an offset that's silently wrong for a different feature's scale.
+    **`feature_spec` has no default and must be supplied explicitly —
+    see `backend.statistics.feature_specs.FeatureSpec`.** FIXED
+    2026-09-14: this used to be a loose `value_col` + `log_offset` pair,
+    with `log_offset` defaulting to GPS's `+1000` regardless of which
+    feature was actually being fit — wiring in a second Tier-1 feature
+    (commit 4a3379e) silently reused that GPS-specific offset on a count
+    variable until the bug was caught by hand, and a `float` offset
+    couldn't express "no transform at all" even once caught.
+    `FeatureSpec` replaces both parameters with one required object per
+    feature — GPS's and unlock's specs live in `feature_specs.py`, one
+    definition each, and there is no GPS-shaped default here for a caller
+    to fall back into silently.
+
+    Raises `ValueError` if `cleaned_sensing_days` doesn't actually carry
+    `feature_spec.value_col` — a distinct failure mode from a
+    mismatched declaration (which `FeatureSpec.value_col` being *derived*
+    from `feature_spec.name` already rules out): this is what fires if
+    `feature_spec.clean_fn` itself doesn't produce the column its own
+    spec promises.
 
     `x_bar_i` (the person's mean of the cleaned feature) is computed over
     **all of that person's valid occasion-level `x_it` values used in
@@ -371,17 +438,29 @@ def build_model_frame(
     weighted grand mean, so this choice is stated here rather than
     guessed silently).
     """
+    value_col = feature_spec.value_col
+    if value_col not in cleaned_sensing_days.columns:
+        raise ValueError(
+            f"FeatureSpec {feature_spec.name!r} expects a {value_col!r} column "
+            f"(derived as f'{{name}}_clean' from FeatureSpec.name) in "
+            f"cleaned_sensing_days, but it was not found. Columns present: "
+            f"{list(cleaned_sensing_days.columns)}. Check that "
+            f"feature_spec.clean_fn ({feature_spec.clean_fn!r}) actually "
+            f"produces this column."
+        )
+
+    occasions = ema[[uid_col, day_col, outcome_col]].dropna(subset=[outcome_col]).copy()
+    occasions["date"] = _to_datetime(occasions[day_col])
+
     predictor = build_trailing_predictor(
         cleaned_sensing_days,
+        transform=feature_spec.transform,
         value_col=value_col,
         window_days=window_days,
         uid_col=uid_col,
         day_col=day_col,
-        log_offset=log_offset,
+        ema_dates=occasions[[uid_col, "date"]],
     )
-
-    occasions = ema[[uid_col, day_col, outcome_col]].dropna(subset=[outcome_col]).copy()
-    occasions["date"] = _to_datetime(occasions[day_col])
 
     merged = occasions.merge(predictor, on=[uid_col, "date"], how="left")
 
@@ -432,6 +511,7 @@ class MixedEffectsFitResult:
     denom_df: dict[str, float] = field(default_factory=dict)
     denom_df_method: str | None = None
     engine: str = "statsmodels (Python)"
+    se: dict[str, float] = field(default_factory=dict)
 
 
 def _between_within_denominator_df(
@@ -534,6 +614,7 @@ def fit_mixed_effects_model(
                 denom_df=denom_df,
                 denom_df_method=f"{df_method} (R lme4::lmer + lmerTest)",
                 engine="R (lme4::lmer + lmerTest)",
+                se={_normalize_r_term_name(k): v for k, v in r_result.se.items()},
             )
         except r_bridge.RBridgeUnavailable:
             pass  # fall through to the Python path below
@@ -587,6 +668,7 @@ def fit_mixed_effects_model(
         denom_df=denom_df,
         denom_df_method="between-within (containment-style approximation, R unavailable in this environment)",
         engine="statsmodels (Python fallback)",
+        se={k: float(v) for k, v in result.bse.items()},
     )
 
 
@@ -710,6 +792,8 @@ class Ar1EffectResult:
     params: dict[str, float]
     pvalues: dict[str, float]
     blups: dict[str, dict[str, float]] | None = None
+    sigma: float | None = None
+    random_effects_cov: dict[str, dict[str, float]] | None = None
 
 
 def fit_ar1_effect(
@@ -750,6 +834,16 @@ def fit_ar1_effect(
                 uid: {_normalize_r_term_name(k): v for k, v in effects.items()}
                 for uid, effects in r_result.blups.items()
             }
+            random_effects_cov = (
+                {
+                    _normalize_r_term_name(row_name): {
+                        _normalize_r_term_name(col_name): v for col_name, v in row.items()
+                    }
+                    for row_name, row in r_result.random_effects_cov.items()
+                }
+                if r_result.random_effects_cov is not None
+                else None
+            )
             return Ar1EffectResult(
                 engine="R (nlme::lme + corAR1)",
                 ar1_coefficient=r_result.ar1_phi,
@@ -760,6 +854,8 @@ def fit_ar1_effect(
                 params={_normalize_r_term_name(k): v for k, v in r_result.params.items()},
                 pvalues={_normalize_r_term_name(k): v for k, v in r_result.pvalues.items()},
                 blups=blups,
+                sigma=r_result.sigma,
+                random_effects_cov=random_effects_cov,
             )
         except r_bridge.RBridgeUnavailable:
             pass  # fall through to the GEE fallback below
