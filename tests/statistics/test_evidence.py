@@ -15,6 +15,7 @@ from backend.statistics.evidence import (
     _nan_safe_correction,
     bootstrap_person_slopes,
     extract_person_slopes,
+    intersect_bootstrap_evidence,
     reclassify_family213,
     to_user_facing_evidence,
 )
@@ -270,3 +271,88 @@ def test_bootstrap_person_slopes_raises_if_a_replicate_lacks_blups(monkeypatch):
 
     with pytest.raises(ValueError, match="per-person BLUPs"):
         bootstrap_person_slopes(frame, n_bootstrap=3, seed=1, fit_fn=_no_blups_fit_fn)
+
+
+# --- reclassify_family213 SE passthrough / intersect_bootstrap_evidence ----
+
+
+def test_reclassify_family213_carries_slope_se_and_slope_p_through():
+    """2026-09-13: reclassify_family213's output must expose slope_se/
+    slope_p per person (NaN when the PersonSlope had None) so callers
+    combining multiple bootstrap methods (intersect_bootstrap_evidence)
+    can see each method's own SE alongside its label."""
+    person_slopes = [
+        PersonSlope(uid="p1", slope_i=-0.5, n_occasions=20, slope_se=0.1, slope_p=0.001),
+        PersonSlope(uid="p2", slope_i=0.3, n_occasions=15),  # slope_se/slope_p default None
+    ]
+    out = reclassify_family213(person_slopes, outcome_sd=2.0, predictor_sd=1.0).set_index("uid")
+    assert out.loc["p1", "slope_se"] == pytest.approx(0.1)
+    assert out.loc["p1", "slope_p"] == pytest.approx(0.001)
+    assert np.isnan(out.loc["p2", "slope_se"])
+    assert np.isnan(out.loc["p2", "slope_p"])
+
+
+def _reclassified(specs: dict[str, tuple[float, int, float, float]]) -> pd.DataFrame:
+    """specs: uid -> (slope_i, n_occasions, slope_se, slope_p)."""
+    person_slopes = [
+        PersonSlope(uid=uid, slope_i=si, n_occasions=n, slope_se=se, slope_p=sp)
+        for uid, (si, n, se, sp) in specs.items()
+    ]
+    return reclassify_family213(person_slopes, outcome_sd=1.0, predictor_sd=1.0)
+
+
+def test_intersect_bootstrap_evidence_requires_both_methods_to_agree():
+    """3 people: p1 available under both, p2 available under parametric
+    only, p3 available under cluster only -- only p1 should survive the
+    intersection."""
+    # slope_i=-0.5 (std_effect=0.5, clears the >=0.10 moderate bar), tiny
+    # p-values so each person's own BH-FDR-corrected q clears the 0.05 bar
+    # (each dict is its own family of 3, so a handful of p=0.001 clears
+    # comfortably, matching the existing test's own reasoning above).
+    parametric = _reclassified(
+        {
+            "p1": (-0.5, 20, 0.05, 0.001),
+            "p2": (-0.5, 20, 0.05, 0.001),
+            "p3": (-0.5, 20, 0.5, 0.9),  # not significant under parametric
+        }
+    )
+    cluster = _reclassified(
+        {
+            "p1": (-0.5, 20, 0.01, 0.001),
+            "p2": (-0.5, 20, 0.5, 0.9),  # not significant under cluster
+            "p3": (-0.5, 20, 0.01, 0.001),
+        }
+    )
+    combined = intersect_bootstrap_evidence(parametric, cluster).set_index("uid")
+
+    assert combined.loc["p1", "label_parametric"] in ("strong", "moderate")
+    assert combined.loc["p1", "label_cluster"] in ("strong", "moderate")
+    assert combined.loc["p1", "label_intersection"] == "evidence_available"
+
+    assert combined.loc["p2", "label_intersection"] == "no_claim"  # cluster says no
+    assert combined.loc["p3", "label_intersection"] == "no_claim"  # parametric says no
+
+
+def test_intersect_bootstrap_evidence_label_intersection_is_already_binary():
+    parametric = _reclassified({"p1": (-0.5, 20, 0.05, 0.001)})
+    cluster = _reclassified({"p1": (-0.5, 20, 0.01, 0.001)})
+    combined = intersect_bootstrap_evidence(parametric, cluster)
+    assert set(combined["label_intersection"]) <= {"evidence_available", "no_claim"}
+
+
+def test_intersect_bootstrap_evidence_preserves_per_method_columns_for_sensitivity_review():
+    """The combined table must not collapse away either method's own
+    label/SE -- the intersection is an addition, not a replacement, and
+    both single-method views must remain reviewable from the one table."""
+    parametric = _reclassified({"p1": (-0.5, 20, 0.05, 0.001)})
+    cluster = _reclassified({"p1": (-0.5, 20, 0.01, 0.002)})
+    combined = intersect_bootstrap_evidence(parametric, cluster).set_index("uid")
+
+    assert combined.loc["p1", "slope_se_parametric"] == pytest.approx(0.05)
+    assert combined.loc["p1", "slope_se_cluster"] == pytest.approx(0.01)
+    assert combined.loc["p1", "slope_p_parametric"] == pytest.approx(0.001)
+    assert combined.loc["p1", "slope_p_cluster"] == pytest.approx(0.002)
+    assert "label_holm_parametric" in combined.columns
+    assert "label_holm_cluster" in combined.columns
+    assert "bh_q_213_parametric" in combined.columns
+    assert "bh_q_213_cluster" in combined.columns
