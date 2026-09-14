@@ -635,6 +635,24 @@ signature of over-truncation, not of a stronger relationship.
 8. **Family size is feature-specific.** The 213-participant family is defined
    for this single feature. Once additional Tier-1 features are modelled, the
    family must be redefined across person × feature rather than person alone.
+   **[Confirmed 2026-09-14, now that `unlock_num_ep_0` is actually modelled]**
+   The two Tier-1 features do not share a participant set:
+   `loc_dist_ep_0`'s model frame has 214 participants, `unlock_num_ep_0`'s has
+   216, and the former is a strict subset of the latter (`only_in_loc_dist_ep_0`
+   is empty; exactly 2 participants are `unlock_num_ep_0`-only). Traced to
+   source: both of those 2 participants fail GPS's `quality_loc >= 12h` gate
+   almost completely (0/356 and 3/1141 valid-quality days; one has zero
+   non-null raw `loc_dist_ep_0` values at all), while their unlock coverage is
+   complete, since unlock has no comparable quality field to lose them on.
+   **This is a limitation in its own right, not only a family-size mechanic:**
+   there exist real participants for whom a defensible "for you, X has tended
+   to coincide with Y" statement is possible via `unlock_num_ep_0` but not via
+   `loc_dist_ep_0` — their GPS history is too sparse to ever enter that
+   feature's model frame, independent of how much unlock or EMA history they
+   accumulate. Any per-person relationship statement must be evaluated as a
+   per-feature question ("does *this* feature have anything to say about
+   *this* person"), not inferred from one feature's cold-start state to the
+   other's.
 9. **Code is not under version control** *(as of when this was written — see
    the Section 1 correction note for what changed since).* At the time this
    analysis was run, Moe's `analysis/` directory was not a git repository, so
@@ -660,7 +678,11 @@ signature of over-truncation, not of a stronger relationship.
     emits no historical-relationship statements at all. The model converged on
     this dataset so the path was never taken, but it is reachable on the
     fallback dataset. The behaviour needs documenting as a defined degradation
-    mode rather than left as an implicit consequence.
+    mode rather than left as an implicit consequence. **[Updated 2026-09-13]**
+    This item is about the convergence-fallback edge case specifically — the
+    broader fact that the `backend/statistics/evidence.py` port left
+    `slope_se`/`slope_p` `None` in *every* case (not just this fallback) is
+    covered separately, and now resolved via bootstrap, in section 5.4.
 12. **Implausibility-cutoff sensitivity not run.** The 250 km and 1,000 km
     re-runs are pre-registered in the Week 4 lock but have not been executed.
 13. **The Mundlak person-mean is computed over a wider set than the model
@@ -745,6 +767,112 @@ Individual labels should therefore be treated as indicative rather than
 determinate, which is the direct motivation for the two-value user-facing
 collapse in section 3.7.
 
+### 5.4 Per-person SE via bootstrap and cross-method intersection (backend port, added 2026-09-13)
+
+**[POST-HOC.]** `backend/statistics/evidence.py`'s per-person significance test
+had been left with `slope_se`/`slope_p` always `None` — the R `nlme` engine that
+module's AR(1) fit runs on (see section 4/section 3.4 of the correction log for
+that port) has no `lme4::condVar`-equivalent way to extract a per-person BLUP
+variance, and a direct check confirmed `nlme::simulate.lme` refuses models with
+a `corStruct` outright, so a delta-method or `nlme`-native fix was not
+available. Two bootstrap SE estimators were implemented instead
+(`backend/statistics/bootstrap.py`), compared against each other on the real
+dataset (B=500 each), and found to disagree badly enough that **neither is used
+alone** — only their intersection is.
+
+**The two designs:**
+
+- **Parametric.** Resimulate `y` from the real fit's own generative parameters
+  (fixed effects, the random-effects covariance `D`, the AR(1) coefficient,
+  residual `sigma`) — a fresh random-effect draw and a fresh AR(1) residual
+  series for every person, every replicate — then refit and collect the
+  resimulated per-person slope.
+- **Cluster (case resampling).** Resample participants with replacement,
+  keeping each resampled copy's real observed data unchanged, then refit and
+  collect the per-person slope. A participant drawn more than once is
+  relabelled per copy so the model treats repeats as distinct clusters.
+
+**They are not simply differently scaled — they are sensitive to opposite
+things.** On the real dataset:
+
+- Parametric SE correlates **positively** with a person's occasion count
+  (Spearman ρ ≈ **+0.81**): more occasions means less BLUP shrinkage toward the
+  population mean, so more of the true random-slope variance passes through
+  into how much the resimulated `slope_i` varies from replicate to replicate.
+- Cluster SE correlates **negatively** with occasion count (ρ ≈ **−0.33**):
+  more of a participant's own real, unchanging data makes their contribution
+  more stable regardless of who else gets resampled alongside them — the
+  ordinary "more data, smaller SE" pattern.
+- Because the two are driven by the same variable in opposite directions,
+  their **per-person SE rankings are themselves negatively correlated**
+  (Spearman ρ ≈ **−0.397**, p ≈ 1.7×10⁻⁹) — not a constant rescaling. The SE
+  ratio (parametric ÷ cluster) ranges **1.05× to 29.5×** across participants
+  (mean **7.85×**), not one fixed factor.
+
+**Why neither survives alone.** Cluster's SE is small specifically because it
+never re-draws a selected participant's own observed trajectory — only who
+else is resampled alongside them — so it does not encode the uncertainty from
+that participant's data having come out differently, which is exactly what a
+person-level SE needs to capture; it understates the quantity the evidence-
+strength test actually needs. Parametric's SE reflects genuine generative
+uncertainty but is dominated by an occasion-count/shrinkage effect, a
+different quantity from "how uncertain is this person's estimated slope."
+
+**Decision: `label_intersection` — `evidence_available` only where both
+methods independently agree** (`backend.statistics.evidence
+.intersect_bootstrap_evidence`). Confirmed on the real dataset (B=500 both
+methods):
+
+| | cluster: `evidence_available` | cluster: `no_claim` |
+|---|---|---|
+| **parametric: `evidence_available`** | 23 | 0 |
+| **parametric: `no_claim`** | 28 | 163 |
+
+Agreement rate **86.9%** (186/214). The disagreement is **one-directional**:
+every participant parametric calls `evidence_available` is also called
+`evidence_available` by cluster (zero counter-examples); cluster additionally
+calls **28 more** participants `evidence_available` that parametric does not —
+consistent with cluster's smaller, less trustworthy-alone SE being the more
+permissive side. Intersection yields **23 of 214** participants as
+`evidence_available` — numerically equal to parametric's own set here, though
+the *rule* is "both agree," not "defer to parametric": a dataset where
+cluster's set were instead a strict subset of parametric's would produce a
+different intersection than either parent set alone.
+
+**Stability check (requested before considering B=1000):** the 500 iterations
+were split by `iteration_index` into two halves (0–249, 250–499) and the
+intersection recomputed independently on each. Half A and half B each yield
+**24** participants (not 23) — each half agrees with the full-B=500 23-person
+set entirely, plus **one additional, different borderline participant per
+half** (Jaccard(half A, full) = Jaccard(half B, full) = 0.958; Jaccard(half A,
+half B) = 0.92). The full B=500 set is a strict subset of both halves — more
+replicates resolved two borderline cases toward `no_claim` that a smaller,
+noisier B had let through. This is a reasonably stable result and does not, on
+its own, argue for B=1000: the picture that would change with more replicates
+(further tightening around 1-2 more borderline participants) is a small,
+diminishing-returns correction, not evidence that 23 is unreliable.
+
+**This is a post-hoc decision, not a pre-registered one** — Week 4's
+pre-registration specified BH-FDR correction over a single per-person test; it
+did not anticipate reconciling two different bootstrap SE estimators, because
+the SE gap itself was not foreseen as needing a bootstrap solution. Recorded in
+the same register as the cohort-level family size (213, section 3.5) and the
+binary user-facing collapse (section 3.7) — see also
+`docs/statistics/preregistration.md` section 7's post-hoc log.
+
+**`strong` remains unreachable** under either method or the intersection, for
+the same reason already noted in section 3.6/5.1: `classify_evidence_strength`
+requires an explicit lag-0/lag-1 sign-consistency flag that no caller
+currently supplies (the lag-1 term is out of this module's scope). All 23
+intersection-positive participants are therefore `moderate`, not `strong`, by
+construction — this is the existing, already-documented scope gap, not a new
+one introduced by bootstrapping.
+
+Parametric-only and cluster-only classifications remain available as
+standalone sensitivity views (`reclassify_family213`'s own `label_bh`/
+`label_holm` per method) — the intersection is an addition to the per-person
+table, not a replacement of either single-method view.
+
 ---
 
 ## 6. Handover to other workstreams
@@ -763,46 +891,71 @@ Four items require action from other leads.
 
 ---
 
-## 7. For the Tier-1 sign-off
+## 7. Tier-1 feature list (confirmed)
 
+**[CORRECTED 2026-09-13]** This section previously described a 3-feature list
+(`loc_dist_ep_0` + `loc_home_dur` + `unlock_num_ep_0`) as "proposed, pending
+team sign-off." That was already stale when written: the team's actual hard
+cap, set in `Weekly_Plan.md` Week 4, is **maximum 2 cross-platform features
+unless a third genuinely meets the same standard** — not 3 — and the team had
+already converged on a 2-feature list before this section's "pending" language
+was drafted. Corrected below rather than silently rewritten; the original
+construct-overlap analysis is kept, relabelled, since it answers a real
+question even though it turned out not to be the one the sign-off needed.
+
+- **Tier 1 is confirmed as two features: `loc_dist_ep_0` + `unlock_num_ep_0`.**
+  All 8 team members agreed on this 2026-08-26 (verbal record over the team
+  WhatsApp group) — see `feature-list-signoff.md` (Integration/QA sign-off)
+  and `freeze-decision.md` (the underlying team agreement this sign-off is
+  based on, recorded 2026-09-05). Consistent with the feature set already
+  described as locked in CS-62 Project Status Checking 1 (client Tianyi
+  Zhang, 30 Aug 2026 meeting).
 - `loc_dist_ep_0` is a working reference implementation: real data, converged
   model, significant effect in the direction prior literature predicts,
-  independently reconciled against a second implementation. It is a strong
-  candidate for the final 3-feature list.
-- The same pipeline generalises to any other Tier-1 candidate by swapping the
-  value/quality columns and cleaning thresholds — no architecture change
-  needed once the other 1–2 features are chosen. `tools/reconcile_occasions.py`
+  independently reconciled against a second implementation.
+- The same pipeline generalises to `unlock_num_ep_0` (and to any future
+  Tier-1 candidate) by swapping the value/quality columns and cleaning
+  thresholds — no architecture change needed. `tools/reconcile_occasions.py`
   is retained so the same count reconciliation can be run on each.
-- **Construct overlap — checked, and the features are not redundant.** The
-  concern was that `loc_dist_ep_0` and `loc_home_dur` might measure the same
-  underlying behaviour, spending two of three multiple-comparison slots on one
-  construct. The within-person correlation between person-mean-centred
-  `log(loc_dist)` and person-mean-centred `loc_home_dur` is **r = −0.2425**
-  across 157,725 paired participant-days and 217 participants, well below the
-  0.6 threshold set for considering a substitution. Time spent away from home
-  is not the same quantity as distance covered: a participant can spend a full
-  day at a single non-home location while travelling almost nothing.
-
-  **The proposed Tier 1 list is `loc_dist_ep_0` + `loc_home_dur` +
-  `unlock_num_ep_0`, pending team sign-off.**
+- **Construct-overlap analysis below was run against the wrong candidate for
+  what was actually decided, and does not bear on the confirmed Tier-1
+  list.** It was checking whether `loc_dist_ep_0` and `loc_home_dur` measure
+  the same underlying behaviour — `loc_home_dur` was never the feature the
+  team actually added; `unlock_num_ep_0` was. The analysis was run without
+  knowing the 2-feature cap (and the specific 2-feature choice) had already
+  been agreed on 2026-08-26. Kept here as material for if/when a third
+  feature is revisited, not as a finding about the current list: the
+  within-person correlation between person-mean-centred `log(loc_dist)` and
+  person-mean-centred `loc_home_dur` is **r = −0.2425** across 157,725 paired
+  participant-days and 217 participants, well below the 0.6 threshold set for
+  considering a substitution — i.e. if a third feature is ever added,
+  `loc_home_dur` would not be disqualified by construct overlap with
+  `loc_dist_ep_0` on this basis alone. Time spent away from home is not the
+  same quantity as distance covered: a participant can spend a full day at a
+  single non-home location while travelling almost nothing.
 
   *(Correlation supplied by the Data Pipeline Lead.)*
-- Location entropy is **Tier 2**, not Tier 1. CES has no pre-computed entropy
-  variable, and deriving it (Shannon entropy over per-cluster time shares)
-  would need its own cleaning rules, sanity bounds and validation, none of
-  which exist. The Week 4 maximum-of-3 cap was written down in advance
-  specifically so this call would not fall to someone under time pressure.
-- `analysis/preregistration.md` exists, but as a 2026-09-12 compilation of
-  Moe's already-locked decisions by another contributor (Priyansh
-  Khandelwal), not a document she drafted herself — sections it has no
-  existing decision for are left explicitly marked "pending Moe's input"
-  rather than invented. It still needs her review, and a decision on
-  whether it stands alone or this deliverable / the Group Proposal replaces
-  it, before it can be described as "ready to be frozen."
-- Open items still needing the team's input: PHQ-4 total as sole primary
-  outcome vs. co-primary subscales; final feature list; COVID-era handling;
-  sign-off on the two previously-undocumented model-entry rules (limitation
-  10).
+- Location entropy is **Tier 2**, not Tier 1, independent of the above: CES
+  has no pre-computed entropy variable, and deriving it (Shannon entropy over
+  per-cluster time shares) would need its own cleaning rules, sanity bounds
+  and validation, none of which exist.
+- **Two preregistration documents currently exist, not yet reconciled.**
+  `docs/statistics/preregistration.md` (brought into this repository
+  2026-09-13 — Moe Tanaka's actual original local 354-line file, with real
+  provenance; it previously existed only as an uncommitted local copy — see
+  its own migration note) now covers both confirmed features: `loc_dist_ep_0`
+  (section 1.5) and `unlock_num_ep_0` (section 1.6, added at the same
+  check-in — no quality gate, zeros retained, no log transform; see that
+  section for the skew/kurtosis figures ruling the log transform out).
+  Separately, `analysis/preregistration.md` (249 lines) was independently
+  compiled by another contributor's session (Priyansh Khandelwal, 2026-09-12)
+  from Moe's already-locked decisions, inside the now-archived `analysis/`
+  directory — not a document she drafted herself, and not yet reconciled
+  against the file above (see `CLAUDE.md`'s "Unreflected changes" for this
+  flagged, unresolved duplication).
+- Remaining open items: PHQ-4 total as sole primary outcome vs. co-primary
+  subscales; COVID-era handling; sign-off on the two previously-undocumented
+  model-entry rules (limitation 10).
 
 ---
 
