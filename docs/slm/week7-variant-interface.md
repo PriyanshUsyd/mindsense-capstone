@@ -4,10 +4,11 @@
 - Date: 2026-09-15 (Australia/Sydney)
 - Branch: `Rz-week7`
 - Frozen base: `main@691d1fe9382e56d67e208207f89a9a1d71908b1c`
-- Status: common interface and public synthetic harness implemented; production
-  RAG/agent dependencies require role-owner review
-- Model status: Phi operational baseline; Qwen challenger; final selection
-  remains `comparison_pending`
+- Status: common interface and public synthetic harness implemented; Qwen
+  grounding correction validated locally; production RAG/agent dependencies
+  require role-owner review
+- Model status: Phi operational baseline; Qwen public-development candidate;
+  final selection remains `comparison_pending`
 
 ## Purpose
 
@@ -130,7 +131,9 @@ sealed held-out prompt set.
   grounding after a real cold model invocation.
 - Qwen public synthetic smoke: 3/4. The eligible GPS draft was generated, then
   rejected as `grounding_text_mismatch` and safely replaced by the generic
-  fallback. This proves boot/invocation, not baseline readiness.
+  fallback. This was the pre-correction frozen-build observation: Qwen mixed the
+  State B observed-window wording into a State C packet and omitted the personal
+  baseline from the text while retaining otherwise correct structured evidence.
 
 Implementation verification after adding the interface and harness:
 
@@ -138,6 +141,42 @@ Implementation verification after adding the interface and harness:
 - Focused SLM/API/integration regression including the new tests: 223 passed,
   0 failed, with the same 2 dependency deprecation warnings.
 - Ruff check passed for all new Python source and test files.
+
+## Qwen grounding correction on `Rz-week7`
+
+Prompt `0.4.11` adds an eligibility-driven runtime directive after the common
+system prompt. The backend derives the authoritative State B or State C from the
+validated packet and supplies deterministic `allowed_response_options` rendered
+by the existing grounding component. The model must copy one complete mode/text
+pair; it may not combine the mutually exclusive state examples. State A still
+stops before model generation. The output safety and grounding gates, frozen
+`EvidencePacket`, and frozen `SafeSLMResponse` remain unchanged.
+
+Public synthetic verification after the correction:
+
+- Qwen GPS smoke improved from 3/4 to 4/4; its eligible response included both
+  3.8 km/day and the 4.6 km/day personal baseline without fallback.
+- Phi GPS smoke remained 4/4 and also completed the eligible response without
+  fallback.
+- In a three-repetition comparison, each model achieved 9/9 safety-service
+  acceptance and 9/9 deterministic quality checks. For both models, all three
+  State B and all three State C runs were model-generated without fallback; all
+  three diagnosis cases were routed before model invocation.
+- On this single local machine, Phi median/p95 wall latency was 634.92/685.17 ms
+  with 195.4 mean generated tokens/s. Qwen was 760.43/835.91 ms with 173.0 mean
+  generated tokens/s. These are development measurements, not a final model
+  ranking.
+- The public prohibited-request baseline remained 16/16 with zero unexpected
+  model calls. The public off-topic replay remained 5/5 with zero model calls.
+- The final public SLM/API/integration regression completed with 225 passed,
+  0 failed and the same two pre-existing dependency deprecation warnings.
+
+The reproducible synthetic comparison record is stored under
+`benchmarks/history/slm_prompt0411_model_comparison/`. No sealed held-out prompt
+was read or executed. This establishes two locally usable SLM candidates; it
+does not authorize a final model selection or a frontend selector. Exposing the
+choice through the product API requires the Integration/QA and Frontend owners
+to agree on a bounded allow-list and request/response contract.
 
 ## Role-owner gates before production variant runs
 

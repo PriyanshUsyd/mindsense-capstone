@@ -4,12 +4,19 @@ from typing import Any
 import pytest
 from pydantic import ValidationError
 
-from backend.contracts.evidence import AssistantDraft, EvidencePacket
+from backend.contracts.evidence import (
+    AssistantDraft,
+    EligibilityStatus,
+    EvidencePacket,
+    ResponseMode,
+)
 from backend.slm.client import (
     OllamaClient,
     OllamaClientConfig,
     SLMResponseError,
 )
+from backend.slm.output_grounding import render_grounded_example
+from benchmarks.slm_model_comparison import comparison_cases
 
 
 class FakeTransport:
@@ -73,6 +80,14 @@ def test_payload_is_schema_constrained_and_deterministic(
         eligible_packet.identity.packet_id,
         eligible_packet.feature_window.feature_id,
     ]
+    assert user_payload["runtime_evidence_state"] == "state_c_eligible"
+    assert user_payload["allowed_response_options"] == [
+        {
+            "response_mode": "normal",
+            "text": render_grounded_example(eligible_packet, ResponseMode.NORMAL),
+        }
+    ]
+    assert "Ignore every State A and State B" in payload["messages"][0]["content"]
 
 
 def test_invalid_model_content_is_rejected(eligible_packet: EvidencePacket):
@@ -84,6 +99,50 @@ def test_invalid_model_content_is_rejected(eligible_packet: EvidencePacket):
 
     with pytest.raises(SLMResponseError, match="AssistantDraft"):
         client.generate_draft(eligible_packet, "What changed?")
+
+
+def test_payload_isolated_to_state_b_for_partial_history():
+    packet = next(
+        case.packet for case in comparison_cases() if case.case_id == "partial_history"
+    )
+    client = OllamaClient(OllamaClientConfig(model_tag="qwen3:4b"))
+
+    payload = client.build_payload(packet, "Is this higher or lower than usual?")
+    user_payload = json.loads(payload["messages"][1]["content"])
+
+    assert user_payload["runtime_evidence_state"] == (
+        "state_b_partial_descriptive_only"
+    )
+    assert user_payload["allowed_response_options"] == [
+        {
+            "response_mode": "insufficient_data",
+            "text": render_grounded_example(packet, ResponseMode.INSUFFICIENT_DATA),
+        }
+    ]
+    system_content = payload["messages"][0]["content"]
+    assert "Ignore every State A and State C" in system_content
+
+
+def test_payload_rejects_state_a_before_transport(eligible_packet: EvidencePacket):
+    packet = eligible_packet.model_copy(
+        update={
+            "baseline": eligible_packet.baseline.model_copy(
+                update={
+                    "value": None,
+                    "n_baseline_observations": 0,
+                    "eligibility_status": (
+                        EligibilityStatus.INELIGIBLE_INSUFFICIENT_WINDOW
+                    ),
+                    "ineligible_reason": "no eligible observations",
+                }
+            ),
+            "evidence": None,
+        }
+    )
+    client = OllamaClient(OllamaClientConfig(model_tag="qwen3:4b"))
+
+    with pytest.raises(ValueError, match="not permitted for State A"):
+        client.build_payload(packet, "What changed?")
 
 
 def test_model_payload_redacts_participant_reference_without_mutating_packet(

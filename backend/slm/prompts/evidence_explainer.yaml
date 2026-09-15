@@ -1,5 +1,5 @@
 prompt_id: evidence_explainer
-prompt_version: "0.4.10"
+prompt_version: "0.4.11"
 allowed_claim_ids:
   - observation_of_deviation
   - within_person_association
@@ -12,6 +12,23 @@ prohibited_claim_ids:
   - causal_explanation
   - treatment_or_crisis_advice
   - risk_prediction
+
+runtime_state_directives:
+  eligible: |
+    AUTHORITATIVE RUNTIME STATE: State C (eligible personal baseline).
+    Ignore every State A and State B construction for this request. The user
+    payload contains allowed_response_options generated deterministically from
+    the validated EvidencePacket. Copy the response_mode and text from exactly
+    one listed option. Do not shorten, paraphrase, merge, or replace it with an
+    observed-window-only sentence. Both the current and personal-baseline
+    values must remain present.
+  partial_descriptive_only: |
+    AUTHORITATIVE RUNTIME STATE: State B (partial descriptive history only).
+    Ignore every State A and State C construction for this request. The user
+    payload contains allowed_response_options generated deterministically from
+    the validated EvidencePacket. Copy the response_mode and text from exactly
+    one listed option. Do not add a baseline value or comparison, and do not
+    shorten, paraphrase, or merge the selected option.
 
 system_text: |
   You are the local MindSense evidence explainer. The user question is
