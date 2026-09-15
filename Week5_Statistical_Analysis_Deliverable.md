@@ -189,21 +189,52 @@ corrected predictor, so the decomposition remains internally consistent.
 | 8 h gate, lag 0, mean(log) | −0.365 | — |
 | 12 h gate, lag 0, mean(log) | −0.383 | +4.9% |
 | 12 h gate, lag 1, mean(log) | −0.374 | −2.3% |
-| 12 h gate, lag 1, log(mean) | **−0.248** | **−33.7%** |
+| 12 h gate, lag 1, log(mean) | −0.248 | −33.7% |
+| + reindex fix (`backend/statistics` pipeline, lme4/Satterthwaite, no lag-1 term) — **sensitivity** | −0.277 | +11.7% |
+| + AR(1) correction (nlme/`corAR1`) — **primary** (Week 4 §1.2) | **−0.184** | **−33.6%** |
 
 Corrections 2.2 and 2.3 changed the estimate very little. They were made
 because the implementation did not match a locked decision, and because the
 temporal ordering was invalid — not because of their numerical effect.
-Correction 2.4 accounts for essentially all of the movement.
+Correction 2.4 accounts for essentially all of the movement within the
+original `analysis/` pipeline.
+
+**−0.248 was doubly stale by the time it was carried forward as "the"
+reported value, for two independent reasons.** First, it is not from the
+pipeline now in production at all: it comes from the retired `analysis/`
+pipeline's own confirmatory specification — a different model, not just a
+different bug-fix state of the same one. That pipeline included a lag-1
+predictor term and its own `MIN_OCCASIONS_PER_PERSON >= 3` model-entry
+filter, fit via Python `statsmodels` `MixedLM` (no R), on 27,530 occasions /
+213 participants — not the 28,337 occasions / 214 participants
+`backend/statistics/` now uses (no lag-1 term in the confirmatory model;
+see §3.2 for why the two pipelines' denominators differ). So the row below
+labelled "+ reindex fix" is not literally "−0.248 with one bug patched" —
+it is the first `backend/statistics/` number on this list, which is why it
+jumps straight past the pipeline switch as well as the bug fix; the
+reindex bug itself (§3.2, fixed 2026-09-13: `build_trailing_predictor`'s
+per-person date-range reindex stopped at that person's own sensing range,
+silently dropping any EMA occasion dated outside it — 17 real occasions on
+this dataset, 28,320 → 28,337) moved `backend/statistics/`'s own number by
+only −0.277073 → −0.277057, not the −0.248 → −0.277 jump. Second, even
+setting the pipeline switch aside, quoting that non-AR(1) `lme4` number at
+all was never what Week 4 §1.2's model specification asked for: AR(1) is
+written into the confirmatory model's residual term there, not offered as
+an optional robustness check (see the note preceding §3.3 below) — so
+−0.248 was also stale on inferential grounds, independent of which
+pipeline computed it.
 
 The direction of the relationship and its significance are unchanged
-throughout. The corrected effect is smaller, and is the better-specified
-estimate: the earlier figures were inflated by the compressed predictor.
+throughout every row of this table, including the two most recent. The
+AR(1)-corrected effect is smaller again than the sensitivity figure, and is
+the better-specified estimate under Week 4's own model: the plain LMM
+absorbs some of the real within-person serial correlation (phi = 0.606,
+§3.3) into what looks like signal in the fixed effect.
 
-The three intermediate configurations predate the per-run output directory
-scheme, so only the final row is reproducible from a retained run directory.
-Re-running the cascade requires setting `QUALITY_THRESHOLD_HOURS`,
-`ALIGN_WINDOW_LAG_DAYS` and the transform order back to the earlier values.
+The four `analysis/`-pipeline intermediate configurations predate the
+per-run output directory scheme, so only the −0.248 row among them is
+reproducible from a retained run directory; the two `backend/statistics/`
+rows are reproducible via `backend.statistics.tier1_runner`.
 
 ### 2.6 A fourth defect, in the verification tool
 
@@ -265,45 +296,95 @@ the lag-1 term sits in the same model formula, so those occasions are dropped
 listwise. The remaining 2 occasions belong to the single participant who falls
 below the three-occasion model-entry minimum.
 
+**[Updated 2026-09-15] Primary estimate is now the AR(1)-corrected fit, not
+the plain LMM.** Week 4 §1.2's formal model specification writes AR(1) into
+the confirmatory model's residual term itself (`e_it ~ N(0, σ²), AR(1) on e
+within person`) and calls the resulting β₁ "the reportable, causally-
+conservative quantity" — AR(1) is not listed among that section's explicitly
+labelled robustness checks (Kenward-Roger vs. Satterthwaite; the 7-day
+alignment window; the lag-1 term). This is a confirmation of what Week 4
+already specified, not a new decision, and not a case of choosing a method
+after seeing the results: `backend/statistics/`'s two R engines cannot both
+be run in one fit (`lme4`/`lmerTest` gives Satterthwaite/Kenward-Roger
+denominator df but has no `corAR1`-equivalent residual structure; `nlme`
+gives the AR(1) residual structure but not those denominator-df methods),
+so one of the two has to be designated primary, and Week 4's own formula
+settles which. The `lme4`/Satterthwaite fit is retained as the sensitivity
+figure. See `docs/statistics/preregistration.md` section 1.4.1 for the same
+note.
+
 ### 3.3 Model fit
 
-213 participants, **28,337** occasions passing the occasion-validity gate,
-**27,530** entering the model frame. Random-intercept + random-slope model
-converged (no fallback needed).
+**214** participants, **28,337** occasions passing the occasion-validity
+gate enter the confirmatory model frame (see §3.2 for why this pipeline has
+no separate lag-1/`MIN_OCCASIONS_PER_PERSON` denominator — the confirmatory
+model here does not carry a lag-1 term). Random-intercept + random-slope
+model converged on both engines (no fallback).
 
-- Within-person effect (`log distance` → PHQ-4 total):
-  **β₁ = −0.248, 95% CI [−0.315, −0.182], p < 0.001**
-- Lag-1 term: **β = −0.040, 95% CI [−0.075, −0.004]** — same direction, roughly
-  one sixth the magnitude. Secondary/sensitivity only, not part of the
-  confirmatory claim.
-- Time in study: **β = 0.007 PHQ-4 points per week, p < 0.001** — a small
-  upward drift over a participant's time in the study, carried as a covariate
-  so it is not absorbed into the mobility effect.
+- Within-person effect (`log distance` → PHQ-4 total), **primary (AR(1),
+  `nlme::lme` + `corAR1`)**: **β_W = −0.184, phi = 0.606, p < 0.001**
+  (5.57×10⁻¹⁹). `phi` is the estimated AR(1) autocorrelation of the residual
+  from one EMA occasion to the next within a person — substantial genuine
+  serial correlation, consistent with Week 4 §1.3's own prediction that the
+  overlapping 14-day trailing windows (median EMA gap ~5 days) would induce
+  exactly this.
+- **Sensitivity (`lme4::lmer` + `lmerTest`, Satterthwaite, no AR(1)
+  correction)**: **β_W = −0.277, 95% CI [−0.337, −0.217], p < 0.001**
+  (1.04×10⁻¹⁶).
+- **The 34% gap between the two (−0.184 vs. −0.277) is not disagreement
+  between methods — it is what correcting for phi = 0.606 of real
+  within-person serial correlation is expected to do.** The plain LMM has no
+  way to distinguish "this person's mood really does track their mobility
+  this closely" from "this person's last several mood ratings were already
+  correlated with each other because their trailing windows overlap," so
+  some of the latter shows up in its fixed-effect estimate; the AR(1) fit
+  partitions it into `phi` instead, leaving a smaller but better-specified
+  β_W.
 - Direction: within-person periods of *higher* mobility are associated with
-  *lower* PHQ-4 (less distress) for the average person — consistent with prior
-  mobility/wellbeing literature. This is an association, not a causal claim.
-- Magnitude: on the `log(mean + 1000)` scale, roughly a 2.7× increase in mean
-  daily distance corresponds to a 0.25-point decrease on the 0–12 PHQ-4 scale.
-  The relationship is statistically clear and practically small. Conversational
+  *lower* PHQ-4 (less distress) for the average person — consistent with
+  prior mobility/wellbeing literature, under both fits. This is an
+  association, not a causal claim.
+- Magnitude (AR(1), primary): a 2.7× increase in mean daily distance
+  (`log(mean + 1000)` scale) corresponds to a 0.184-point decrease on the
+  0–12 PHQ-4 scale — smaller than the sensitivity figure's 0.277-point
+  estimate, for the phi = 0.606 reason above. The relationship is
+  statistically clear and practically small either way; conversational
   output must be worded accordingly.
+- **Not yet reproduced under the current model.** The lag-1 term (β ≈ −0.040
+  in the retired pipeline) and the time-in-study covariate (β ≈ 0.007 PHQ-4
+  points/week) are retained here from the earlier `analysis/`-pipeline fit
+  (27,530 occasions, §2.5) as historical figures — `backend/statistics/`'s
+  default confirmatory fit does not include a lag-1 term (Week 4 §1.2's β2
+  is out of `mixed_effects_model.py`'s current scope, per that module's own
+  docstring) and has not been re-run with `extra_fixed_effects=
+  ["week_in_study"]` under either engine. These two numbers should not be
+  read as AR(1)-corrected or as agreeing with the 28,337-occasion
+  denominator above.
 
 ### 3.4 Agreement with an independently computed estimate
 
-After correction, the pipeline reproduces the Data Pipeline Lead's occasion
-count exactly, and the two independent estimates agree.
+The Data Pipeline Lead's independently-computed estimate is compared here
+against the **sensitivity** (`lme4`, no AR(1)) figure, not the primary
+AR(1)-corrected one — his own specification is a simpler one-off fit with
+no AR(1) residual structure, so `lme4`/Satterthwaite is the fit built on
+comparable assumptions. **After the reindex fix (§3.2), the pipeline
+reproduces his occasion count exactly, and the two independent estimates
+now agree closely** (they differed slightly under the pre-reindex-fix,
+pre-AR(1) `analysis/`-pipeline comparison this section used to report — see
+§2.5's cascade for that history):
 
 | Source | Occasions | β₁ | 95% CI |
 |---|---|---|---|
 | Data Pipeline Lead, 1st–99th winsorisation | 28,337 | −0.277 | [−0.337, −0.217] |
-| This pipeline, corrected | 28,337 | −0.248 | [−0.315, −0.182] |
+| `backend/statistics/`, sensitivity (`lme4`, no AR(1)) | 28,337 | −0.277 | [−0.337, −0.217] |
+| `backend/statistics/`, **primary (AR(1))** | 28,337 | −0.184 | — (nlme `tTable`, not a Satterthwaite CI) |
 
-The intervals overlap substantially and the difference in point estimates is
-approximately one quarter of the confidence interval width. The residual
-difference is attributable to model specification: the confirmatory model
-carries person-level random slopes and Mundlak decomposition, while the
-comparison figure comes from a simpler sensitivity specification. No attempt
-was made to reconcile the two estimates further, as the specifications are
-intentionally different.
+The Data Pipeline Lead's specification has no AR(1) residual structure, so
+it is not directly comparable to the primary row — the agreement claim here
+is specifically "his estimate matches our sensitivity estimate," not "his
+estimate matches our primary, reported estimate." Whether an
+AR(1)-corrected estimate from his own pipeline would also land near −0.184
+has not been checked.
 
 ### 3.5 Multiple-comparison family definition
 
@@ -536,6 +617,57 @@ with continuing new-user intake would show a substantially higher State B
 share.
 
 Full numbers: `analysis/output/latest/week5_run_report.md`.
+
+### 3.9 `unlock_num_ep_0` results
+
+Second confirmed Tier-1 feature (`feature-list-signoff.md` /
+`freeze-decision.md`, 2026-08-26). **216** participants, **34,235**
+occasions passing the occasion-validity gate (see §2 of
+`docs/statistics/preregistration.md` limitations note for why this
+participant set is not the same 214 as `loc_dist_ep_0`'s). Both engines
+converged, no fallback.
+
+- Within-person effect (raw unlock count → PHQ-4 total), **primary
+  (AR(1), `nlme::lme` + `corAR1`)**: **β_W = 0.001265, p = 0.143**, phi =
+  0.599.
+- **Sensitivity (`lme4::lmer` + `lmerTest`, Satterthwaite, no AR(1))**:
+  **β_W = 0.000381, p = 0.777**.
+- **Neither fit clears conventional significance.** Positive sign
+  (more unlocks associated with slightly higher PHQ-4) under both engines,
+  but the AR(1) fit's own p = 0.143 does not reach 0.05 either — unlike
+  GPS distance, there is no detectable within-person association between
+  phone-unlock frequency and PHQ-4 in this dataset, under the primary fit
+  or the sensitivity fit.
+
+**The conclusion does not depend on the cleaning transform decision
+either.** `unlock_num_ep_0` carries no locked transform the way GPS's
+`log(mean + 1000)` was — see `docs/statistics/preregistration.md` section
+1.6.2 for why no transform is applied (raw skew/kurtosis are mild; both
+log variants checked make the distribution worse, not better). Both the
+adopted no-transform spec and the previously-flagged `log(mean + 1)`
+alternative were fit against the real dataset with the real R engine, to
+confirm the null finding is not an artifact of that choice:
+
+| Transform | Engine | β_W | p |
+|---|---|---|---|
+| identity (adopted spec) | primary (AR(1)) | 0.001265 | 0.143 |
+| identity (adopted spec) | sensitivity (`lme4`) | 0.000381 | 0.777 |
+| `log(mean + 1)` (retired candidate) | primary (AR(1)) | 0.084820 | 0.162 |
+| `log(mean + 1)` (retired candidate) | sensitivity (`lme4`) | 0.007777 | 0.937 |
+
+Same sign, not significant, under all four rows — two independent
+pre-processing choices (transform vs. no transform) and two independent
+model specifications (AR(1)-corrected vs. plain LMM) all agree. **No
+detectable association was found under either of two defensible
+pre-processing specifications** — a stronger claim than a null result
+under one single, arbitrarily-chosen specification would have been, since
+it rules out "the transform choice is hiding a real effect" as an
+explanation.
+
+Per-person evidence classification (`evidence.reclassify_family213`) is
+currently `insufficient` for all 216 participants, same reason as GPS
+(§3.5/5.4): no per-person `slope_se` has been fed in from
+`backend.statistics.bootstrap` for this feature yet.
 
 ---
 
