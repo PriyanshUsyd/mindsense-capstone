@@ -157,6 +157,42 @@ Fixed-effects specification as implemented:
   .MixedEffectsFitResult`/`Ar1EffectResult` carry the equivalent
   `used_random_slope` / `fallback_reason` fields on every fit.
 
+#### 1.4.1 AR(1) is primary, not a robustness check *(confirmed 2026-09-15)*
+
+**This is a confirmation of what Week 4 §1.2 already specified, not a new
+decision.** The formula above (`e_it ~ N(0, σ²), AR(1) on e within person`)
+writes an AR(1) residual structure directly into the confirmatory model —
+Week 4 does not offer it as an optional check the way it explicitly labels
+Kenward-Roger (vs. Satterthwaite), the 7-day alignment window, and the
+lag-1 term as such. Week 4 §1.2 calls the β resulting from *this* model
+"the reportable, causally-conservative quantity."
+
+**Software constraint (not addressed by Week 4's idealised spec):** R
+`lme4`/`lmerTest` gives Satterthwaite/Kenward-Roger denominator df but has
+no `corAR1`-equivalent residual-correlation structure; R `nlme` gives the
+AR(1) residual structure but not those denominator-df methods. No single
+fit available to this codebase satisfies both halves of Week 4's model at
+once, so one engine's β has to be designated the reportable one:
+
+- **Primary: `nlme::lme` + `corAR1`** (`backend.statistics.r_bridge
+  .fit_lme_ar1`, wired in as `fit_ar1_effect`'s primary path).
+- **Sensitivity: `lme4::lmer` + `lmerTest`** (Satterthwaite denominator df,
+  no AR(1) correction) — kept as the sensitivity figure precisely because
+  it supplies the denominator-df rigor section 1.5 below still wants, on a
+  model that is otherwise the closer-to-`lme4`-but-not-AR(1)-corrected
+  specification.
+
+**On the real dataset (`loc_dist_ep_0`), the two disagree by 34%**
+(primary β_W = −0.184 vs. sensitivity β_W = −0.277) — **not because the
+methods disagree about the data, but because of what the primary fit's own
+`phi = 0.606` says is real:** substantial genuine occasion-to-occasion
+serial correlation in the residual, exactly what section 1.1's window
+overlap (median EMA gap ~5 days against a 14-day trailing window) predicts.
+The sensitivity fit has no way to separate that serial correlation from
+signal in the fixed effect, so some of it inflates β_W there. Full numbers
+and the equivalent unlock comparison: `Week5_Statistical_Analysis_
+Deliverable.md` sections 2.5, 3.3, 3.4, 3.9.
+
 ### 1.5 Cleaning thresholds (`loc_dist_ep_0`)
 
 | Rule | Threshold | Action |
