@@ -17,30 +17,32 @@ If reflecting the change is difficult, append it to the "Unreflected changes" se
 (Append here any item where code was changed but the documentation could not be updated.
 Remove the line once it has been reflected. Record the date, the affected file, and the change made.)
 
-- **2026-09-12** — `analysis/baseline.py`, `analysis/cleaning.py`,
-  `analysis/evidence_model.py` moved to `analysis/archive/` (retired, not
-  deleted — see `analysis/archive/README.md`) and their logic ported/
-  reconciled into `backend/statistics/` (transform order fixed to
-  `log(mean)`, trailing window fixed to end the day before assessment,
-  quality gate fixed to 12h in `backend/statistics/mixed_effects_model.py`
-  and `backend/data_pipeline/cleaning.py`; per-person evidence-strength +
-  BH-FDR/Holm family-213 correction + binary collapse ported into new
-  `backend/statistics/evidence.py`, wired to `fit_ar1_effect`'s R-backed
-  BLUPs). **`analysis/preregistration.md` did not exist anywhere in this
-  repository** (checked: not on `main`, not on any branch) — confirmed
-  again 2026-09-12. It has since been created by compiling Moe Tanaka's
-  already-locked decisions (Week 4/5 deliverables, `analysis/archive/`,
-  `backend/statistics/`) into preregistration form; sections it has no
-  existing decision for are left explicitly marked "pending Moe's input"
-  (see that file's §10) rather than invented. Still needs Moe's review
-  before being treated as final, and still needs a decision on whether it
-  stands alone or the Group Proposal / Week 5 deliverable replaces it.
-  **`Week5_Statistical_Analysis_Deliverable.md` not yet
-  updated either** — pending Moe Tanaka's review of
-  `backend/statistics/evidence.py` (she offered to do this specific port
-  herself; one flagged gap remains — see that module's docstring on
-  per-person standard errors — before its numbers should be written up as
-  final).
+The 2026-09-12/09-13 archival of `analysis/{baseline,cleaning,evidence_model}.py`
+into `analysis/archive/`, the port of their logic into `backend/statistics/`,
+bringing Moe Tanaka's real local `preregistration.md` into the repository at
+`docs/statistics/preregistration.md`, correcting the Tier-1 feature list to
+the 2 features actually signed off (both there and in
+`Week5_Statistical_Analysis_Deliverable.md` §7), adding the
+`unlock_num_ep_0` spec, and closing `backend/statistics/evidence.py`'s
+per-person standard-error gap via bootstrap + cross-method intersection
+(`docs/statistics/preregistration.md` §4.1;
+`Week5_Statistical_Analysis_Deliverable.md` §5.4) are all reflected in their
+respective documents as of 2026-09-13.
+
+- **2026-09-14 — duplicate preregistration document, not yet reconciled.**
+  A *separate* session independently created `analysis/preregistration.md`
+  (249 lines, "compiled by session tooling" from already-locked decisions —
+  its own header says so) — inside the archived `analysis/` directory, which
+  this session's `docs/statistics/preregistration.md` migration note
+  explicitly avoided for that reason. Discovered during a rebase of
+  `moe-week6-tier1-extension` onto `origin/main`, which carried that file in
+  independently of anything on this branch (no path conflict, since the two
+  live at different locations). `docs/statistics/preregistration.md` is the
+  more authoritative of the two (it is Moe Tanaka's actual original local
+  file, with real provenance, not a reconstruction) but **no decision has
+  been made yet on whether to delete/redirect `analysis/preregistration.md`,
+  merge any content unique to it, or leave both in place** — flagged here
+  rather than resolved unilaterally during the rebase.
 
 ## Finalised decisions (changes require Statistical Analysis Lead approval)
 

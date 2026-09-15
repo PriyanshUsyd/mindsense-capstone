@@ -295,6 +295,8 @@ class RAr1Result:
     se: dict[str, float]
     pvalues: dict[str, float]
     blups: dict[str, dict[str, float]] = field(default_factory=dict)
+    sigma: float | None = None
+    random_effects_cov: dict[str, dict[str, float]] | None = None
 
 
 def fit_lme_ar1(
@@ -381,6 +383,24 @@ def _fit_lme_ar1(
         ranef_df = ro.conversion.get_conversion().rpy2py(ranef_r)
     blups = {str(uid): row.to_dict() for uid, row in ranef_df.iterrows()}
 
+    # Random-effects variance-covariance matrix D (nlme::getVarCov) and the
+    # residual SD (sigma) — the *generative* parameters a parametric
+    # bootstrap needs to resimulate y from this fit (beta + u_i ~ MVN(0, D)
+    # + AR(1) residuals with this sigma/phi). Not used by fit_ar1_effect's
+    # own primary-path callers; added for backend.statistics.bootstrap.
+    # Cheap to extract here (no refit) — see this module's docstring on
+    # why the R model object itself can't be reused once this function
+    # returns (the temporary-workspace cleanup in _r_workspace_scoped).
+    sigma = float(ro.r("as.numeric(.mindsense_model$sigma)")[0])
+    d_matrix_r = ro.r("as.matrix(nlme::getVarCov(.mindsense_model))")
+    d_names = list(ro.r("rownames(as.matrix(nlme::getVarCov(.mindsense_model)))"))
+    with localconverter(ro.default_converter + converter):
+        d_values = np.asarray(ro.conversion.get_conversion().rpy2py(d_matrix_r))
+    random_effects_cov = {
+        row_name: {col_name: float(d_values[i, j]) for j, col_name in enumerate(d_names)}
+        for i, row_name in enumerate(d_names)
+    }
+
     return RAr1Result(
         used_random_slope=used_random_slope,
         fallback_reason=fallback_reason,
@@ -391,4 +411,6 @@ def _fit_lme_ar1(
         se=t_df["Std.Error"].to_dict(),
         pvalues=t_df["p-value"].to_dict(),
         blups=blups,
+        sigma=sigma,
+        random_effects_cov=random_effects_cov,
     )
