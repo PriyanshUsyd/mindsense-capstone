@@ -153,6 +153,18 @@ which concrete "tools"/data sources an agentic variant queries — is a genuine
 open engineering question the client did not specify and the team has not
 yet decided. These remain **to be scoped in Week 7**, not confirmed choices.
 
+**Week 7 interface status (local branch, not published, 2026-09-15):**
+`Rz-week7` starts from frozen `main@691d1fe` and adds a common outer interface
+and public synthetic comparison harness for Base LLM, RAG, Agent and RAG+Agent.
+The frozen `EvidencePacket` and `SafeSLMResponse` are unchanged. Retrieval is
+bounded by `top_k`, agent execution is restricted to a local tool whitelist,
+and refused/crisis/invalid requests stop before either dependency runs. The
+current Base responder deliberately rejects non-empty supplemental context;
+production RAG/agent runs therefore remain pending owner-approved sources,
+tool schemas, context-aware grounding, privacy review and evaluation alignment.
+See `docs/slm/week7-variant-interface.md` for the interface and comparison
+controls.
+
 **Week 6 branch status (merged to `main` via PR #15, 2026-09-12):** `Rz-week6` addresses the
 off-topic limitation previously documented on `main`. Request policy `0.2.0` adds an
 explicit `off_topic` category and routes unmatched or ambiguous requests to
