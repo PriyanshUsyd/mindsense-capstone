@@ -1,14 +1,11 @@
 # Evaluation Plan v0.1
 
-> **Locked Week 4 default: 100% high-severity / 90% standard.** Evaluation
-> Design Lead may propose a change via normal PR review if needed, but
-> this is not a blocker. This taxonomy (Section 2 below) is Chonghao's
-> real Week 4 work and is the working version on `main`, replacing an
-> earlier AI-drafted 8-category placeholder — see
-> `docs/evaluation/archive/adversarial-taxonomy-ai-draft-SUPERSEDED.md` for
-> that superseded draft, kept only for reference. The pre-registered
-> pass-threshold rule lives in `docs/evaluation/pass-threshold.md`, also
-> locked as of 2026-08-29 — see that file for the full detail.
+> **Framework scope.** The five categories in Section 2 are the working
+> response-quality framework. They are not a replacement for the separate
+> adversarial safety-test groups in
+> `docs/evaluation/adversarial-taxonomy.md`, and neither framework replaces
+> the client's ten human-evaluation dimensions. Acceptance thresholds and
+> their approval history are defined in `docs/evaluation/pass-threshold.md`.
 
 ## 1. Evaluation Goal
 
