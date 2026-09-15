@@ -165,6 +165,17 @@ tool schemas, context-aware grounding, privacy review and evaluation alignment.
 See `docs/slm/week7-variant-interface.md` for the interface and comparison
 controls.
 
+Prompt `0.4.11` on the same local branch corrects the observed Qwen State B/
+State C template mixing without weakening the existing output gate. The backend
+derives the authoritative runtime state from the validated `EvidencePacket` and
+offers only deterministic grounded response options for that state; State A
+still stops before generation. Public synthetic checks now pass for both local
+models: Phi and Qwen each passed 9/9 three-repetition comparison records, while
+the prohibited-request baseline remained 16/16 and the off-topic replay 5/5
+with zero model calls. This makes both models usable SLM candidates, not a final
+model decision. A user-facing model selector remains an Integration/QA and
+Frontend contract change and is outside the SLM branch's ownership.
+
 **Week 6 branch status (merged to `main` via PR #15, 2026-09-12):** `Rz-week6` addresses the
 off-topic limitation previously documented on `main`. Request policy `0.2.0` adds an
 explicit `off_topic` category and routes unmatched or ambiguous requests to
