@@ -19,6 +19,7 @@ import pytest
 
 from backend.data_pipeline.cleaning import GPS_LOG_OFFSET_M
 from backend.statistics import r_bridge
+from backend.statistics.feature_specs import GPS_DISTANCE_SPEC
 from backend.statistics.mixed_effects_model import (
     ALIGNMENT_WINDOW_DAYS,
     OCCASION_MIN_VALID_SENSOR_DAYS,
@@ -71,7 +72,7 @@ def test_trailing_predictor_computes_calendar_correct_rolling_mean():
     # Introduce a gap and a different value for the last few days.
     sensing.loc[sensing.index[-3:], "loc_dist_ep_0_clean"] = 20.0
 
-    out = build_trailing_predictor(sensing, window_days=14)
+    out = build_trailing_predictor(sensing, transform=GPS_DISTANCE_SPEC.transform, window_days=14)
     last_row = out.iloc[-1]
     # The last row's date is day 20; its window ends day 19 (lag=1), i.e.
     # the 14 days ending on day 19: 12 days at 10.0, 2 days at 20.0 (only
@@ -85,7 +86,7 @@ def test_trailing_predictor_first_day_in_range_has_no_prior_window():
     """The lag means a person's very first observed day has nothing to
     look back on yet — x_it must be NaN there, not silently 0 or same-day."""
     sensing = _synthetic_sensing("a", n_days=5, value=10.0)
-    out = build_trailing_predictor(sensing, window_days=14)
+    out = build_trailing_predictor(sensing, transform=GPS_DISTANCE_SPEC.transform, window_days=14)
     first_row = out.iloc[0]
     assert np.isnan(first_row["x_it"])
     assert first_row["valid_sensor_days_in_window"] == 0
@@ -99,9 +100,69 @@ def test_trailing_predictor_reindexes_gaps_as_invalid_not_missing_rows():
             "loc_dist_ep_0_clean": [5.0, 5.0],
         }
     )
-    out = build_trailing_predictor(sensing, window_days=14)
+    out = build_trailing_predictor(sensing, transform=GPS_DISTANCE_SPEC.transform, window_days=14)
     # The reindexed range must include the gap days, not just the two observed rows.
     assert len(out) == 10
+
+
+def test_trailing_predictor_reindex_covers_ema_date_after_last_sensing_day():
+    """Regression test for the 2026-09-13 fix (mixed_effects_model.py
+    build_trailing_predictor): an EMA occasion dated AFTER a participant's
+    last sensing day must still get a row here (and pass the caller's
+    validity gate) when its trailing window genuinely has enough real
+    sensing data -- not silently dropped just because the old reindex
+    range stopped at the sensing data's own last day.
+
+    This is the same bug class analysis/output/reconciliation/README.md
+    documents as already found and fixed in the (now-retired) analysis/
+    pipeline's valid_day_counts() -- that fix had never been ported to
+    this module. Confirmed separately against the real dataset: 17 real
+    occasions (214-participant cohort, all clustered around the two
+    cohort-wide sensing end dates) were being silently dropped for
+    exactly this reason before this fix.
+    """
+    sensing = _synthetic_sensing("a", n_days=20, value=5.0)  # 2020-01-01..2020-01-20
+    ema = pd.DataFrame({"uid": ["a"], "day": [20200122], "phq4_score": [4.0]})
+
+    predictor = build_trailing_predictor(
+        sensing,
+        transform=GPS_DISTANCE_SPEC.transform,
+        window_days=14,
+        ema_dates=pd.DataFrame({"uid": ["a"], "date": [pd.Timestamp("2020-01-22")]}),
+    )
+    row = predictor[predictor["date"] == pd.Timestamp("2020-01-22")]
+    assert len(row) == 1  # would not exist at all before the fix
+    # Window ends 2020-01-21 (lag=1): [2020-01-08, 2020-01-21], of which
+    # only 2020-01-08..2020-01-20 (13 days) have real sensing data.
+    assert row.iloc[0]["valid_sensor_days_in_window"] == 13
+
+    frame = build_model_frame(sensing, ema, GPS_DISTANCE_SPEC, min_valid_sensor_days=7)
+    assert len(frame) == 1  # passes the gate on real data, not silently dropped
+    assert frame.iloc[0]["valid_sensor_days_in_window"] == 13
+
+
+def test_trailing_predictor_reindex_is_symmetric_for_ema_date_before_first_sensing_day():
+    """Same fix, start side: an EMA occasion dated BEFORE a participant's
+    first sensing day must also get an explicit row (valid_sensor_days=0,
+    x_it NaN, correctly failing the validity gate for a real reason) —
+    not be silently absent from this function's output altogether, which
+    is the defect class being fixed. The 17-occasion real-data bug only
+    ever manifested on the end side (no EMA date in this dataset precedes
+    its participant's first sensing day), so this direction is exercised
+    only by this synthetic case."""
+    sensing = _synthetic_sensing("b", n_days=20, value=5.0)  # 2020-01-01..2020-01-20
+    ema_date = pd.Timestamp("2019-12-20")  # 12 days before the first sensing day
+
+    predictor = build_trailing_predictor(
+        sensing,
+        transform=GPS_DISTANCE_SPEC.transform,
+        window_days=14,
+        ema_dates=pd.DataFrame({"uid": ["b"], "date": [ema_date]}),
+    )
+    row = predictor[predictor["date"] == ema_date]
+    assert len(row) == 1  # would not exist at all before the fix
+    assert row.iloc[0]["valid_sensor_days_in_window"] == 0
+    assert np.isnan(row.iloc[0]["x_it"])
 
 
 def test_occasion_validity_gate_drops_not_imputes():
@@ -112,7 +173,7 @@ def test_occasion_validity_gate_drops_not_imputes():
     sensing = sensing.iloc[:3]
 
     ema = pd.DataFrame({"uid": ["a"], "day": [20200114], "phq4_score": [4.0]})
-    frame = build_model_frame(sensing, ema, min_valid_sensor_days=7)
+    frame = build_model_frame(sensing, ema, GPS_DISTANCE_SPEC, min_valid_sensor_days=7)
     assert len(frame) == 0
 
 
@@ -132,7 +193,7 @@ def test_within_and_between_person_centring():
             "phq4_score": [3.0, 4.0, 5.0, 6.0],
         }
     )
-    frame = build_model_frame(sensing, ema)
+    frame = build_model_frame(sensing, ema, GPS_DISTANCE_SPEC)
 
     assert frame["x_within"].abs().max() < 1e-9  # constant feature -> always centred to ~0
     a_between = frame[frame["uid"] == "a"]["x_between"].iloc[0]
@@ -243,7 +304,7 @@ def test_compute_time_covariates_term_phase_flags_known_break_and_term_dates():
         {
             "uid": ["a", "a", "a"],
             # Dec 25 (winter break), Jan 20 (in-term), Jul 1 (summer break).
-            "date": pd.to_datetime(["2020-12-25", "2021-01-20", "2021-07-01"]),
+            "date": pd.to_datetime(["2020-12-25", "2021-01-20", "2021-07-01"], format="%Y-%m-%d"),
         }
     )
     out = compute_time_covariates(frame)
@@ -425,7 +486,7 @@ def test_end_to_end_r_backed_fit_against_the_real_dataset():
     sensing_days = load_sensing_days()
     cleaned = build_gps_distance_feature(sensing_days)
     ema = pd.read_csv(DATASET_DIR / "EMA" / "general_ema.csv", usecols=["uid", "day", "phq4_score"])
-    frame = build_model_frame(cleaned, ema)
+    frame = build_model_frame(cleaned, ema, GPS_DISTANCE_SPEC)
 
     fit = fit_mixed_effects_model(frame)
     assert fit.engine == "R (lme4::lmer + lmerTest)"
@@ -498,7 +559,7 @@ def test_end_to_end_fit_against_the_real_dataset():
     cleaned = build_gps_distance_feature(sensing_days)
     ema = pd.read_csv(DATASET_DIR / "EMA" / "general_ema.csv", usecols=["uid", "day", "phq4_score"])
 
-    frame = build_model_frame(cleaned, ema)
+    frame = build_model_frame(cleaned, ema, GPS_DISTANCE_SPEC)
     assert len(frame) > 1000  # real data should yield thousands of valid occasions
     assert "week_in_study" in frame.columns
     assert "term_phase" in frame.columns
@@ -530,7 +591,7 @@ def test_end_to_end_fit_with_time_covariates_against_the_real_dataset():
     cleaned = build_gps_distance_feature(sensing_days)
     ema = pd.read_csv(DATASET_DIR / "EMA" / "general_ema.csv", usecols=["uid", "day", "phq4_score"])
 
-    frame = build_model_frame(cleaned, ema)
+    frame = build_model_frame(cleaned, ema, GPS_DISTANCE_SPEC)
 
     fit = fit_mixed_effects_model(frame, extra_fixed_effects=["week_in_study", "term_phase"])
     assert fit.converged
@@ -554,7 +615,7 @@ def test_end_to_end_ar1_robustness_check_against_the_real_dataset():
     cleaned = build_gps_distance_feature(sensing_days)
     ema = pd.read_csv(DATASET_DIR / "EMA" / "general_ema.csv", usecols=["uid", "day", "phq4_score"])
 
-    frame = build_model_frame(cleaned, ema)
+    frame = build_model_frame(cleaned, ema, GPS_DISTANCE_SPEC)
 
     result = fit_ar1_robustness_check(frame)
     assert np.isfinite(result.ar1_rho)

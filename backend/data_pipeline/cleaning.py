@@ -59,15 +59,6 @@ GPS_WINSORIZE_LOWER_QUANTILE = 0.01
 GPS_WINSORIZE_UPPER_QUANTILE = 0.99
 GPS_LOG_OFFSET_M = 1000  # log(distance + 1000), i.e. a 1 km offset
 
-# Unlock-frequency cleaning constants — see clean_unlock_frequency's
-# docstring. Winsorisation quantiles match the locked GPS spec (same
-# per-person 1st/99th percentile convention); there is no quality-gate
-# constant here because CES has no screen/unlock quality field (unlike
-# quality_loc for GPS) — see the docstring's "no quality gate" note.
-UNLOCK_WINSORIZE_LOWER_QUANTILE = 0.01
-UNLOCK_WINSORIZE_UPPER_QUANTILE = 0.99
-UNLOCK_LOG_OFFSET = 1  # log(count + 1) -- NOT Moe-locked, see docstring flag
-
 
 def clean_gps_distance(
     sensing: pd.DataFrame,
@@ -121,80 +112,99 @@ def clean_gps_distance(
     return df
 
 
+UNLOCK_WINSORIZE_LOWER_QUANTILE = 0.01
+UNLOCK_WINSORIZE_UPPER_QUANTILE = 0.99
+
+
 def clean_unlock_frequency(
     sensing: pd.DataFrame,
     unlock_col: str = "unlock_num_ep_0",
     uid_col: str = "uid",
 ) -> pd.DataFrame:
-    """Cleans phone-unlock-count (`unlock_num_ep_0`), the second signed-off
-    Tier-1 feature (`feature-list-signoff.md`), the same general 4-step
-    pipeline as `clean_gps_distance` (impossible-value filter -> per-person
-    winsorisation -> transform), adapted for a count variable that has no
-    dedicated data-quality field.
+    """Cleans phone-unlock-count (`unlock_num_ep_0`), the second confirmed
+    Tier-1 feature (`feature-list-signoff.md` / `freeze-decision.md`,
+    2026-08-26). Confirmed spec (Statistical Analysis Lead, see
+    `docs/statistics/preregistration.md` section 1.6):
 
-    **FLAGGED FOR MOE TANAKA'S REVIEW — not a locked spec, unlike GPS.**
-    Nothing in `weekly_update/week4/Week4_Statistical_Analysis_Deliverable.md`
-    or `Week5_Statistical_Analysis_Deliverable.md` locks concrete unlock
-    thresholds the way §1.4 locks GPS's 12h/500km/[1,99] numbers — those
-    documents only ever discuss `unlock_num_ep_0` as a *candidate* feature.
-    This module ports the one existing implementation
-    (`scripts/build_gps_feature.py::clean_unlock`) into `backend/` rather
-    than inventing new thresholds, but the choices below are still a
-    methodology call, not a bug fix, and should not be treated as final
-    until Moe Tanaka signs off:
+    | Step | Rule |
+    |---|---|
+    | Quality gate | **none** — CES has no screen/device-uptime quality column (quality fields exist only for activity, audio, light, location) |
+    | Implausibility | negative counts -> NA; **no upper cutoff** |
+    | Winsorisation | per-person [1st, 99th] percentile, **positive values only** |
+    | Transform | **none** — see `backend.statistics.feature_specs.identity_transform` |
+    | Zeros | kept as real values, never recoded to NA |
 
-    1. **No quality gate.** GPS has `quality_loc` (hours of valid location
-       sensing that day); CES has no equivalent screen/unlock quality
-       field (checked: `Sensing/sensing.csv`'s columns have no
-       `quality_unlock` or similar). `Week5_Statistical_Analysis_
-       Deliverable.md` item 15 flags this directly: a zero-unlock day
-       cannot be distinguished from a day screen-sensing simply wasn't
-       running. This module therefore cannot apply a gate analogous to
-       GPS's — it can only filter impossible values and note the same
-       ambiguity in its output.
-    2. **Impossibility filter: negative counts -> NA.** A negative unlock
-       count cannot occur; unlike GPS's 500km cutoff (an empirical
-       implausibility threshold on an otherwise-valid range), there is no
-       analogous empirical upper cutoff proposed anywhere in the repo, so
-       none is applied here — ported as-is from `scripts/build_gps_
-       feature.py::clean_unlock`.
-    3. **Genuine zero-unlock days are kept**, per the same source module
-       and consistent with Week 5 item 15's framing (a true zero cannot be
-       ruled out, so it is not recoded to NA even though it also can't be
-       confirmed genuine).
-    4. **Per-person [1st, 99th] percentile winsorisation on positive
-       values only** (zeros are never clipped) — same convention as GPS,
-       ported from `scripts/build_gps_feature.py::clean_unlock`.
-    5. **Transform: `log(mean + 1)`**, i.e. a 1-count offset (log1p-style),
-       NOT GPS's `+1000` metre offset — chosen because unlock counts and
-       GPS metres are on unrelated scales; a metre-sized offset would
-       swamp a small count. This specific offset choice has no locked
-       precedent anywhere in the repo and is this port's own call —
-       flagged here and in the calling module/commit message for Moe's
-       sign-off, exactly like the "no quality gate" point above.
+    **No quality gate.** Unlike GPS's `quality_loc` (hours of valid
+    location sensing that day), CES has no equivalent screen/unlock
+    quality field — checked: `Sensing/sensing.csv`'s columns have no
+    `quality_unlock` or similar. A zero-unlock day therefore cannot be
+    distinguished from a day screen-sensing simply wasn't running; this
+    function cannot apply a gate analogous to GPS's and does not attempt
+    to guess one.
 
-    Adds two columns, matching `clean_gps_distance`'s output shape so
-    downstream statistics code can treat either feature identically:
-      - ``f"{unlock_col}_clean"``: impossibility-filtered, per-person
-        winsorised unlock count.
-      - ``f"{unlock_col}_log"``: ``log(clean + 1)``, NaN wherever `clean`
-        is NaN.
+    **Implausibility filter: negative counts -> NA, no upper cutoff.** A
+    negative unlock count cannot occur. Unlike GPS's 500 km cutoff (an
+    empirical implausibility threshold on an otherwise-valid range),
+    there is no analogous empirical upper bound on a daily unlock count,
+    so none is applied.
+
+    **Genuine zero-unlock days are kept, not recoded to NA.** Confirmed
+    rationale (Statistical Analysis Lead): zero days number 3,736 of
+    216,065 participant-days (1.73%), affecting 215 of 220 participants,
+    with a median of 12 zero days among affected participants against a
+    maximum of 231 — too large and too concentrated in specific
+    participants to discard, and (per the "no quality gate" point above)
+    a true zero cannot be ruled out to begin with.
+
+    **Per-person [1st, 99th] percentile winsorisation on positive values
+    only** — zeros are never clipped (winsorising a series padded with
+    thousands of structural zeros would not describe the positive-value
+    tail at all; a positive-values-only percentile does).
+
+    **No transform.** Raw `unlock_num_ep_0` is only mildly skewed (skew
+    1.73, kurtosis 6.32, max 754) — nowhere near GPS's raw distribution
+    (skew 160.5, kurtosis 35,552, max 1.2e9), which is what
+    `log(mean + 1000)` exists to tame. Two log variants were checked and
+    both make things worse: `log(unlock + 1)` has skew -2.38 — the 3,736
+    genuine zero-unlock days all collapse onto `log(1) = 0`, turning the
+    distribution bimodal rather than reducing its skew. `log(unlock +
+    1000)` (GPS's offset, applied here structurally) compresses the
+    transformed range to SD 0.0509 over [6.91, 7.47] — a 1000-unit offset
+    is two to three orders of magnitude larger than unlock's own 0-754
+    range, so nearly all real variation is flattened into numerical
+    noise. See `docs/statistics/preregistration.md` section 1.6.2 for the
+    full numbers. `backend.statistics.feature_specs.UNLOCK_FREQUENCY_SPEC`
+    uses `identity_transform` accordingly — this function itself never
+    applies a transform, unlike `clean_gps_distance`, which is why it
+    adds only one new column, not two.
+
+    Input: one row per participant-day with at least ``[uid_col,
+    unlock_col]``. Row count/order is preserved — a dropped *day* is
+    represented as NaN in the new column, never a removed row.
+
+    Adds one column:
+      - ``f"{unlock_col}_clean"``: implausibility-filtered, per-person
+        (positive-values-only) winsorised unlock count. No
+        ``f"{unlock_col}_log"`` diagnostic column is added (contrast
+        `clean_gps_distance`) — there is no transform to diagnose;
+        producing a `log(unlock + 1)` column here, even labelled
+        "diagnostics only", would risk being read as an endorsed
+        transform when the analysis above rules it out.
     """
     df = sensing.copy()
     raw = df[unlock_col]
 
-    # Step 1 (impossibility filter only -- no quality gate available, see
+    # Step 1 (implausibility filter only -- no quality gate available, see
     # docstring): negative counts are impossible -> NA. Zeros are valid.
     step1 = raw.where(raw >= 0)
 
     # Step 2: per-person winsorisation to each participant's own [1st, 99th]
     # percentile, computed over their surviving POSITIVE values only --
-    # genuine zero-unlock days are never clipped, mirroring
-    # scripts/build_gps_feature.py::clean_unlock.
+    # genuine zero-unlock days are never clipped.
     def _winsorize_positive(group: pd.Series) -> pd.Series:
         # Cast to float up front: winsorisation quantiles are rarely whole
         # numbers, and clipping an int64 Series to a float bound raises
-        # (pandas refuses the implicit int->float coercion on setitem) —
+        # (pandas refuses the implicit int->float coercion on setitem) --
         # the output is a per-person WINSORISED count, so it is expected to
         # become float, same as clean_gps_distance's output.
         group = group.astype(float)
@@ -211,9 +221,6 @@ def clean_unlock_frequency(
     step2 = step1.groupby(df[uid_col], group_keys=False).apply(_winsorize_positive, include_groups=False)
     step2 = step2.reindex(df.index)
 
-    clean_col = f"{unlock_col}_clean"
-    log_col = f"{unlock_col}_log"
-    df[clean_col] = step2
-    df[log_col] = np.log(step2 + UNLOCK_LOG_OFFSET)
+    df[f"{unlock_col}_clean"] = step2
 
     return df
