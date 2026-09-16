@@ -66,15 +66,22 @@ export class RespondError extends Error {
   }
 }
 
+// FIXED 2026-09-16: this used to send a hardcoded EvidencePacket (the
+// browser asserting its own eligibility_status/evidence_strength) on every
+// request. `/respond` now builds the real packet server-side from
+// `participant_id` via backend/statistics/participant_evidence.py — the
+// browser only ever identifies WHICH participant is asking, never what
+// their evidence looks like.
 export async function respond(
-  evidencePacket: EvidencePacket,
+  participantId: string,
   question: string,
+  featureId = 'gps_distance',
 ): Promise<SafeSLMResponse> {
   const res = await fetch(`${API_BASE_URL}/respond`, {
     method: 'POST',
     redirect: 'error',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ evidence_packet: evidencePacket, question }),
+    body: JSON.stringify({ participant_id: participantId, question, feature_id: featureId }),
   })
 
   if (!res.ok) {

@@ -21,7 +21,7 @@ describe('respond transport privacy', () => {
     })
     vi.stubGlobal('fetch', fetchMock)
 
-    await respond({ identity: { participant_ref: 'synthetic-only' } }, 'Synthetic question')
+    await respond('synthetic-participant', 'Synthetic question')
 
     expect(fetchMock).toHaveBeenCalledTimes(1)
     expect(fetchMock).toHaveBeenCalledWith(
@@ -29,6 +29,11 @@ describe('respond transport privacy', () => {
       expect.objectContaining({
         method: 'POST',
         redirect: 'error',
+        body: JSON.stringify({
+          participant_id: 'synthetic-participant',
+          question: 'Synthetic question',
+          feature_id: 'gps_distance',
+        }),
       }),
     )
   })

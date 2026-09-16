@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 
-import { respond, type EvidencePacket, type SafeSLMResponse } from '../../api/client'
+import { respond, type SafeSLMResponse } from '../../api/client'
 import { AppShell } from '../../components/AppShell'
 import {
   CrisisAwareFallbackState,
@@ -14,88 +14,42 @@ import {
   type EvidenceSummaryView,
 } from './ChatStates'
 
-// Synthetic fixture matching the frozen EvidencePacket contract. The browser
-// sends this minimum evidence object to FastAPI; only the backend may call the
-// local Ollama model.
-const EXAMPLE_ELIGIBLE_GPS_PACKET = {
-  identity: {
-    contract_version: '1.0.0',
-    packet_id: 'synthetic_week6_gps_001',
-    model_spec_id: 'synthetic-shadow-v1',
-    generated_at: '2026-09-07T12:00:00Z',
-    participant_ref: 'synthetic-only',
-  },
-  feature_window: {
-    feature_id: 'gps_distance',
-    unit: 'kilometres_per_day',
-    window_start: '2026-08-10',
-    window_end: '2026-09-06',
-    value: 3.8,
-    observed_days: 25,
-    expected_days: 28,
-    coverage_ratio: 0.8928571428571429,
-    platform: 'android',
-    quality_flags: [],
-  },
-  baseline: {
-    method: 'trailing person-mean, 28-day window',
-    value: 4.6,
-    n_baseline_observations: 4,
-    eligibility_status: 'eligible',
-    ineligible_reason: null,
-  },
-  evidence: {
-    within_person_deviation_estimate: -0.8,
-    confidence_interval_low: -1.4,
-    confidence_interval_high: -0.2,
-    direction: 'below_baseline',
-    evidence_strength: 'moderate',
-  },
-  uncertainty: {
-    item_level: ['moderate evidence strength'],
-    packet_level: ['synthetic development fixture; not participant data'],
-  },
-  claim_policy: {
-    approved_claim_ids: [
-      'observation_of_deviation',
-      'uncertainty_disclosure',
-      'non_diagnostic_boundary',
-    ],
-    prohibited_claim_ids: [
-      'diagnosis',
-      'causal_explanation',
-      'treatment_or_crisis_advice',
-      'risk_prediction',
-    ],
-    permitted_response_modes: ['normal', 'uncertainty'],
-  },
-} satisfies EvidencePacket
+// FIXED 2026-09-16: this component used to build a hardcoded
+// EXAMPLE_ELIGIBLE_GPS_PACKET (eligibility_status/evidence_strength pinned
+// client-side) and send THAT on every request — meaning classify_state and
+// backend/statistics/evidence.py were never actually exercised by a real
+// request. `/respond` now builds the real EvidencePacket server-side from
+// `participant_id` (see backend/statistics/participant_evidence.py); the
+// browser only sends which participant is asking, never their evidence.
+//
+// There is no auth/session system yet (see AppShell), so there is no real
+// signed-in participant to read this id from — DEMO_PARTICIPANT_ID is a
+// real CES uid used as a placeholder until one exists, exactly the same
+// dev-only role the old synthetic packet played, just narrowed to an
+// identifier instead of fabricated evidence.
+const DEMO_PARTICIPANT_ID = '1ff6d7f34acb354430e7323a35ff7703'
+const DEFAULT_FEATURE_ID = 'gps_distance'
 
 const DEFAULT_QUESTION = 'How was my movement different from my recent baseline?'
 
-const featureWindow = EXAMPLE_ELIGIBLE_GPS_PACKET.feature_window
-const baseline = EXAMPLE_ELIGIBLE_GPS_PACKET.baseline
-const dateFormatter = new Intl.DateTimeFormat('en-AU', {
-  day: 'numeric',
-  month: 'short',
-  timeZone: 'UTC',
-  year: 'numeric',
-})
-
+// The evidence numbers shown alongside a NORMAL response are still a
+// placeholder: `SafeSLMResponse` (backend/slm/service.py) does not return
+// the EvidencePacket it was generated from, only the drafted text — so the
+// browser has no real per-request values to render here yet. Left generic
+// rather than reusing the old fixture's fabricated numbers, which would
+// misrepresent real per-participant data as if it were shown. Wiring real
+// numbers into this panel needs `SafeSLMResponse` extended to carry a
+// packet summary — out of this fix's scope (participant_evidence.py /
+// app.py's request contract), flagged for whoever owns
+// backend/slm/service.py next.
 const EVIDENCE_SUMMARY: EvidenceSummaryView = {
-  baseline: `${baseline.value} km/day`,
-  coverage:
-    `${featureWindow.observed_days} of ${featureWindow.expected_days} days ` +
-    `(${Math.round(featureWindow.coverage_ratio * 100)}%)`,
-  currentValue: `${featureWindow.value} km/day`,
-  evidenceStrength:
-    EXAMPLE_ELIGIBLE_GPS_PACKET.evidence.evidence_strength[0].toUpperCase() +
-    EXAMPLE_ELIGIBLE_GPS_PACKET.evidence.evidence_strength.slice(1),
+  baseline: 'see response text',
+  coverage: 'see response text',
+  currentValue: 'see response text',
+  evidenceStrength: 'see response text',
   featureLabel: 'GPS distance',
-  timeWindow:
-    `${dateFormatter.format(new Date(featureWindow.window_start))} – ` +
-    dateFormatter.format(new Date(featureWindow.window_end)),
-  uncertainty: EXAMPLE_ELIGIBLE_GPS_PACKET.uncertainty.packet_level,
+  timeWindow: 'see response text',
+  uncertainty: ['Evidence figures are computed from this participant’s real data on the backend; this panel does not yet echo them back.'],
 }
 
 interface ConversationTurn {
@@ -141,7 +95,7 @@ export function NormalResponse() {
     setPendingQuestion(question)
 
     try {
-      const response = await respond(EXAMPLE_ELIGIBLE_GPS_PACKET, question)
+      const response = await respond(DEMO_PARTICIPANT_ID, question, DEFAULT_FEATURE_ID)
       const turn = { id: nextTurnId.current, question, response }
       nextTurnId.current += 1
       setTurns((currentTurns) => [...currentTurns, turn])
