@@ -101,8 +101,9 @@ describe('NormalResponse', () => {
     expect(document.querySelector('[data-response-mode="normal"]')).toBeInTheDocument()
     expect(screen.getAllByText('Normal response')).toHaveLength(2)
     expect(screen.getByText('Synthetic demo data')).toBeInTheDocument()
-    expect(screen.getByText('25 of 28 days (89%)')).toBeInTheDocument()
+    expect(screen.getAllByText('see response text').length).toBeGreaterThan(0)
     expect(screen.getByText(/does not infer one/i)).toBeInTheDocument()
+    expect(screen.getByText(/does not yet echo them back/i)).toBeInTheDocument()
   })
 
   it('renders a recoverable local-only fallback when the API is unreachable', async () => {
@@ -129,7 +130,7 @@ describe('NormalResponse', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('unknown error')
   })
 
-  it('calls Richard’s response route wrapper with the EvidencePacket and exact question', async () => {
+  it('calls Richard’s response route wrapper with a participant id and exact question, never a client-built EvidencePacket', async () => {
     const user = userEvent.setup()
     mockedRespond.mockResolvedValueOnce(NORMAL_RESPONSE)
 
@@ -137,12 +138,11 @@ describe('NormalResponse', () => {
     await user.click(screen.getByRole('button', { name: /ask about my recent movement/i }))
 
     await waitFor(() => expect(mockedRespond).toHaveBeenCalledTimes(1))
-    const [evidencePacket, question] = mockedRespond.mock.calls[0]
+    const [participantId, question, featureId] = mockedRespond.mock.calls[0]
     expect(question).toBe('How was my movement different from my recent baseline?')
-    expect(evidencePacket).toMatchObject({
-      baseline: expect.objectContaining({ eligibility_status: 'eligible' }),
-      feature_window: expect.objectContaining({ feature_id: 'gps_distance' }),
-    })
+    expect(typeof participantId).toBe('string')
+    expect(participantId.length).toBeGreaterThan(0)
+    expect(featureId).toBe('gps_distance')
   })
 
   it('keeps earlier turns visible and sends a second normal question end to end', async () => {

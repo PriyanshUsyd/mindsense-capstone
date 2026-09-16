@@ -13,10 +13,19 @@ endpoint there was nothing for a frontend to call.
 
 Deliberately minimal: one endpoint, loopback-only by default (matches the
 project's local-first privacy stance — see privacy/privacy_architecture_principles.md),
-no auth/session/multi-turn state. It is a thin pass-through to
-SLMService.respond() — every safety/grounding/fallback rule already
-enforced there applies unchanged; this file adds no new logic of its own
-beyond request/response shaping.
+no auth/session/multi-turn state.
+
+FIXED 2026-09-16: `/respond` now takes a `participant_id`, builds the real
+`EvidencePacket` server-side via
+`backend.statistics.participant_evidence.build_evidence_packet` (which
+calls Moe Tanaka's tested `classify_state` / `evidence.py` classification
+logic against the real CES pipeline output), and only then hands that
+packet to `SLMService.respond()` — every safety/grounding/fallback rule
+already enforced there still applies unchanged. Previously this endpoint
+accepted a client-supplied `evidence_packet` dict, schema-validated it, and
+passed it straight through — meaning a caller could assert any
+`eligibility_status` / `evidence_strength` and the backend would believe
+it; see git history for the prior contract.
 
 The default `MINDSENSE_SLM_RUNTIME=demo` uses a deterministic client so tests
 and UI setup do not require Ollama. Set `MINDSENSE_SLM_RUNTIME=ollama` when
@@ -26,12 +35,11 @@ about the HTTP contract changes between the two modes.
 
 from __future__ import annotations
 
-import json
 import os
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, ConfigDict, ValidationError
+from pydantic import BaseModel, ConfigDict
 
 from backend.contracts.evidence import (
     ApprovedClaimId,
@@ -43,6 +51,11 @@ from backend.slm.client import GenerationMetrics, GenerationResult
 from backend.slm.output_grounding import render_grounded_example
 from backend.slm.runtime import create_local_service
 from backend.slm.service import SafeSLMResponse, SLMService
+from backend.statistics.participant_evidence import (
+    UnknownFeature,
+    UnknownParticipant,
+    build_evidence_packet,
+)
 
 SLM_RUNTIME_ENV = "MINDSENSE_SLM_RUNTIME"
 
@@ -50,22 +63,34 @@ SLM_RUNTIME_ENV = "MINDSENSE_SLM_RUNTIME"
 class DeterministicDemoClient:
     """Stub SLM client for local demo/dev use — never talks to any network
     or model daemon. Mirrors benchmarks/slm_prohibited_request_baseline.py's
-    ObservableSafeStub: returns a grounded NORMAL draft built directly from
-    the real EvidencePacket's own values, so the response text genuinely
-    reflects the request rather than being hardcoded copy."""
+    ObservableSafeStub: returns a grounded draft built directly from the
+    real EvidencePacket's own values, so the response text genuinely
+    reflects the request rather than being hardcoded copy.
+
+    FIXED 2026-09-16: this used to hardcode `response_mode=NORMAL` and
+    `claim_ids_used=(OBSERVATION_OF_DEVIATION, UNCERTAINTY_DISCLOSURE)`
+    unconditionally — invisible while `/respond` only ever received the one
+    ELIGIBLE-with-evidence fixture packet. Once `/respond` started building
+    real packets (`backend.statistics.participant_evidence`), a real
+    PARTIAL_DESCRIPTIVE_ONLY packet (State B, or State C with no defensible
+    per-person evidence — see `participant_evidence.py`) hit this and
+    always failed closed to `generic_fallback`
+    (`grounding_claim_mismatch`/`model_generation_failed`), because NORMAL
+    mode and OBSERVATION_OF_DEVIATION are neither permitted nor approved
+    for that packet. This now picks the mode/claims `output_grounding.py`'s
+    grammar actually supports for the packet's real eligibility status,
+    restricted to what its own `claim_policy` permits."""
 
     def generate_draft(self, packet: EvidencePacket, question: str) -> GenerationResult:
         del question
+        mode, claim_ids = self._select_mode_and_claims(packet)
         draft = AssistantDraft(
             packet_id=packet.identity.packet_id,
-            response_mode=ResponseMode.NORMAL,
-            claim_ids_used=(
-                ApprovedClaimId.OBSERVATION_OF_DEVIATION,
-                ApprovedClaimId.UNCERTAINTY_DISCLOSURE,
-            ),
+            response_mode=mode,
+            claim_ids_used=claim_ids,
             evidence_ids_referenced=(packet.feature_window.feature_id,),
-            text=render_grounded_example(packet, ResponseMode.NORMAL),
-            includes_uncertainty_statement=True,
+            text=render_grounded_example(packet, mode),
+            includes_uncertainty_statement=ApprovedClaimId.UNCERTAINTY_DISCLOSURE in claim_ids,
         )
         return GenerationResult(
             draft=draft,
@@ -76,21 +101,61 @@ class DeterministicDemoClient:
             metrics=GenerationMetrics(),
         )
 
+    @staticmethod
+    def _select_mode_and_claims(
+        packet: EvidencePacket,
+    ) -> tuple[ResponseMode, tuple[ApprovedClaimId, ...]]:
+        from backend.contracts.evidence import EligibilityStatus
+
+        permitted = set(packet.claim_policy.permitted_response_modes)
+        status = packet.baseline.eligibility_status
+
+        if status == EligibilityStatus.ELIGIBLE:
+            if ResponseMode.NORMAL in permitted:
+                return ResponseMode.NORMAL, (
+                    ApprovedClaimId.OBSERVATION_OF_DEVIATION,
+                    ApprovedClaimId.UNCERTAINTY_DISCLOSURE,
+                )
+            if ResponseMode.UNCERTAINTY in permitted:
+                return ResponseMode.UNCERTAINTY, (
+                    ApprovedClaimId.OBSERVATION_OF_DEVIATION,
+                    ApprovedClaimId.UNCERTAINTY_DISCLOSURE,
+                )
+        elif status == EligibilityStatus.PARTIAL_DESCRIPTIVE_ONLY:
+            if ResponseMode.UNCERTAINTY in permitted:
+                return ResponseMode.UNCERTAINTY, (
+                    ApprovedClaimId.TREND_DESCRIPTION,
+                    ApprovedClaimId.NOT_ENOUGH_DATA,
+                    ApprovedClaimId.UNCERTAINTY_DISCLOSURE,
+                )
+            if ResponseMode.INSUFFICIENT_DATA in permitted:
+                return ResponseMode.INSUFFICIENT_DATA, (
+                    ApprovedClaimId.TREND_DESCRIPTION,
+                    ApprovedClaimId.NOT_ENOUGH_DATA,
+                )
+        raise ValueError(
+            f"demo stub cannot ground a response for eligibility_status={status!r} "
+            f"with permitted_response_modes={packet.claim_policy.permitted_response_modes!r}"
+        )
+
 
 class RespondRequest(BaseModel):
-    """`evidence_packet` is deliberately a plain dict here, not a typed
-    `EvidencePacket` field. `EvidencePacket` is a strict=True model
-    (backend/contracts/evidence.py) - Pydantic v2's strict mode only
-    permits ISO date/datetime strings and string enum values in its JSON
-    validation path (`model_validate_json`), not when FastAPI hands it an
-    already-parsed Python dict for a nested field. Validating the nested
-    packet explicitly via model_validate_json below (not model_validate)
-    keeps the same strict contract without silently loosening it here."""
+    """FIXED 2026-09-16 — this request used to carry a client-supplied
+    `evidence_packet: dict`, validated (schema only) and passed straight to
+    `SLMService.respond()` without ever calling this codebase's own
+    classification logic (`backend.statistics.eligibility.classify_state`,
+    `backend.statistics.evidence`) — meaning the client could assert any
+    `eligibility_status` / `evidence_strength` it wanted and the backend
+    would believe it. The request now carries only a `participant_id` (and
+    optional `feature_id`); the packet is always built server-side by
+    `backend.statistics.participant_evidence.build_evidence_packet` from
+    the real CES pipeline output, never accepted from the caller."""
 
     model_config = ConfigDict(extra="forbid")
 
-    evidence_packet: dict
+    participant_id: str
     question: str
+    feature_id: str = "gps_distance"
 
 
 def create_runtime_service(runtime_name: str | None = None) -> SLMService:
@@ -130,9 +195,11 @@ def create_app(service: SLMService | None = None) -> FastAPI:
     @app.post("/respond", response_model=SafeSLMResponse)
     def respond(payload: RespondRequest) -> SafeSLMResponse:
         try:
-            packet = EvidencePacket.model_validate_json(json.dumps(payload.evidence_packet))
-        except ValidationError as exc:
-            raise HTTPException(status_code=422, detail=json.loads(exc.json())) from exc
+            packet = build_evidence_packet(payload.participant_id, feature_id=payload.feature_id)
+        except UnknownParticipant as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except UnknownFeature as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
         try:
             return active_service.respond(packet, payload.question)
         except Exception as exc:  # noqa: BLE001 - never leak internals to the UI
