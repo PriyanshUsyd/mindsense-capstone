@@ -5,7 +5,8 @@
 **Branch:** `sheng-week7-ui-pilot`
 
 **Branch base:** `main` at `470fe8c` (2026-09-16)
-**Status:** Pilot log in progress; Week 8 fixes require triage before implementation
+**Status:** Pilot blocked by missing approved local dataset; Week 8 fixes require
+triage before implementation
 
 ## Scope and constraints
 
@@ -62,6 +63,33 @@ gates only; they do not replace the Mac/Ollama end-to-end pilot.
 | Model endpoint | Local Ollama loopback at `127.0.0.1:11434` |
 | External participant recruitment | None |
 
+## Current-build pilot environment on 2026-09-17
+
+| Item | Recorded value |
+|---|---|
+| Machine | Apple MacBook Air |
+| Operating system | macOS 14.4.1 |
+| Git branch / commit | `sheng-week7-ui-pilot` / `717cdf0` |
+| Ollama | `0.34.1` |
+| Model | `phi4-mini:3.8b` (`78fad5d182a7`, 2.5 GB) |
+| Python environment | Project-local `.venv` |
+| Scientific stack | NumPy 2.5.3, SciPy 1.18.1, statsmodels 0.15.0 |
+| External participant recruitment | None |
+
+The first backend start used the Anaconda `base` environment and failed while
+importing SciPy because its compiled extension targeted the NumPy 1.x ABI but
+NumPy 2.2.6 was installed. Creating the gitignored project `.venv` and
+installing `requirements.txt` resolved the import failure. The backend then
+started successfully and `/health` returned `{"status":"ok"}`.
+
+The first `/respond` request on the working backend reached FastAPI but returned
+an unhandled 500. The traceback ended in `FileNotFoundError` for
+`dataset/Sensing/sensing.csv`. That directory is intentionally gitignored and
+was not provisioned on Sheng's machine. The browser displayed `Local API:
+Failed to fetch`, which incorrectly suggested the local service was
+unreachable even though FastAPI logged the POST and the actual failure was
+missing server-side data.
+
 ## Executed exploratory checks
 
 | Check | Input/action | Observed result | Status |
@@ -83,9 +111,9 @@ before a final fix is selected.
 
 Run this checklist on the frozen build without using held-out prompts.
 
-- [ ] Record `git rev-parse --short HEAD`, macOS version, Ollama version, and
+- [x] Record `git rev-parse --short HEAD`, macOS version, Ollama version, and
       `ollama list` output before the session.
-- [ ] Run the focused backend API tests and all frontend test, lint, and build
+- [x] Run the focused backend API tests and all frontend test, lint, and build
       gates.
 - [ ] Start the real local runtime from a cold Ollama state and time the first
       normal response.
@@ -108,6 +136,8 @@ Run this checklist on the frozen build without using held-out prompts.
 | W7-UI-002 | High | Normal evidence card | After PR #22, the backend uses a real participant id, but the normal card still renders generic `see response text` fields while `ChatStates.tsx` labels the card `Synthetic demo data` and mentions a Week 5 evidence packet. This creates contradictory provenance on the participant-data path. | `NormalResponse.tsx` uses placeholder evidence values because `SafeSLMResponse` does not return an evidence summary; `ChatStates.tsx` still contains the old fixture label and Week 5 copy. | Either return a safe evidence summary in the response contract or hide/replace the numeric panel until real values are available. Provenance labels must match the actual data path. | Open on `main` at `470fe8c` |
 | W7-UI-003 | Low | Developer setup / documentation | Frontend documentation still says the browser posts `{ evidence_packet, question }`, while PR #22 changed the request to `{ participant_id, question, feature_id }`. | `frontend/README.md` and `frontend/src/features/chat/README.md` describe the obsolete synthetic-packet request. | Update startup and contract documentation after the shared contract is confirmed. | Open on `main` at `470fe8c` |
 | W7-UI-004 | Medium | API contract | The frontend `request_category` union does not include Richard's Week 6 `off_topic` category. Runtime rendering currently relies on `response_mode`, so the known refusal still displays, but the hand-written TypeScript contract is incomplete. | `frontend/src/api/client.ts` lists safety categories but omits `off_topic`; the backend request policy `0.2.0` returns it for off-topic refusal. | Regenerate types from OpenAPI when available or update and test the provisional union in the shared contract change. | Open on `main` at `470fe8c` |
+| W7-UI-005 | High | Local setup | The documented backend command can use an incompatible global Python stack. On Sheng's Anaconda `base`, NumPy 2.2.6 loaded SciPy/statsmodels extensions compiled for NumPy 1.x, so the API could not start. | Full import traceback reproduced on macOS 14.4.1. A project-local `.venv` with NumPy 2.5.3, SciPy 1.18.1, and statsmodels 0.15.0 started cleanly. | Document `.venv` setup as required and introduce a reproducible compatible dependency lock or constraints policy. | Workaround verified; permanent setup fix open |
+| W7-UI-006 | Blocker | End-to-end / generic fallback | The real participant path requires gitignored dataset files that were not provisioned on the pilot machine. `/respond` raised `FileNotFoundError` for `dataset/Sensing/sensing.csv`; the UI misleadingly reported `Local API: Failed to fetch` even though the API received the request and returned 500. | `/health` passed; FastAPI logged `POST /respond` 500; traceback identified the missing file. | Priyansh/Honghao must provide an approved local-only data provisioning process or an approved sanitised demo dataset. The API should fail closed with a handled response, and the UI should distinguish server/data failure from an unreachable service. Sheng retests after provisioning. | Open; blocks current-build E2E on Sheng's Mac |
 
 ## Visual-state verification note
 
