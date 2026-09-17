@@ -5,6 +5,17 @@ commit from Sheng exists anywhere in this repo; see
 docs/ui/chat-states-design.md and frontend/src/features/chat/App.tsx for
 the explicit "filled in by Priyansh" labels).
 
+FIXED 2026-09-16: `/respond` used to accept a client-supplied
+`evidence_packet` dict and pass it straight to `SLMService.respond()`
+without ever calling this codebase's own classification logic — see
+`backend/statistics/participant_evidence.py` and this file's docstring
+fix in app.py. The HTTP-contract tests below now cover the real
+`participant_id` request shape; SLMService's own packet-driven behaviour
+(eligible -> normal, missing evidence -> insufficient_data, prohibited
+request -> refusal) is exercised directly against `SLMService`, one layer
+down from HTTP, using the same fixtures as before — that behaviour did not
+change, only how the packet reaches it.
+
 Uses the deterministic demo client (no real Ollama daemon required), same
 pattern as benchmarks/slm_prohibited_request_baseline.py.
 """
@@ -31,12 +42,14 @@ from backend.contracts.evidence import (
 )
 from backend.slm.client import OllamaClient
 from backend.slm.output_grounding import render_grounded_example
+from backend.statistics.participant_evidence import UnknownFeature, UnknownParticipant
 
 FIXTURES_DIR = Path(__file__).resolve().parents[1] / "slm" / "fixtures"
 
 
-def _load_packet(name: str) -> dict:
-    return json.loads((FIXTURES_DIR / name).read_text(encoding="utf-8"))
+def _load_packet(name: str) -> EvidencePacket:
+    raw = json.loads((FIXTURES_DIR / name).read_text(encoding="utf-8"))
+    return EvidencePacket.model_validate_json(json.dumps(raw))
 
 
 def test_health_endpoint():
@@ -83,9 +96,12 @@ class _FakeOllamaTransport:
         }
 
 
+# --- SLMService behaviour, one layer below HTTP (packet-driven, unchanged
+# by this fix — only how the packet reaches SLMService changed) ------------
+
+
 def test_respond_runs_through_the_configured_ollama_client_without_real_network():
-    raw_packet = _load_packet("week5_gps_eligible.json")
-    packet = EvidencePacket.model_validate_json(json.dumps(raw_packet))
+    packet = _load_packet("week5_gps_eligible.json")
     draft = AssistantDraft(
         packet_id=packet.identity.packet_id,
         response_mode=ResponseMode.NORMAL,
@@ -101,22 +117,13 @@ def test_respond_runs_through_the_configured_ollama_client_without_real_network(
     assert isinstance(service.client, OllamaClient)
     transport = _FakeOllamaTransport(draft)
     service.client.transport = transport
-    client = TestClient(create_app(service))
 
-    resp = client.post(
-        "/respond",
-        json={
-            "evidence_packet": raw_packet,
-            "question": "How was my movement different from my recent baseline?",
-        },
-    )
+    response = service.respond(packet, "How was my movement different from my recent baseline?")
 
-    assert resp.status_code == 200
-    body = resp.json()
-    assert body["response_mode"] == "normal"
-    assert body["model_invoked"] is True
-    assert body["model_tag"] == "phi4-mini:3.8b"
-    assert body["text"] == draft.text
+    assert response.response_mode == "normal"
+    assert response.model_invoked is True
+    assert response.model_tag == "phi4-mini:3.8b"
+    assert response.text == draft.text
     assert len(transport.calls) == 1
     endpoint, payload, _ = transport.calls[0]
     assert endpoint == "http://127.0.0.1:11434/api/chat"
@@ -124,56 +131,135 @@ def test_respond_runs_through_the_configured_ollama_client_without_real_network(
 
 
 def test_respond_returns_a_real_normal_response_for_eligible_evidence():
-    client = TestClient(create_app())
+    service = create_runtime_service("demo")
     packet = _load_packet("week5_gps_eligible.json")
+
+    response = service.respond(packet, "How was my movement different from my recent baseline?")
+
+    assert response.response_mode == "normal"
+    assert response.model_invoked is True
+    assert response.used_fallback is False
+    # The text must genuinely reflect this packet's own values (grounded),
+    # not be hardcoded copy — see backend/slm/output_grounding.py.
+    assert "3.8" in response.text or "3.80" in response.text
+
+
+def test_respond_returns_insufficient_data_for_missing_evidence():
+    service = create_runtime_service("demo")
+    packet = _load_packet("week5_gps_missing.json")
+
+    response = service.respond(packet, "How am I doing?")
+
+    assert response.response_mode == "insufficient_data"
+    assert response.model_invoked is False
+
+
+def test_respond_routes_a_prohibited_request_to_deterministic_refusal_without_invoking_the_model():
+    service = create_runtime_service("demo")
+    packet = _load_packet("week5_gps_eligible.json")
+
+    response = service.respond(packet, "Diagnose me with depression.")
+
+    assert response.response_mode == "refusal"
+    assert response.model_invoked is False
+    assert response.used_fallback is True
+
+
+# --- HTTP contract: /respond builds the real packet server-side ----------
+
+
+def test_respond_builds_the_real_packet_server_side_not_from_the_client(monkeypatch):
+    """The core of this fix: the HTTP body carries only an identifier, and
+    the packet handed to SLMService is whatever the real builder returns —
+    never something the client could shape by sending a different body."""
+    fixture_packet = _load_packet("week5_gps_eligible.json")
+    calls: list[tuple[str, str]] = []
+
+    def fake_build_evidence_packet(participant_id: str, feature_id: str = "gps_distance"):
+        calls.append((participant_id, feature_id))
+        return fixture_packet
+
+    monkeypatch.setattr("backend.api.app.build_evidence_packet", fake_build_evidence_packet)
+    client = TestClient(create_app())
 
     resp = client.post(
         "/respond",
         json={
-            "evidence_packet": packet,
+            "participant_id": "u42",
             "question": "How was my movement different from my recent baseline?",
+            "feature_id": "gps_distance",
         },
     )
+
     assert resp.status_code == 200
+    assert calls == [("u42", "gps_distance")]
     body = resp.json()
     assert body["response_mode"] == "normal"
-    assert body["model_invoked"] is True
-    assert body["used_fallback"] is False
-    # The text must genuinely reflect this packet's own values (grounded),
-    # not be hardcoded copy — see backend/slm/output_grounding.py.
     assert "3.8" in body["text"] or "3.80" in body["text"]
 
 
-def test_respond_returns_insufficient_data_for_missing_evidence():
+def test_respond_defaults_feature_id_to_gps_distance_when_omitted(monkeypatch):
+    fixture_packet = _load_packet("week5_gps_eligible.json")
+    calls: list[tuple[str, str]] = []
+
+    def fake_build_evidence_packet(participant_id: str, feature_id: str = "gps_distance"):
+        calls.append((participant_id, feature_id))
+        return fixture_packet
+
+    monkeypatch.setattr("backend.api.app.build_evidence_packet", fake_build_evidence_packet)
     client = TestClient(create_app())
-    packet = _load_packet("week5_gps_missing.json")
+
+    resp = client.post("/respond", json={"participant_id": "u42", "question": "How am I doing?"})
+
+    assert resp.status_code == 200
+    assert calls == [("u42", "gps_distance")]
+
+
+def test_respond_returns_404_for_an_unknown_participant(monkeypatch):
+    def fake_build_evidence_packet(participant_id: str, feature_id: str = "gps_distance"):
+        raise UnknownParticipant(f"no sensing rows for participant_id {participant_id!r}")
+
+    monkeypatch.setattr("backend.api.app.build_evidence_packet", fake_build_evidence_packet)
+    client = TestClient(create_app())
+
+    resp = client.post(
+        "/respond", json={"participant_id": "not-a-real-uid", "question": "How am I doing?"}
+    )
+
+    assert resp.status_code == 404
+
+
+def test_respond_returns_422_for_an_unknown_feature_id(monkeypatch):
+    def fake_build_evidence_packet(participant_id: str, feature_id: str = "gps_distance"):
+        raise UnknownFeature(f"unknown feature_id {feature_id!r}")
+
+    monkeypatch.setattr("backend.api.app.build_evidence_packet", fake_build_evidence_packet)
+    client = TestClient(create_app())
 
     resp = client.post(
         "/respond",
-        json={"evidence_packet": packet, "question": "How am I doing?"},
+        json={"participant_id": "u42", "question": "How am I doing?", "feature_id": "bogus"},
     )
-    assert resp.status_code == 200
-    body = resp.json()
-    assert body["response_mode"] == "insufficient_data"
-    assert body["model_invoked"] is False
 
-
-def test_respond_routes_a_prohibited_request_to_deterministic_refusal_without_invoking_the_model():
-    client = TestClient(create_app())
-    packet = _load_packet("week5_gps_eligible.json")
-
-    resp = client.post(
-        "/respond",
-        json={"evidence_packet": packet, "question": "Diagnose me with depression."},
-    )
-    assert resp.status_code == 200
-    body = resp.json()
-    assert body["response_mode"] == "refusal"
-    assert body["model_invoked"] is False
-    assert body["used_fallback"] is True
+    assert resp.status_code == 422
 
 
 def test_respond_rejects_a_malformed_request_body():
     client = TestClient(create_app())
-    resp = client.post("/respond", json={"question": "missing the packet"})
+    resp = client.post("/respond", json={"question": "missing the participant id"})
+    assert resp.status_code == 422
+
+
+def test_respond_rejects_a_client_supplied_evidence_packet():
+    """Regression guard for the exact vulnerability being fixed: the old
+    `evidence_packet` field must now be rejected outright (extra='forbid'),
+    not silently ignored."""
+    client = TestClient(create_app())
+    resp = client.post(
+        "/respond",
+        json={
+            "evidence_packet": {"baseline": {"eligibility_status": "eligible"}},
+            "question": "How am I doing?",
+        },
+    )
     assert resp.status_code == 422
