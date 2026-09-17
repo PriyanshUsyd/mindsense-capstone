@@ -55,7 +55,7 @@ CES sensing data is hourly/daily; PHQ-4 is weekly. These must not be joined naiv
 | ASGI server | Uvicorn | Standard FastAPI companion |
 | Data validation / contract | Pydantic v2 (strict mode: extra="forbid", frozen=True) | Single source of truth for the Stats-to-SLM evidence contract, API schemas, and validated SLM output |
 | Data handling | pandas + NumPy | CES's wide daily/hourly CSVs; direct, transparent aggregation, no ML pipeline needed |
-| Statistical engine | statsmodels (MixedLM) | Fixed random-intercept mixed-effects model, see Section 4 |
+| Statistical engine | R (via rpy2: `lme4`/`lmerTest` for Satterthwaite/Kenward-Roger denominator df, `nlme` for a real AR(1) fit via `corAR1`) as primary; statsmodels (`MixedLM`) as an automatic fallback when R is unavailable in the running process | Fixed random-intercept mixed-effects model, see Section 4; see `docs/statistics/r-bridge-setup.md` and `backend/statistics/mixed_effects_model.py` for the two-engine setup and fallback behavior |
 | scikit-learn | Explicitly excluded | No model training, no train/test split, no cross-validation happens anywhere in this pipeline. Do not add it to the production environment. |
 | Local SLM | Ollama + pinned Phi-4 Mini / Qwen3 candidates; final selection pending | Both `phi4-mini:3.8b` and `qwen3:4b` run locally and support the comparison workflow. The final model must be chosen from expanded, fixed safety and quality evaluation rather than treated as decided by the earlier Phi default. |
 | Frontend | React + TypeScript (Vite) | One UI lead works against generated types from the OpenAPI contract while 6 others build backend in parallel; keeps all 7 chat screen-states visually consistent as reusable components |
@@ -281,7 +281,7 @@ the gap.
 
 | Decision | Chosen | Rejected | Why |
 |---|---|---|---|
-| Statistical library | statsmodels only | scikit-learn | No trainable ML pipeline exists in this project - a fixed mixed-effects model needs no estimator selection, splitting, or cross-validation |
+| Statistical library | R (via rpy2: `lme4`/`lmerTest`, `nlme`) as primary engine, statsmodels as automatic fallback when R is unavailable — **updated from the original statsmodels-only decision** once R was installed and wired in as `mixed_effects_model.py`'s primary path (see `docs/statistics/r-bridge-setup.md`): R gives real Satterthwaite/Kenward-Roger denominator df and a true AR(1) fit with per-person BLUPs, which statsmodels cannot produce on its own | scikit-learn | No trainable ML pipeline exists in this project - a fixed mixed-effects model needs no estimator selection, splitting, or cross-validation. (This reasoning is why scikit-learn stays excluded; it does not bear on the statsmodels-vs-R choice above, which is about denominator-df/AR(1) fidelity, not model training.) |
 | Database | Raw sqlite3 + one wrapper module | SQLAlchemy ORM | Small, stable 3-4 table schema; Pydantic already validates at the API boundary; ORM overhead isn't worth it for a time-boxed student team |
 | Frontend | React + TypeScript | Vanilla HTML/JS | 7 mutually-exclusive chat states benefit from reusable typed components staying visually consistent over a 9-week build with constant backend changes |
 | Charts | Apache ECharts | Chart.js | Native calendar-heatmap support, exact fit for daily/weekly personal trend data |
