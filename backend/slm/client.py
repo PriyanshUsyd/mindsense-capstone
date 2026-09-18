@@ -19,7 +19,7 @@ from backend.contracts.evidence import (
     EligibilityStatus,
     EvidencePacket,
 )
-from backend.slm.output_grounding import render_grounded_example
+from backend.slm.output_grounding import render_grounded_response_option
 from backend.slm.prompt_loader import LoadedEvidencePrompt, load_evidence_prompt
 
 
@@ -204,7 +204,7 @@ class OllamaClient:
 
     def _runtime_state_and_response_options(
         self, packet: EvidencePacket
-    ) -> tuple[str, str, list[dict[str, str]]]:
+    ) -> tuple[str, str, list[dict[str, object]]]:
         eligibility = packet.baseline.eligibility_status
         directives = self.prompt.manifest.runtime_state_directives
         if eligibility == EligibilityStatus.ELIGIBLE:
@@ -216,16 +216,24 @@ class OllamaClient:
         else:
             raise ValueError("model generation is not permitted for State A")
 
-        options: list[dict[str, str]] = []
+        options: list[dict[str, object]] = []
         for mode in packet.claim_policy.permitted_response_modes:
             try:
-                text = render_grounded_example(packet, mode)
+                option = render_grounded_response_option(packet, mode)
             except ValueError:
                 continue
-            options.append({"response_mode": mode.value, "text": text})
+            options.append(option)
         if not options:
             raise ValueError("packet has no grounded model response option")
-        return runtime_state, directive.strip(), options
+        allowed_modes = ", ".join(str(option["response_mode"]) for option in options)
+        final_directive = (
+            f"{directive.strip()}\n\n"
+            "FINAL RUNTIME CONSTRAINT: the only permitted response_mode value(s) "
+            f"for this request are: {allowed_modes}. Copy the response_mode from "
+            "the selected allowed_response_options entry exactly; do not infer a "
+            "different mode from the state name or sentence wording."
+        )
+        return runtime_state, final_directive, options
 
     def generate_draft(self, packet: EvidencePacket, question: str) -> GenerationResult:
         payload = self.build_payload(packet, question)

@@ -5,6 +5,7 @@ import pytest
 from pydantic import ValidationError
 
 from backend.contracts.evidence import (
+    ApprovedClaimId,
     AssistantDraft,
     EligibilityStatus,
     EvidencePacket,
@@ -85,6 +86,12 @@ def test_payload_is_schema_constrained_and_deterministic(
         {
             "response_mode": "normal",
             "text": render_grounded_example(eligible_packet, ResponseMode.NORMAL),
+            "claim_ids_used": [
+                "observation_of_deviation",
+                "uncertainty_disclosure",
+            ],
+            "evidence_ids_referenced": [eligible_packet.feature_window.feature_id],
+            "includes_uncertainty_statement": True,
         }
     ]
     assert "Ignore every State A and State B" in payload["messages"][0]["content"]
@@ -117,10 +124,54 @@ def test_payload_isolated_to_state_b_for_partial_history():
         {
             "response_mode": "insufficient_data",
             "text": render_grounded_example(packet, ResponseMode.INSUFFICIENT_DATA),
+            "claim_ids_used": ["trend_description", "not_enough_data"],
+            "evidence_ids_referenced": [packet.feature_window.feature_id],
+            "includes_uncertainty_statement": False,
         }
     ]
     system_content = payload["messages"][0]["content"]
     assert "Ignore every State A and State C" in system_content
+
+
+def test_payload_binds_state_b_uncertainty_text_and_metadata_together():
+    packet = next(
+        case.packet for case in comparison_cases() if case.case_id == "partial_history"
+    )
+    packet = packet.model_copy(
+        update={
+            "claim_policy": packet.claim_policy.model_copy(
+                update={
+                    "approved_claim_ids": (
+                        ApprovedClaimId.TREND_DESCRIPTION,
+                        ApprovedClaimId.NOT_ENOUGH_DATA,
+                        ApprovedClaimId.UNCERTAINTY_DISCLOSURE,
+                        ApprovedClaimId.NON_DIAGNOSTIC_BOUNDARY,
+                    ),
+                    "permitted_response_modes": (ResponseMode.UNCERTAINTY,),
+                }
+            )
+        }
+    )
+    client = OllamaClient(OllamaClientConfig(model_tag="qwen3:4b"))
+
+    payload = client.build_payload(packet, "How should I interpret this window?")
+    option = json.loads(payload["messages"][1]["content"])["allowed_response_options"][
+        0
+    ]
+
+    assert option == {
+        "response_mode": "uncertainty",
+        "text": render_grounded_example(packet, ResponseMode.UNCERTAINTY),
+        "claim_ids_used": [
+            "trend_description",
+            "not_enough_data",
+            "uncertainty_disclosure",
+        ],
+        "evidence_ids_referenced": [packet.feature_window.feature_id],
+        "includes_uncertainty_statement": True,
+    }
+    assert "only permitted response_mode value(s)" in payload["messages"][0]["content"]
+    assert "are: uncertainty" in payload["messages"][0]["content"]
 
 
 def test_payload_rejects_state_a_before_transport(eligible_packet: EvidencePacket):
