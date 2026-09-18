@@ -7,14 +7,19 @@ role's data store, statistical tool, corpus or evaluation threshold.
 
 from __future__ import annotations
 
+import argparse
+import json
 import statistics
 from collections import Counter
 from collections.abc import Mapping, Sequence
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
+from backend.slm.runtime import create_local_service, listed_model_tags
 from backend.slm.variants import (
     VARIANT_INTERFACE_VERSION,
+    SLMServiceResponder,
     VariantConfigurationError,
     VariantExecutionError,
     VariantKind,
@@ -190,6 +195,79 @@ def run_variant_comparison(
     }
 
 
+def build_runtime_runners(
+    *, model_tag: str, timeout_seconds: float
+) -> dict[VariantKind, VariantRunner]:
+    """Build the honest current-state runners around one pinned local model.
+
+    Only Base LLM is configured here. The other variants intentionally retain
+    their explicit dependency gaps until the responsible owners supply an
+    approved retriever, tool selector and tool registry.
+    """
+
+    service = create_local_service(
+        model_tag=model_tag,
+        timeout_seconds=timeout_seconds,
+    )
+    responder = SLMServiceResponder(service)
+    return {variant: VariantRunner(responder) for variant in VariantKind}
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        description=(
+            "Run the public synthetic Week 7 four-variant status harness. "
+            "Base LLM uses the selected local model; unavailable owner "
+            "dependencies are reported as configuration_required."
+        )
+    )
+    parser.add_argument(
+        "--model",
+        choices=listed_model_tags(),
+        default="phi4-mini:3.8b",
+    )
+    parser.add_argument("--timeout", type=float, default=180.0)
+    parser.add_argument("--out", type=Path, required=True)
+    args = parser.parse_args(argv)
+
+    if args.timeout <= 0:
+        parser.error("--timeout must be greater than zero")
+    if args.out.exists():
+        parser.error(f"refusing to overwrite existing result: {args.out}")
+
+    result = run_variant_comparison(
+        build_runtime_runners(
+            model_tag=args.model,
+            timeout_seconds=args.timeout,
+        )
+    )
+    result["runtime_settings"] = {
+        "requested_model_tag": args.model,
+        "timeout_seconds": args.timeout,
+        "non_base_dependencies": "unconfigured_owner_inputs",
+    }
+    args.out.parent.mkdir(parents=True, exist_ok=True)
+    args.out.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+    print(
+        json.dumps(
+            {
+                "output": str(args.out),
+                "status": result["status"],
+                "runtime_settings": result["runtime_settings"],
+                "variants": [
+                    {
+                        "variant": item["variant"],
+                        "summary": item["summary"],
+                    }
+                    for item in result["variants"]
+                ],
+            },
+            indent=2,
+        )
+    )
+    return 1 if result["status"] == "failed" else 0
+
+
 def _error_record(
     case: ComparisonCase,
     status: str,
@@ -220,3 +298,7 @@ def _error_record(
         "tool_trace": [],
         "text": None,
     }
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from dataclasses import replace
 
 import pytest
@@ -16,7 +17,11 @@ from backend.slm.variants import (
     VariantRunner,
 )
 from benchmarks.slm_model_comparison import comparison_cases
-from benchmarks.slm_variant_comparison import run_variant_comparison
+from benchmarks.slm_variant_comparison import (
+    build_runtime_runners,
+    main,
+    run_variant_comparison,
+)
 
 
 class CaseAwareGenerator:
@@ -187,3 +192,54 @@ def test_public_harness_rejects_non_synthetic_packets():
         run_variant_comparison(
             _configured_runners(), cases=(replace(case, packet=changed_packet),)
         )
+
+
+def test_runtime_runner_factory_leaves_owner_dependencies_explicit(monkeypatch):
+    monkeypatch.setattr(
+        "benchmarks.slm_variant_comparison.create_local_service",
+        lambda **kwargs: SLMService(CaseAwareGenerator()),
+    )
+
+    result = run_variant_comparison(
+        build_runtime_runners(model_tag="phi4-mini:3.8b", timeout_seconds=1.0)
+    )
+
+    assert result["status"] == "incomplete"
+    by_variant = {item["variant"]: item for item in result["variants"]}
+    assert by_variant["base_llm"]["summary"]["completed"] == 3
+    assert by_variant["rag"]["summary"]["configuration_required"] == 2
+    assert by_variant["agent"]["summary"]["configuration_required"] == 2
+    assert by_variant["rag_agent"]["summary"]["configuration_required"] == 2
+
+
+def test_cli_writes_current_state_result_without_claiming_completion(
+    monkeypatch, tmp_path
+):
+    monkeypatch.setattr(
+        "benchmarks.slm_variant_comparison.build_runtime_runners",
+        lambda **kwargs: {
+            variant: VariantRunner(ContextAcceptingResponder())
+            for variant in VariantKind
+        },
+    )
+    output = tmp_path / "variant-status.json"
+
+    exit_code = main(
+        [
+            "--model",
+            "qwen3:4b",
+            "--timeout",
+            "45",
+            "--out",
+            str(output),
+        ]
+    )
+
+    assert exit_code == 0
+    result = json.loads(output.read_text(encoding="utf-8"))
+    assert result["status"] == "incomplete"
+    assert result["runtime_settings"] == {
+        "requested_model_tag": "qwen3:4b",
+        "timeout_seconds": 45.0,
+        "non_base_dependencies": "unconfigured_owner_inputs",
+    }

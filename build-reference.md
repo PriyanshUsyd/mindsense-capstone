@@ -153,8 +153,8 @@ which concrete "tools"/data sources an agentic variant queries — is a genuine
 open engineering question the client did not specify and the team has not
 yet decided. These remain **to be scoped in Week 7**, not confirmed choices.
 
-**Week 7 interface status (local branch, not published, 2026-09-15):**
-`Rz-week7` starts from frozen `main@691d1fe` and adds a common outer interface
+**Week 7 interface status (local branch, not published, updated 2026-09-18):**
+`Rz-week7` is rebased onto frozen `origin/main@470fe8c` and adds a common outer interface
 and public synthetic comparison harness for Base LLM, RAG, Agent and RAG+Agent.
 The frozen `EvidencePacket` and `SafeSLMResponse` are unchanged. Retrieval is
 bounded by `top_k`, agent execution is restricted to a local tool whitelist,
@@ -164,6 +164,16 @@ production RAG/agent runs therefore remain pending owner-approved sources,
 tool schemas, context-aware grounding, privacy review and evaluation alignment.
 See `docs/slm/week7-variant-interface.md` for the interface and comparison
 controls.
+
+The public harness now has an executable CLI. With either manifest-listed
+model, the real Base variant completes all three public synthetic cases while
+the context-bearing RAG, Agent and RAG+Agent cases report stable
+`configuration_required` reasons. This is the honest current build status:
+the SLM orchestration boundary is executable, but the non-Base variants are not
+production implementations until their owner-approved retriever, statistical
+fields, tools, privacy review and evaluation rule are supplied. Rebased-build
+verification recorded 232 focused SLM/API/integration tests passing, plus
+16/16 prohibited and 5/5 off-topic checks with zero unexpected model calls.
 
 Prompt `0.4.11` on the same local branch corrects the observed Qwen State B/
 State C template mixing without weakening the existing output gate. The backend
