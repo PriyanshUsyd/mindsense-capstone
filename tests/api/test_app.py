@@ -59,6 +59,20 @@ def test_health_endpoint():
     assert resp.json() == {"status": "ok"}
 
 
+def test_models_endpoint_exposes_only_manifest_candidates():
+    client = TestClient(create_app(runtime_name="ollama"))
+
+    resp = client.get("/models")
+
+    assert resp.status_code == 200
+    assert resp.json() == {
+        "runtime": "ollama",
+        "selection_enabled": True,
+        "default_model_tag": "phi4-mini:3.8b",
+        "available_model_tags": ["phi4-mini:3.8b", "qwen3:4b"],
+    }
+
+
 def test_runtime_selector_keeps_the_demo_client_as_the_safe_default(monkeypatch):
     monkeypatch.delenv("MINDSENSE_SLM_RUNTIME", raising=False)
 
@@ -118,7 +132,9 @@ def test_respond_runs_through_the_configured_ollama_client_without_real_network(
     transport = _FakeOllamaTransport(draft)
     service.client.transport = transport
 
-    response = service.respond(packet, "How was my movement different from my recent baseline?")
+    response = service.respond(
+        packet, "How was my movement different from my recent baseline?"
+    )
 
     assert response.response_mode == "normal"
     assert response.model_invoked is True
@@ -134,7 +150,9 @@ def test_respond_returns_a_real_normal_response_for_eligible_evidence():
     service = create_runtime_service("demo")
     packet = _load_packet("week5_gps_eligible.json")
 
-    response = service.respond(packet, "How was my movement different from my recent baseline?")
+    response = service.respond(
+        packet, "How was my movement different from my recent baseline?"
+    )
 
     assert response.response_mode == "normal"
     assert response.model_invoked is True
@@ -175,11 +193,15 @@ def test_respond_builds_the_real_packet_server_side_not_from_the_client(monkeypa
     fixture_packet = _load_packet("week5_gps_eligible.json")
     calls: list[tuple[str, str]] = []
 
-    def fake_build_evidence_packet(participant_id: str, feature_id: str = "gps_distance"):
+    def fake_build_evidence_packet(
+        participant_id: str, feature_id: str = "gps_distance"
+    ):
         calls.append((participant_id, feature_id))
         return fixture_packet
 
-    monkeypatch.setattr("backend.api.app.build_evidence_packet", fake_build_evidence_packet)
+    monkeypatch.setattr(
+        "backend.api.app.build_evidence_packet", fake_build_evidence_packet
+    )
     client = TestClient(create_app())
 
     resp = client.post(
@@ -198,47 +220,142 @@ def test_respond_builds_the_real_packet_server_side_not_from_the_client(monkeypa
     assert "3.8" in body["text"] or "3.80" in body["text"]
 
 
+def test_respond_selects_a_manifest_model_only_in_ollama_mode(monkeypatch):
+    fixture_packet = _load_packet("week5_gps_eligible.json")
+    selected: list[str | None] = []
+
+    monkeypatch.setattr(
+        "backend.api.app.build_evidence_packet",
+        lambda participant_id, feature_id="gps_distance": fixture_packet,
+    )
+
+    def fake_create_local_service(*, model_tag=None, **kwargs):
+        del kwargs
+        selected.append(model_tag)
+        return create_runtime_service("demo")
+
+    monkeypatch.setattr(
+        "backend.api.app.create_local_service", fake_create_local_service
+    )
+    client = TestClient(create_app(runtime_name="ollama"))
+
+    resp = client.post(
+        "/respond",
+        json={
+            "participant_id": "u42",
+            "question": "How was my movement different from my recent baseline?",
+            "model_tag": "qwen3:4b",
+        },
+    )
+
+    assert resp.status_code == 200
+    assert selected == ["qwen3:4b"]
+
+
+def test_respond_rejects_model_selection_in_demo_mode_before_building_packet(
+    monkeypatch,
+):
+    monkeypatch.setattr(
+        "backend.api.app.build_evidence_packet",
+        lambda *args, **kwargs: pytest.fail("packet builder must not run"),
+    )
+    client = TestClient(create_app(runtime_name="demo"))
+
+    resp = client.post(
+        "/respond",
+        json={
+            "participant_id": "u42",
+            "question": "How am I doing?",
+            "model_tag": "qwen3:4b",
+        },
+    )
+
+    assert resp.status_code == 422
+    assert "ollama runtime" in resp.json()["detail"]
+
+
+def test_respond_rejects_unlisted_model_before_building_packet(monkeypatch):
+    monkeypatch.setattr(
+        "backend.api.app.build_evidence_packet",
+        lambda *args, **kwargs: pytest.fail("packet builder must not run"),
+    )
+    client = TestClient(create_app(runtime_name="ollama"))
+
+    resp = client.post(
+        "/respond",
+        json={
+            "participant_id": "u42",
+            "question": "How am I doing?",
+            "model_tag": "unlisted:1b",
+        },
+    )
+
+    assert resp.status_code == 422
+    assert "pinned comparison candidates" in resp.json()["detail"]
+
+
 def test_respond_defaults_feature_id_to_gps_distance_when_omitted(monkeypatch):
     fixture_packet = _load_packet("week5_gps_eligible.json")
     calls: list[tuple[str, str]] = []
 
-    def fake_build_evidence_packet(participant_id: str, feature_id: str = "gps_distance"):
+    def fake_build_evidence_packet(
+        participant_id: str, feature_id: str = "gps_distance"
+    ):
         calls.append((participant_id, feature_id))
         return fixture_packet
 
-    monkeypatch.setattr("backend.api.app.build_evidence_packet", fake_build_evidence_packet)
+    monkeypatch.setattr(
+        "backend.api.app.build_evidence_packet", fake_build_evidence_packet
+    )
     client = TestClient(create_app())
 
-    resp = client.post("/respond", json={"participant_id": "u42", "question": "How am I doing?"})
+    resp = client.post(
+        "/respond", json={"participant_id": "u42", "question": "How am I doing?"}
+    )
 
     assert resp.status_code == 200
     assert calls == [("u42", "gps_distance")]
 
 
 def test_respond_returns_404_for_an_unknown_participant(monkeypatch):
-    def fake_build_evidence_packet(participant_id: str, feature_id: str = "gps_distance"):
-        raise UnknownParticipant(f"no sensing rows for participant_id {participant_id!r}")
+    def fake_build_evidence_packet(
+        participant_id: str, feature_id: str = "gps_distance"
+    ):
+        raise UnknownParticipant(
+            f"no sensing rows for participant_id {participant_id!r}"
+        )
 
-    monkeypatch.setattr("backend.api.app.build_evidence_packet", fake_build_evidence_packet)
+    monkeypatch.setattr(
+        "backend.api.app.build_evidence_packet", fake_build_evidence_packet
+    )
     client = TestClient(create_app())
 
     resp = client.post(
-        "/respond", json={"participant_id": "not-a-real-uid", "question": "How am I doing?"}
+        "/respond",
+        json={"participant_id": "not-a-real-uid", "question": "How am I doing?"},
     )
 
     assert resp.status_code == 404
 
 
 def test_respond_returns_422_for_an_unknown_feature_id(monkeypatch):
-    def fake_build_evidence_packet(participant_id: str, feature_id: str = "gps_distance"):
+    def fake_build_evidence_packet(
+        participant_id: str, feature_id: str = "gps_distance"
+    ):
         raise UnknownFeature(f"unknown feature_id {feature_id!r}")
 
-    monkeypatch.setattr("backend.api.app.build_evidence_packet", fake_build_evidence_packet)
+    monkeypatch.setattr(
+        "backend.api.app.build_evidence_packet", fake_build_evidence_packet
+    )
     client = TestClient(create_app())
 
     resp = client.post(
         "/respond",
-        json={"participant_id": "u42", "question": "How am I doing?", "feature_id": "bogus"},
+        json={
+            "participant_id": "u42",
+            "question": "How am I doing?",
+            "feature_id": "bogus",
+        },
     )
 
     assert resp.status_code == 422
