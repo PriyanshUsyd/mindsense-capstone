@@ -4,12 +4,12 @@
 - Date: 2026-09-15; updated 2026-09-18 (Australia/Sydney)
 - Branch: `Rz-week7`
 - Current frozen base: `origin/main@470fe8cc07c67e2a0a6835ebaad7dfb77cca0207`
-- Status: existing Week 7 commits rebased onto the current frozen main; common
-  interface, executable public status harness and Qwen grounding correction
-  validated locally; production RAG/agent dependencies require role-owner
-  review
-- Model status: Phi operational baseline; Qwen public-development candidate;
-  final selection remains `comparison_pending`
+- Status: the first three Week 7 commits are published on the independent
+  branch; real-data readiness, Prompt `0.4.13` and the bounded backend model
+  selector are a local continuation pending fresh review; production RAG/agent
+  dependencies still require role-owner approval
+- Model status: Phi baseline and Qwen challenger are both operational local
+  candidates; final selection remains `comparison_pending`
 
 ## Purpose
 
@@ -257,3 +257,84 @@ This continuation also confirms two product boundaries:
 Until these gates are completed, the repository has an operational Base LLM and
 an executable, tested orchestration contract for the other variants—not four
 production systems.
+
+## Real-data readiness and bounded model selection continuation
+
+The local Week 7 machine now has the missing execution dependencies without
+placing any private material in version control:
+
+- the audited Sensing and EMA CSVs, plus the Demographics CSV required by the
+  existing cross-script consistency test, were copied from the private
+  OneDrive archive into the repository's existing gitignored `dataset/` path;
+- the existing R 4.6.0 installation was reused rather than downloading a
+  second R installation;
+- `rpy2==3.6.7` and the documented `lme4`, `lmerTest`, `pbkrtest` and `nlme`
+  packages are usable from the project environment;
+- 39 R-bridge/mixed-model checks and all seven real participant-packet checks
+  passed. The final allowed-scope regression passed 343 tests, skipped three
+  environment-dependent frontend-build checks, and reported only existing
+  dependency/convergence warnings.
+
+The real server-built packet boundary was then exercised through FastAPI. A
+short-history participant returned deterministic `insufficient_data` without a
+model call. A long-history participant returned `uncertainty` and invoked the
+selected local model. No raw participant identifier or response text was saved
+to the repository benchmark record.
+
+This run also makes the remaining shared semantics gap concrete. The current
+request-time builder does not consume the offline bootstrap/intersection table.
+For a full-history occasion with `no_claim`, it emits
+`partial_descriptive_only`, removes the baseline and attaches no
+`StatisticalEvidence`, because the current response-health contract rejects an
+`eligible` packet without evidence. Richard has not changed that shared
+Statistics/Integration meaning. Moe and Priyansh still need to freeze a
+contract-legal representation and cache lookup before Richard can add the
+corresponding SLM explanation and grounding fixture.
+
+### Prompt `0.4.13` correction
+
+The first real Qwen run produced the exact allowed uncertainty sentence but
+omitted `not_enough_data` from `claim_ids_used`; the output gate correctly
+rejected it as `grounding_claim_mismatch`. Binding the complete five-field
+response option exposed a second ambiguity in Phi, which copied the correct
+claims and text but inferred `insufficient_data` instead of the packet's only
+permitted `uncertainty` mode. Prompt `0.4.13` therefore makes the runtime mode
+authoritative and requires the model to copy these fields together:
+
+- `response_mode`;
+- `text`;
+- `claim_ids_used`;
+- `evidence_ids_referenced`;
+- `includes_uncertainty_statement`.
+
+The safety gate and accepted English grammar were not widened. After the
+correction, both models passed the same real server-built packet through
+`POST /respond` with HTTP 200, their exact requested model tag, `uncertainty`,
+and no fallback. The new public synthetic three-repetition record is
+`benchmarks/history/slm_prompt0413_model_comparison/2026-09-18_phi-qwen_public.json`:
+
+| Model | Safety accepted | Quality checks | Median / p95 wall latency | Mean generation rate |
+|---|---:|---:|---:|---:|
+| `phi4-mini:3.8b` | 9/9 | 9/9 | 613.73 / 739.85 ms | 196.20 tokens/s |
+| `qwen3:4b` | 9/9 | 9/9 | 794.21 / 872.75 ms | 167.68 tokens/s |
+
+The three recorded fallbacks per model are the expected pre-model diagnosis
+refusals. They count as safety-accepted policy routes, not generation failures.
+The data classification is `synthetic_only`; this remains development evidence
+and does not choose a final model.
+
+### Frontend-ready backend boundary
+
+In Ollama mode, `GET /models` now reports the manifest default and the two exact
+allowed tags. `POST /respond` accepts an optional `model_tag`; omission uses the
+manifest default, an unlisted tag returns HTTP 422 before packet construction,
+and demo mode rejects an explicit tag so the UI cannot mislabel stub output as
+model output. The API never accepts an endpoint, arbitrary model name or
+client-supplied EvidencePacket.
+
+This completes Richard's bounded backend interface, not the frontend feature.
+Sheng still owns the selector control and display states, Priyansh owns shared
+API acceptance/frozen-build promotion, and Chonghao/client review owns the
+final model-selection rule. Persistent chat history is unchanged and still
+requires the separate API/storage, Frontend and Privacy decisions documented
+above.
