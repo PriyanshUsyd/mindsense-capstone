@@ -1,12 +1,13 @@
 # Week 7 SLM Variant Interface and Comparison Plan
 
 - Owner: Richard Zhao, SLM Integration Lead
-- Date: 2026-09-15 (Australia/Sydney)
+- Date: 2026-09-15; updated 2026-09-18 (Australia/Sydney)
 - Branch: `Rz-week7`
-- Frozen base: `main@691d1fe9382e56d67e208207f89a9a1d71908b1c`
-- Status: common interface and public synthetic harness implemented; Qwen
-  grounding correction validated locally; production RAG/agent dependencies
-  require role-owner review
+- Current frozen base: `origin/main@470fe8cc07c67e2a0a6835ebaad7dfb77cca0207`
+- Status: existing Week 7 commits rebased onto the current frozen main; common
+  interface, executable public status harness and Qwen grounding correction
+  validated locally; production RAG/agent dependencies require role-owner
+  review
 - Model status: Phi operational baseline; Qwen public-development candidate;
   final selection remains `comparison_pending`
 
@@ -116,6 +117,22 @@ Evaluation-owned thresholds and qualitative scoring must be joined later. A
 small public synthetic run is a development regression check, not evidence of
 general performance or client acceptance.
 
+The current-state harness has a command-line entry point. It runs the real
+Base responder with one manifest-listed model and leaves all non-Base owner
+dependencies deliberately unconfigured:
+
+```powershell
+.venv\Scripts\python.exe -m benchmarks.slm_variant_comparison `
+  --model phi4-mini:3.8b `
+  --timeout 180 `
+  --out benchmarks/history/slm_week7_variant_status/phi-status.json
+```
+
+The output path is required and an existing file is never overwritten. An
+`incomplete` result is the correct current status when Base completes but an
+approved retriever, tool selector or tool registry is absent. It must not be
+reported as a failed Base model or as a completed four-architecture build.
+
 ## Frozen-build verification on 2026-09-15
 
 All checks below used public synthetic fixtures and did not read or execute the
@@ -177,6 +194,52 @@ was read or executed. This establishes two locally usable SLM candidates; it
 does not authorize a final model selection or a frontend selector. Exposing the
 choice through the product API requires the Integration/QA and Frontend owners
 to agree on a bounded allow-list and request/response contract.
+
+## Current-main continuation on 2026-09-18
+
+The two existing Week 7 commits were rebased without conflict onto frozen
+`origin/main@470fe8c`, which includes the Tier-1 statistics work and the
+server-built participant evidence path. Their rewritten local commit IDs are
+`c07c279` and `b4b3341`. The branch was 0 behind / 2 ahead before this
+continuation. Nothing was pushed and no pull request or GitHub state was
+changed.
+
+Public checks on the rebased build did not read, execute or modify the sealed
+held-out prompt file:
+
+- prohibited/crisis scripted baseline: 16/16, zero unexpected model calls;
+- off-topic replay: 5/5, zero model calls;
+- focused SLM/API/integration regression after adding the executable entry
+  point: 232 passed, 0 failed and two existing dependency warnings;
+- Ruff and diff checks: passed.
+
+Ollama 0.33.2 reported both manifest-pinned Q4_K_M candidates installed and no
+model loaded before the live runs. The executable status harness then produced
+the following public synthetic result for each candidate:
+
+| Model | Base | Quality checks | RAG | Agent | RAG+Agent |
+|---|---:|---:|---|---|---|
+| `phi4-mini:3.8b` | 3/3 completed | 3/3 | 2 context-bearing cases require an approved retriever | 2 cases require approved tools | 2 cases require approved tools, then retrieval |
+| `qwen3:4b` | 3/3 completed | 3/3 | same explicit dependency gap | same explicit dependency gap | same explicit dependency gap |
+
+The one completed record in each non-Base variant is the deterministic
+diagnosis refusal, which correctly stops before retrieval or tool selection.
+It is not evidence that the architecture is configured. Both real model runs
+used two eligible/partial-history generations and completed without execution
+failure. Qwen was unloaded after validation; `ollama ps` was empty at the end.
+The exact result records are in
+`benchmarks/history/slm_week7_variant_status/`.
+
+This continuation also confirms two product boundaries:
+
+- A model selector is feasible because the SLM factory already enforces the
+  manifest allow-list for Phi and Qwen, but Priyansh and Sheng own the shared
+  API field, default/invalid-model behaviour and frontend control.
+- Persistent chat history has not been added. The current frontend keeps turns
+  only in React state. Cross-refresh history would require an Integration/API
+  storage contract, Frontend controls and a Privacy-approved retention/deletion
+  policy. Richard's Week 10 multi-turn model-memory task remains a separate
+  benchmark and must not be wired into the Week 7 demo.
 
 ## Role-owner gates before production variant runs
 
