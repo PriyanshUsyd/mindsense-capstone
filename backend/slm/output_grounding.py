@@ -39,7 +39,7 @@ def _finite_nonnegative(value: float | None) -> bool:
 
 def _shape(
     packet: EvidencePacket, mode: ResponseMode
-) -> tuple[str, set[ApprovedClaimId], dict[str, float]]:
+) -> tuple[str, tuple[ApprovedClaimId, ...], dict[str, float]]:
     feature = packet.feature_window
     labels = _LABELS.get((feature.feature_id, feature.unit))
     if labels is None:
@@ -63,10 +63,10 @@ def _shape(
             + f", compared with your own baseline of {{baseline}} {unit}. "
             + UNCERTAINTY_TEXT
         )
-        claims = {
+        claims = (
             ApprovedClaimId.OBSERVATION_OF_DEVIATION,
             ApprovedClaimId.UNCERTAINTY_DISCLOSURE,
-        }
+        )
     elif (
         packet.baseline.eligibility_status == EligibilityStatus.PARTIAL_DESCRIPTIVE_ONLY
     ):
@@ -80,10 +80,14 @@ def _shape(
             prefix + " in the observed window. "
             "It is too early to compare with your own baseline."
         )
-        claims = {ApprovedClaimId.TREND_DESCRIPTION, ApprovedClaimId.NOT_ENOUGH_DATA}
+        partial_claims = [
+            ApprovedClaimId.TREND_DESCRIPTION,
+            ApprovedClaimId.NOT_ENOUGH_DATA,
+        ]
         if mode == ResponseMode.UNCERTAINTY:
             text += " " + UNCERTAINTY_TEXT
-            claims.add(ApprovedClaimId.UNCERTAINTY_DISCLOSURE)
+            partial_claims.append(ApprovedClaimId.UNCERTAINTY_DISCLOSURE)
+        claims = tuple(partial_claims)
     else:
         raise ValueError("grounding_unsupported_state")
     return text, claims, values
@@ -93,6 +97,26 @@ def render_grounded_example(packet: EvidencePacket, mode: ResponseMode) -> str:
     """Example for synthetic test generators, NOT a replacement for model output."""
     template, _, values = _shape(packet, mode)
     return template.format(**{key: str(value) for key, value in values.items()})
+
+
+def render_grounded_response_option(
+    packet: EvidencePacket, mode: ResponseMode
+) -> dict[str, object]:
+    """Return the exact draft fields a local model may copy for one mode.
+
+    Keeping the text and its required metadata together prevents smaller local
+    models from copying a valid sentence while independently guessing an
+    incomplete claim set. The second-pass validator remains authoritative.
+    """
+
+    template, claims, values = _shape(packet, mode)
+    return {
+        "response_mode": mode.value,
+        "text": template.format(**{key: str(value) for key, value in values.items()}),
+        "claim_ids_used": [claim.value for claim in claims],
+        "evidence_ids_referenced": [packet.feature_window.feature_id],
+        "includes_uncertainty_statement": mode in _READY,
+    }
 
 
 def validate_output_grounding(
@@ -107,11 +131,12 @@ def validate_output_grounding(
         template, required, values = _shape(packet, draft.response_mode)
     except ValueError as exc:
         return str(exc)
+    required_claims = set(required)
     declared = set(draft.claim_ids_used)
     if (
-        not required <= declared
-        or not required <= set(packet.claim_policy.approved_claim_ids)
-        or not declared <= required | {ApprovedClaimId.NON_DIAGNOSTIC_BOUNDARY}
+        not required_claims <= declared
+        or not required_claims <= set(packet.claim_policy.approved_claim_ids)
+        or not declared <= required_claims | {ApprovedClaimId.NON_DIAGNOSTIC_BOUNDARY}
     ):
         return "grounding_claim_mismatch"
     valid_ids = {packet.identity.packet_id, packet.feature_window.feature_id}
