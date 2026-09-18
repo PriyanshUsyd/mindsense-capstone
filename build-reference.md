@@ -153,8 +153,11 @@ which concrete "tools"/data sources an agentic variant queries — is a genuine
 open engineering question the client did not specify and the team has not
 yet decided. These remain **to be scoped in Week 7**, not confirmed choices.
 
-**Week 7 interface status (local branch, not published, updated 2026-09-18):**
-`Rz-week7` is rebased onto frozen `origin/main@470fe8c` and adds a common outer interface
+**Week 7 interface status (independent review branch, updated 2026-09-18):**
+`Rz-week7` is based on frozen `origin/main@470fe8c`; the first three Week 7
+commits are published at `origin/Rz-week7@68fbcc5`, while the real-data
+readiness and model-selector continuation described below is local pending a
+fresh push review. The branch adds a common outer interface
 and public synthetic comparison harness for Base LLM, RAG, Agent and RAG+Agent.
 The frozen `EvidencePacket` and `SafeSLMResponse` are unchanged. Retrieval is
 bounded by `top_k`, agent execution is restricted to a local tool whitelist,
@@ -175,7 +178,7 @@ fields, tools, privacy review and evaluation rule are supplied. Rebased-build
 verification recorded 232 focused SLM/API/integration tests passing, plus
 16/16 prohibited and 5/5 off-topic checks with zero unexpected model calls.
 
-Prompt `0.4.11` on the same local branch corrects the observed Qwen State B/
+Prompt `0.4.11` on the published branch corrected the observed Qwen State B/
 State C template mixing without weakening the existing output gate. The backend
 derives the authoritative runtime state from the validated `EvidencePacket` and
 offers only deterministic grounded response options for that state; State A
@@ -183,8 +186,28 @@ still stops before generation. Public synthetic checks now pass for both local
 models: Phi and Qwen each passed 9/9 three-repetition comparison records, while
 the prohibited-request baseline remained 16/16 and the off-topic replay 5/5
 with zero model calls. This makes both models usable SLM candidates, not a final
-model decision. A user-facing model selector remains an Integration/QA and
-Frontend contract change and is outside the SLM branch's ownership.
+model decision.
+
+The local continuation provisions the audited Sensing, EMA and Demographics
+CSVs into the gitignored `dataset/` path, uses the existing R 4.6.0 installation, and
+installs the version-locked `rpy2` 3.6.7 plus the documented R packages. The R
+bridge/mixed-model checks pass 39/39 and the real participant packet tests pass
+7/7. A real long-history packet currently reaches the SLM as
+`partial_descriptive_only` with no `StatisticalEvidence`; this preserves the
+known shared `State C + no_claim` representation gap rather than inventing a
+relationship claim or an online bootstrap result.
+
+Prompt `0.4.13` and the request payload now bind response mode, text, claim IDs,
+evidence references and the uncertainty flag into one deterministic option.
+This fixes the real-packet State B uncertainty metadata/mode ambiguity without
+relaxing the output gate. A fresh three-repetition public comparison records
+9/9 safety acceptance and 9/9 quality checks for each model. The loopback API
+now exposes `GET /models` and accepts an optional manifest-allow-listed
+`model_tag` on `POST /respond` only in Ollama mode; omitted tags use the
+manifest default and unknown tags fail with HTTP 422 before participant data is
+loaded. Real API calls selected and returned both exact tags with HTTP 200 and
+no fallback. The frontend selector remains Sheng's work and formal model
+selection remains Chonghao/client-governed.
 
 **Week 6 branch status (merged to `main` via PR #15, 2026-09-12):** `Rz-week6` addresses the
 off-topic limitation previously documented on `main`. Request policy `0.2.0` adds an
