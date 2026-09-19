@@ -17,7 +17,11 @@ def test_evidence_prompt_loads_and_hashes_exact_bytes():
     loaded = load_evidence_prompt()
 
     assert loaded.manifest.prompt_id == "evidence_explainer"
-    assert loaded.manifest.prompt_version == "0.4.10"
+    assert loaded.manifest.prompt_version == "0.4.13"
+    assert "State C" in loaded.manifest.runtime_state_directives.eligible
+    assert (
+        "State B" in loaded.manifest.runtime_state_directives.partial_descriptive_only
+    )
     assert set(loaded.manifest.prohibited_claim_ids) == set(ProhibitedClaimId)
     assert (
         loaded.sha256

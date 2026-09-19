@@ -20,6 +20,15 @@ class PromptManifestError(ValueError):
     """Raised when a prompt file cannot be safely loaded or validated."""
 
 
+class RuntimeStateDirectives(BaseModel):
+    """State-specific instructions appended after the shared system text."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    eligible: str = Field(min_length=1)
+    partial_descriptive_only: str = Field(min_length=1)
+
+
 class EvidencePromptManifest(BaseModel):
     """Strict shape for the evidence-to-draft system prompt."""
 
@@ -29,6 +38,7 @@ class EvidencePromptManifest(BaseModel):
     prompt_version: str = Field(min_length=1)
     allowed_claim_ids: tuple[ApprovedClaimId, ...]
     prohibited_claim_ids: tuple[ProhibitedClaimId, ...]
+    runtime_state_directives: RuntimeStateDirectives
     system_text: str = Field(min_length=1)
 
     @field_validator("allowed_claim_ids")
