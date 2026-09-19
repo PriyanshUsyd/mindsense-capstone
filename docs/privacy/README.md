@@ -11,7 +11,6 @@ Yuktha Naveen owns this area as Privacy and Security Lead. The operational polic
 - [Network-egress tests](../../tests/privacy/test_no_network_egress.py): automated enforcement that permits loopback traffic and blocks public Python socket connections during tests.
 - [R-bridge privacy tests](../../tests/privacy/test_r_bridge_privacy.py): enforce temporary-data cleanup, package allowlisting, and the absence of network, shell, install, logging, and file-write calls in the embedded-R bridge.
 - [Privacy and Security CI](../../.github/workflows/privacy-security-ci.yml): runs the reproducible Python/R, frontend, privacy, security, build, and dependency gates for pull requests and updates to `main`.
-- [Automated CI run register](automated-ci-run-register.md): separates automatically recorded GitHub run evidence from local-only checks and the master test register.
 
 ## Weekly verification evidence
 

@@ -1,8 +1,10 @@
 {
-  "timestamp_local": "2026-09-12 21:17:08 AEST",
+  "timestamp_local": "2026-09-20 09:34:58 AEST",
+  "timestamp_utc": "2026-09-19T23:34:58.955295Z",
+  "history_file": "benchmarks/history/slm_latency/2026-09-20T093458.955295+1000.json",
   "environment": {
     "python": "3.14.0",
-    "platform": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+    "platform": "macOS-27.0-arm64-arm-64bit-Mach-O",
     "machine": "arm64",
     "processor": "arm",
     "ollama_path": "/usr/local/bin/ollama",
@@ -16,42 +18,42 @@
     "cmd": null,
     "runs": 5,
     "latency_ms": {
-      "min": 927.7,
-      "mean": 2224.58,
-      "median": 2395.99,
-      "p95": 3802.87,
-      "max": 4084.96
+      "min": 1489.87,
+      "mean": 2225.15,
+      "median": 1811.37,
+      "p95": 3829.6,
+      "max": 4278.42
     },
     "outputs": [
       {
         "prompt_index": 1,
-        "latency_ms": 4084.96,
-        "output_chars": 143,
-        "output_preview": "The user's sleep duration has decreased from their baseline, with no change in activity levels and moderate confidence in the observed changes."
+        "latency_ms": 1511.75,
+        "output_chars": 162,
+        "output_preview": "Cautious summary: The user's sleep duration has decreased from their baseline, with no change in activity levels and moderate confidence in the observed pattern"
       },
       {
         "prompt_index": 2,
-        "latency_ms": 1039.76,
-        "output_chars": 114,
-        "output_preview": "Certainly! If you could provide me with some background information or context, I'd be happy to assist you better."
+        "latency_ms": 1811.37,
+        "output_chars": 259,
+        "output_preview": "To provide the most accurate and helpful response, I would need more context or details about the specific topic or issue you're interested in. Could you please"
       },
       {
         "prompt_index": 3,
-        "latency_ms": 927.7,
-        "output_chars": 108,
-        "output_preview": "I'm sorry, but I can't assist with that. Please consult a healthcare professional for an accurate diagnosis."
+        "latency_ms": 1489.87,
+        "output_chars": 216,
+        "output_preview": "I'm sorry, but I can't assist with diagnosing issues based on sensor data. It's important to consult a qualified professional for an accurate diagnosis and appr"
       },
       {
         "prompt_index": 4,
-        "latency_ms": 2395.99,
-        "output_chars": 308,
-        "output_preview": "We're excited to share that we have a sleep trend available for you! While we don't have complete activity data at this moment, we can still provide insights ba"
+        "latency_ms": 2034.34,
+        "output_chars": 313,
+        "output_preview": "We appreciate your interest in tracking your sleep patterns! While we currently don't have specific activity data for you, we can still share insights based on "
       },
       {
         "prompt_index": 5,
-        "latency_ms": 2674.49,
-        "output_chars": 343,
-        "output_preview": "In the event of a local model failure, please be assured that we are actively working to resolve the issue. We apologize for any inconvenience this may cause. O"
+        "latency_ms": 4278.42,
+        "output_chars": 578,
+        "output_preview": "In the event of a local model failure, please be assured that our team is actively working on resolving the issue. We apologize for any inconvenience this may c"
       }
     ]
   }
