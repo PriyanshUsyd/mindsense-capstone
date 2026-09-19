@@ -2,7 +2,7 @@
 
 Owner: Yuktha Naveen, Privacy and Security Lead  
 Coverage: Week 4 onward  
-Last updated: 8 September 2026
+Last updated: 15 September 2026
 Status: authoritative index of executed project checks; update this file every week
 
 ## Purpose
@@ -44,6 +44,11 @@ is not approval for clinical use or participant deployment.
 | 6 | Frontend redirect remediation | Passed | The browser transport now rejects redirects while retaining the fixed loopback destination. |
 | 6 | Post-remediation Python suite | 391/391 passed; 45 warnings | Both privacy fixes integrate with the complete backend and test suite. |
 | 6 | Post-remediation frontend suite | 14/14 passed; lint and build passed | The redirect control and expanded UI work together without frontend regressions. |
+| 7 | Latest `main` automatic run | All four jobs passed; 381 tests passed, 20 skipped | Current code passed CI, but three frontend-build integration tests skipped in the Python job because its frontend dependencies were absent. |
+| 7 | Local backend/frontend smoke test | Passed: demo normal/refusal/crisis and real Phi normal paths returned HTTP 200 | React, FastAPI, deterministic safety routing, and the local Ollama path worked together over loopback. |
+| 7 | Complete local Python/R/CES suite | 403/403 passed; 45 warnings | New unlock-frequency, Tier 1 evidence, existing privacy, R, and real-dataset checks passed on the current Mac environment. |
+| 7 | Frontend verification | 22/22 passed; lint and build passed | The current UI states, transport controls, visual-distinctness checks, and production build passed. |
+| 7 | Dependency verification | `pip check` passed; Python manifests and npm reported 0 known vulnerabilities | No broken Python requirements or currently known dependency advisories were detected. |
 
 The Week 5 latency sample was about 15.7% slower on mean latency than Week 4.
 Five prompts are too small a sample to establish a performance regression or a
@@ -634,6 +639,83 @@ After a workflow runs on `main`, its reviewed result is added to
 `docs/privacy/automated-ci-run-register.md`; significant outcomes are appended
 here during the next Privacy Lead documentation update. CI remains read-only
 and never writes directly to `main`.
+
+## Week 7 Initial Record - 15 September 2026
+
+### Scope and Assumptions
+
+**Branch and baseline:** `yuktha/privacy-week7`, created from current
+`origin/main` at commit `691d1fe9382e56d67e208207f89a9a1d71908b1c`.
+The working tree was clean before the review.
+
+**Environment:** macOS 26.6.2 on Apple arm64; Python 3.14.0; R 4.6.1 with
+the real `rpy2` ABI path; Node 22.19.0; npm 10.9.3; Ollama 0.33.2; and the
+locally installed `phi4-mini:3.8b` model.
+
+**Assumptions before testing:** tracked source and manifests represented the
+current `main` build; the gitignored CES dataset was the previously verified
+local copy; tests used synthetic data unless explicitly marked as dataset
+backed; localhost binding was permitted; R packages and frontend dependencies
+matched the established project environment; and advisory results reflected
+only vulnerabilities known to the queried services on the test date.
+
+### Backend and Frontend Startup
+
+The React frontend was started on `http://127.0.0.1:5173` and FastAPI on
+`http://127.0.0.1:8000`. The deterministic demo service returned a grounded
+normal response, rejected a diagnosis request, and returned the versioned
+Australian crisis-support response. All three browser requests returned HTTP
+200 from `/respond`.
+
+The backend was then restarted with `MINDSENSE_SLM_RUNTIME=ollama`; Ollama was
+started with `OLLAMA_NO_CLOUD=1` and bound to `127.0.0.1:11434`. The frontend
+received a grounded normal response labelled `phi4-mini:3.8b`. Only the
+repository's synthetic demonstration packet was used. This confirms local
+service integration, not a formal latency result or an OS-level offline test.
+
+### Local Regression and Dependency Results
+
+The complete Python/R/CES run passed 403/403 tests with 45 known
+`statsmodels` convergence warnings from synthetic fixtures. This included the
+real CES-backed GPS, unlock-frequency, eligibility, mixed-model, and Tier 1
+evidence checks. The frontend passed 22/22 Vitest checks; Oxlint and the
+production build passed. `pip check` reported no broken requirements. Strict
+audits of `requirements.txt` and `requirements-r.txt`, plus the npm
+high/critical audit, reported zero known vulnerabilities.
+
+The first npm and Python advisory attempts could not reach their public
+services from the restricted test environment. Both were rerun with network
+access and passed; these were environment-only lookup failures, not project
+test failures.
+
+### Automatic Coverage Review
+
+The latest `main` workflow run, GitHub Actions run `34913733919`, tested commit
+`691d1fe` and completed all four jobs successfully. Its Python job reported
+381 passed, 20 skipped, and 51 warnings. Sixteen skips require the private CES
+dataset. One dataset-independent Tier 1 registry check was incorrectly marked
+to skip, and three frontend-build integration checks skipped because the
+Python job had not installed `frontend/node_modules`. The separate frontend
+job still passed its tests, lint, build, and npm audit. The status-only artifact
+`privacy-security-ci-run-34913733919-1` exists and is not expired.
+
+Week 7 changes remove the unnecessary registry skip, add two synthetic tests
+that exercise GPS and unlock-frequency orchestration through the new Tier 1
+runner, and install the locked frontend dependencies in the Python job. The
+existing full-suite command will discover these tests automatically. The next
+CI run is therefore expected to execute 387 tests and skip only the 16 checks
+that genuinely require the private dataset. That expected CI count is not
+treated as an executed result until the branch is pushed and GitHub Actions
+runs it.
+
+### Week 7 Initial Decision
+
+**Conditional pass for local prototype development.** The current application,
+private-data checks, R integration, frontend, dependency gates, and real local
+Phi service worked in the tested environment. Participant-facing approval is
+still withheld pending the OS-level public-network-blocked integrated run,
+human privacy/safety review, and owner approval of the new unlock and bootstrap
+statistical methodology.
 
 ## SLM Latency Run History
 

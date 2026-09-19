@@ -5,7 +5,7 @@ output, closing the gap where `/respond` used to accept a client-supplied
 packet as-is (see backend/api/app.py's 2026-09-16 fix).
 
 Real-dataset tests are skipped when the dataset isn't present locally
-(gitignored), same convention as test_run_tier1_evidence.py.
+(gitignored), same convention as test_tier1_runner.py.
 """
 
 from __future__ import annotations
@@ -91,15 +91,17 @@ def test_state_c_packet_never_fabricates_evidence_strength():
     finalised decisions and evidence.py's own module docstring."""
     packet = build_evidence_packet(LONG_HISTORY_UID, feature_id="gps_distance")
 
-    if packet.baseline.eligibility_status == EligibilityStatus.ELIGIBLE:
-        # evidence may be None (no_claim) but must never silently assert a
+    if (
+        packet.baseline.eligibility_status == EligibilityStatus.ELIGIBLE
+        and packet.evidence is not None
+    ):
+        # Evidence may be None (no_claim) but must never silently assert a
         # strength value this codebase cannot yet defend.
-        if packet.evidence is not None:
-            pytest.fail(
-                "evidence_strength was populated without a real per-person "
-                "standard error — this should be structurally impossible "
-                "given evidence.py's current SE gap"
-            )
+        pytest.fail(
+            "evidence_strength was populated without a real per-person "
+            "standard error — this should be structurally impossible "
+            "given evidence.py's current SE gap"
+        )
 
 
 @requires_dataset
