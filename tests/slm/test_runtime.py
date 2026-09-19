@@ -3,7 +3,11 @@ from pathlib import Path
 import pytest
 
 from backend.contracts.evidence import EvidencePacket
-from backend.slm.runtime import create_local_service, listed_model_tags
+from backend.slm.runtime import (
+    create_local_service,
+    default_model_tag,
+    listed_model_tags,
+)
 from backend.slm.shadow_cli import load_packet
 
 FIXTURE = Path(__file__).parent / "fixtures" / "week5_gps_eligible.json"
@@ -28,6 +32,11 @@ def test_week5_missing_data_fixture_is_valid_and_contains_no_evidence():
 
 def test_runtime_lists_both_pinned_comparison_candidates():
     assert set(listed_model_tags()) == {"phi4-mini:3.8b", "qwen3:4b"}
+
+
+def test_runtime_default_is_a_manifest_candidate():
+    assert default_model_tag() == "phi4-mini:3.8b"
+    assert create_local_service().client.config.model_tag == default_model_tag()
 
 
 def test_runtime_rejects_model_not_in_versioned_manifest():

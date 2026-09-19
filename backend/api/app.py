@@ -29,8 +29,9 @@ it; see git history for the prior contract.
 
 The default `MINDSENSE_SLM_RUNTIME=demo` uses a deterministic client so tests
 and UI setup do not require Ollama. Set `MINDSENSE_SLM_RUNTIME=ollama` when
-starting Uvicorn to select Richard's manifest-pinned local client. Nothing
-about the HTTP contract changes between the two modes.
+starting Uvicorn to enable Richard's manifest-bounded local model selector.
+The optional `model_tag` request field can select only a pinned comparison
+candidate; `/models` exposes the bounded catalog for frontend integration.
 """
 
 from __future__ import annotations
@@ -49,7 +50,11 @@ from backend.contracts.evidence import (
 )
 from backend.slm.client import GenerationMetrics, GenerationResult
 from backend.slm.output_grounding import render_grounded_example
-from backend.slm.runtime import create_local_service
+from backend.slm.runtime import (
+    create_local_service,
+    default_model_tag,
+    listed_model_tags,
+)
 from backend.slm.service import SafeSLMResponse, SLMService
 from backend.statistics.participant_evidence import (
     UnknownFeature,
@@ -90,7 +95,8 @@ class DeterministicDemoClient:
             claim_ids_used=claim_ids,
             evidence_ids_referenced=(packet.feature_window.feature_id,),
             text=render_grounded_example(packet, mode),
-            includes_uncertainty_statement=ApprovedClaimId.UNCERTAINTY_DISCLOSURE in claim_ids,
+            includes_uncertainty_statement=ApprovedClaimId.UNCERTAINTY_DISCLOSURE
+            in claim_ids,
         )
         return GenerationResult(
             draft=draft,
@@ -147,7 +153,7 @@ class RespondRequest(BaseModel):
     `backend.statistics.evidence`) — meaning the client could assert any
     `eligibility_status` / `evidence_strength` it wanted and the backend
     would believe it. The request now carries only a `participant_id` (and
-    optional `feature_id`); the packet is always built server-side by
+    optional `feature_id` and manifest-bounded `model_tag`); the packet is always built server-side by
     `backend.statistics.participant_evidence.build_evidence_packet` from
     the real CES pipeline output, never accepted from the caller."""
 
@@ -156,9 +162,38 @@ class RespondRequest(BaseModel):
     participant_id: str
     question: str
     feature_id: str = "gps_distance"
+    model_tag: str | None = None
 
 
-def create_runtime_service(runtime_name: str | None = None) -> SLMService:
+class ModelCatalogResponse(BaseModel):
+    """Read-only catalog used by the frontend to render a bounded selector."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    runtime: str
+    selection_enabled: bool
+    default_model_tag: str
+    available_model_tags: tuple[str, ...]
+
+
+def _selected_runtime_name(runtime_name: str | None = None) -> str:
+    selected = (
+        (
+            runtime_name
+            if runtime_name is not None
+            else os.environ.get(SLM_RUNTIME_ENV, "demo")
+        )
+        .strip()
+        .lower()
+    )
+    if selected not in {"demo", "ollama"}:
+        raise ValueError(f"{SLM_RUNTIME_ENV} must be 'demo' or 'ollama'")
+    return selected
+
+
+def create_runtime_service(
+    runtime_name: str | None = None, *, model_tag: str | None = None
+) -> SLMService:
     """Select an explicit local runtime without changing the HTTP contract.
 
     ``demo`` remains the safe default for tests and contributor setup.
@@ -166,19 +201,19 @@ def create_runtime_service(runtime_name: str | None = None) -> SLMService:
     fails closed through ``SLMService`` if the daemon is unavailable.
     """
 
-    selected = (
-        runtime_name
-        if runtime_name is not None
-        else os.environ.get(SLM_RUNTIME_ENV, "demo")
-    ).strip().lower()
+    selected = _selected_runtime_name(runtime_name)
     if selected == "demo":
+        if model_tag is not None:
+            raise ValueError("model_tag selection requires the ollama runtime")
         return SLMService(DeterministicDemoClient())
     if selected == "ollama":
-        return create_local_service()
-    raise ValueError(f"{SLM_RUNTIME_ENV} must be 'demo' or 'ollama'")
+        return create_local_service(model_tag=model_tag)
+    raise AssertionError("validated runtime name was not handled")
 
 
-def create_app(service: SLMService | None = None) -> FastAPI:
+def create_app(
+    service: SLMService | None = None, *, runtime_name: str | None = None
+) -> FastAPI:
     app = FastAPI(title="MindSense local SLM API", version="0.1.0")
 
     # Loopback-only local dev server per the project's privacy stance —
@@ -186,30 +221,59 @@ def create_app(service: SLMService | None = None) -> FastAPI:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["http://127.0.0.1:5173", "http://localhost:5173"],
-        allow_methods=["POST"],
+        allow_methods=["GET", "POST"],
         allow_headers=["*"],
     )
 
-    active_service = service or create_runtime_service("demo")
+    selected_runtime = (
+        "injected" if service is not None else _selected_runtime_name(runtime_name)
+    )
+    active_service = service or (
+        create_runtime_service("demo") if selected_runtime == "demo" else None
+    )
+
+    def service_for(model_tag: str | None) -> SLMService:
+        if active_service is not None:
+            if model_tag is not None:
+                raise ValueError("model_tag selection requires the ollama runtime")
+            return active_service
+        return create_runtime_service("ollama", model_tag=model_tag)
 
     @app.post("/respond", response_model=SafeSLMResponse)
     def respond(payload: RespondRequest) -> SafeSLMResponse:
         try:
-            packet = build_evidence_packet(payload.participant_id, feature_id=payload.feature_id)
+            request_service = service_for(payload.model_tag)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        try:
+            packet = build_evidence_packet(
+                payload.participant_id, feature_id=payload.feature_id
+            )
         except UnknownParticipant as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         except UnknownFeature as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
         try:
-            return active_service.respond(packet, payload.question)
-        except Exception as exc:  # noqa: BLE001 - never leak internals to the UI
-            raise HTTPException(status_code=500, detail="local generation failed") from exc
+            return request_service.respond(packet, payload.question)
+        except Exception as exc:
+            raise HTTPException(
+                status_code=500, detail="local generation failed"
+            ) from exc
 
     @app.get("/health")
     def health() -> dict[str, str]:
         return {"status": "ok"}
 
+    @app.get("/models", response_model=ModelCatalogResponse)
+    def models() -> ModelCatalogResponse:
+        return ModelCatalogResponse(
+            runtime=selected_runtime,
+            selection_enabled=selected_runtime == "ollama",
+            default_model_tag=default_model_tag(),
+            available_model_tags=listed_model_tags(),
+        )
+
     return app
 
 
-app = create_app(service=create_runtime_service())
+app = create_app()

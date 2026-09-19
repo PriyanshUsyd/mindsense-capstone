@@ -446,6 +446,8 @@ def _stop_models(model_tags: Sequence[str]) -> bool:
                 check=False,
                 capture_output=True,
                 text=True,
+                encoding="utf-8",
+                errors="replace",
                 timeout=30,
             )
         except (OSError, subprocess.SubprocessError):
