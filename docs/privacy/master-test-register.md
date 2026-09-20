@@ -54,6 +54,7 @@ is not approval for clinical use or participant deployment.
 | 7 | Frozen-build complete local suite | 457/457 passed; 45 warnings before the new regression gates | Existing Python, R, CES, privacy, security, SLM, API, integration, and statistics tests remained stable at commit `1341cea`. |
 | 7 | Frozen-build latency confirmation | 5/5 completed; mean 2.23 s; sample p95 3.83 s | Local Phi-4 Mini remained operational with effectively unchanged mean latency versus the Week 6 post-merge sample. |
 | 7 | Privacy and crisis remediation | 72/72 focused and 460/460 complete tests passed; live browser rerun passed | Raw CES identifiers were removed from the tracked tree and browser request, the missed crisis phrase now routes correctly, and app processes showed no public TCP connection. |
+| 7 | Four-stage CI separation preflight | Python 373/373; R 67/67; frontend 22/22 plus lint/build; privacy 17/17; all audits clear | Python, R, frontend, and privacy/security now have distinct failure boundaries and explanatory Markdown artifacts for failed stages. |
 
 The Week 5 latency sample was about 15.7% slower on mean latency than Week 4.
 Five prompts are too small a sample to establish a performance regression or a
@@ -589,16 +590,20 @@ same controls.
 **Implemented:** `.github/workflows/privacy-security-ci.yml` runs on pull
 requests targeting `main`, on every push to `main` (including a merged pull
 request), on `yuktha/**` branch pushes for pre-PR verification, and by manual
-dispatch. It provides three independent jobs:
+dispatch. The current design provides four clearly separated jobs:
 
-- the complete Python suite with the real R bridge required and `pip check`;
-- frontend tests, lint, production build, and high/critical npm advisory gate;
-- strict advisory audits of both Python requirements files.
+- Python application and integration tests with `pip check`;
+- real R bridge, mixed-effects, bootstrap, and R workspace-isolation tests;
+- frontend tests, lint, and production build; and
+- privacy, identifier, network, and transport tests plus strict Python, R-bridge,
+  and npm dependency advisory gates.
 
 Every run also publishes a status-only Markdown summary and a 90-day GitHub
-Actions artifact. GitHub Actions logs and those artifacts are the authoritative
-automatic run records. CI does not write to this master register or commit
-generated records to the repository.
+Actions artifact. A failed stage also publishes a 90-day Markdown report that
+identifies failed/skipped steps, lists likely cause categories, and includes the
+tail of available command output. GitHub Actions logs and those artifacts are
+the authoritative automatic run records. CI does not write to this master
+register or commit generated records to the repository.
 
 **Security and privacy assumptions:** GitHub-hosted runners are acceptable for
 synthetic test fixtures but not participant data; the CES dataset and local
@@ -633,7 +638,7 @@ test sandbox denied binding a temporary loopback server; the permitted rerun
 passed all five. No GitHub-hosted result exists until the workflow is pushed.
 
 **Operational requirement:** after this workflow reaches `main`, repository
-administrators should make all three jobs required branch-protection checks.
+administrators should make all four jobs required branch-protection checks.
 Without that setting, the workflow reports failures but GitHub may still allow
 a pull request to merge.
 
@@ -891,6 +896,52 @@ agreed authentication mechanism such as a PIN/password or signed local session,
 with a backend-only mapping to that person's local data. Participant-facing
 approval and the operating-system-level disconnected run therefore remain
 outstanding.
+
+## Week 7 Four-Stage CI Separation - 20 September 2026
+
+### Reason and Assumptions
+
+The previous workflow combined Python, R, privacy, security, and integration
+tests in one job. That made a failure harder to attribute and could make an R
+environment problem look like a privacy-control failure. The revised workflow
+assumes GitHub-hosted runners contain no CES dataset, participant data, Ollama
+model, or repository secrets. Public network access is used only during setup
+and dependency-advisory queries; pytest retains the loopback-only socket rule.
+
+### Four Automatic Stages
+
+1. Python application and integration tests, excluding tests owned by the
+   other three stages.
+2. Real R bridge, mixed-effects, bootstrap, and R workspace-isolation tests.
+3. Frontend Vitest, Oxlint, and production build.
+4. Privacy, identifier, network, and transport tests plus Python, R-bridge,
+   and npm advisory audits.
+
+Stage 4 waits for the first three stages and publishes the combined Markdown
+run record. Every failed stage also creates a separate 90-day Markdown artifact
+that records step outcomes, likely cause categories, and the last 200 lines of
+available command output. These diagnostics do not replace root-cause review.
+
+### Local Preflight Results
+
+- Stage 1 Python: 373/373 passed.
+- Stage 2 real R: 67/67 passed with the same 45 known synthetic
+  `statsmodels` convergence warnings.
+- Stage 3 frontend: 22/22 passed; lint and production build passed.
+- Stage 4 privacy/security: 17/17 passed; both Python requirement audits and
+  the npm audit reported no known vulnerabilities.
+- Workflow YAML parsed successfully with exactly four jobs, and Git diff
+  validation passed.
+
+The first Stage 4 attempt failed because the restricted local test sandbox
+blocked a temporary loopback server and public package-advisory endpoints. The
+permitted rerun passed all checks. This was a local execution-environment
+restriction, not an application, privacy, or dependency finding. A real GitHub
+Actions result remains pending until this workflow change is committed and
+pushed to the branch.
+
+The stable stage definitions and artifact behaviour are documented in
+`docs/privacy/ci-pipeline-guide.md`.
 
 ## SLM Latency Run History
 

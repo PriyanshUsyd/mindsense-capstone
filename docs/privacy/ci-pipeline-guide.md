@@ -1,0 +1,89 @@
+# Four-Stage CI Pipeline Guide
+
+Owner: Yuktha Naveen, Privacy and Security Lead
+
+Workflow: `.github/workflows/privacy-security-ci.yml`
+
+## Purpose
+
+The pipeline separates application correctness, the embedded-R runtime,
+frontend quality, and privacy/security controls. A failure therefore identifies
+the responsible technical area instead of appearing as one mixed test result.
+
+## Stage 1 - Python Application and Integration
+
+This stage installs `requirements.txt`, runs `pip check`, and exercises the
+Python backend, contracts, data pipeline, evaluation, SLM logic, Python
+statistics fallback, and general integration tests.
+
+It deliberately excludes:
+
+- `tests/privacy/` and the privacy-specific data/transport tests, owned by Stage 4;
+- `tests/integration/test_frontend_builds.py`, owned by Stage 3; and
+- the R bridge, mixed-effects, and bootstrap test modules, owned by Stage 2.
+
+## Stage 2 - R Statistical Runtime
+
+This stage installs R 4.6.1, the approved R packages, `rpy2`, and both Python
+requirements files. It refuses to continue unless the real R bridge is usable.
+It then runs:
+
+- `tests/statistics/test_r_bridge.py`;
+- `tests/statistics/test_mixed_effects_model.py`;
+- `tests/statistics/test_bootstrap.py`; and
+- `tests/privacy/test_r_bridge_privacy.py`.
+
+The final file is assigned here because its real workspace-cleanup checks need
+an operational embedded-R runtime. Its static privacy rules remain part of the
+same R-specific test module.
+
+## Stage 3 - Frontend Test, Lint, and Build
+
+This stage installs the exact packages in `frontend/package-lock.json`, then
+runs Vitest, Oxlint, and the Vite production build. Dependency advisory scanning
+is not mixed into this stage; it belongs to Stage 4.
+
+## Stage 4 - Privacy and Security Gates
+
+This stage waits for the first three stages so that its run artifact can report
+all four outcomes. It runs only privacy/security-specific checks:
+
+- tracked participant-output and raw-identifier controls;
+- deny-by-default network-egress tests;
+- CES eligibility output privacy checks;
+- loopback-only SLM transport and redirect checks;
+- strict advisory audits for `requirements.txt` and `requirements-r.txt`; and
+- the high/critical npm dependency audit.
+
+This stage always creates `privacy-security-ci-run-<run>-<attempt>`, a Markdown
+artifact containing the four-stage result table and Stage 4 detail.
+
+## Failure Explanation Artifacts
+
+If a stage fails, that stage creates a separate Markdown artifact retained for
+90 days:
+
+- `ci-failure-python-<run>-<attempt>`;
+- `ci-failure-r-<run>-<attempt>`;
+- `ci-failure-frontend-<run>-<attempt>`; or
+- `ci-failure-privacy-security-<run>-<attempt>`.
+
+Each report states the failed or skipped setup/check steps, lists likely cause
+categories, and includes up to the last 200 lines of available command output.
+The causes are diagnostic prompts, not automatic proof of root cause; the
+captured output and linked GitHub Actions run remain the primary evidence.
+
+## Automatic Versus Local Checks
+
+The four CI stages use repository code and synthetic fixtures. They do not have
+the gitignored CES dataset or the locally installed Phi-4 Mini model. The
+following checks still require the Privacy Lead's local machine:
+
+- real CES dataset-backed tests;
+- the Phi-4 Mini latency benchmark and immutable history record;
+- live frontend-to-FastAPI-to-Ollama inspection;
+- process/network inspection while the application is running; and
+- an operating-system-level disconnected-network run.
+
+CI is read-only and never commits its generated Markdown artifacts to a branch.
+

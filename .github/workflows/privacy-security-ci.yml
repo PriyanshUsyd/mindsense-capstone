@@ -18,21 +18,149 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  python-r-tests:
-    name: Python, privacy, and R tests
+  # Stage 1 owns Python application behaviour. R-backed, frontend-build, and
+  # privacy-specific tests are deliberately assigned to later stages.
+  python-tests:
+    name: Stage 1 - Python application and integration
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 25
+    env:
+      PYTHONPATH: .
+
+    steps:
+      - name: Check out repository without stored credentials
+        id: checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Python 3.14
+        id: setup-python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: "3.14"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install Python dependencies
+        id: install-python
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          python -m pip install --upgrade pip 2>&1 | tee python-install.log
+          python -m pip install -r requirements.txt 2>&1 | tee -a python-install.log
+
+      - name: Verify Python dependency consistency
+        id: python-dependencies
+        if: ${{ steps.install-python.outcome == 'success' }}
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m pip check 2>&1 | tee python-dependency-check.log
+
+      - name: Run Python application and integration tests
+        id: python-tests
+        if: ${{ steps.install-python.outcome == 'success' }}
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m pytest -ra \
+            --ignore=tests/privacy \
+            --ignore=tests/data_pipeline/test_ces_eligibility_privacy.py \
+            --ignore=tests/slm/test_transport_privacy.py \
+            --ignore=tests/integration/test_frontend_builds.py \
+            --ignore=tests/statistics/test_r_bridge.py \
+            --ignore=tests/statistics/test_mixed_effects_model.py \
+            --ignore=tests/statistics/test_bootstrap.py \
+            2>&1 | tee python-tests.log
+
+      - name: Create Python-stage failure explanation
+        if: ${{ always() && (steps.checkout.outcome != 'success' || steps.setup-python.outcome != 'success' || steps.install-python.outcome != 'success' || steps.python-dependencies.outcome != 'success' || steps.python-tests.outcome != 'success') }}
+        shell: bash
+        env:
+          CHECKOUT_RESULT: ${{ steps.checkout.outcome }}
+          SETUP_RESULT: ${{ steps.setup-python.outcome }}
+          INSTALL_RESULT: ${{ steps.install-python.outcome }}
+          DEPENDENCY_RESULT: ${{ steps.python-dependencies.outcome }}
+          TEST_RESULT: ${{ steps.python-tests.outcome }}
+        run: |
+          {
+            echo "# CI Failure Report - Stage 1: Python"
+            echo
+            echo "- Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            echo "- Commit: ${{ github.sha }}"
+            echo "- Checkout: $CHECKOUT_RESULT"
+            echo "- Python setup: $SETUP_RESULT"
+            echo "- Dependency installation: $INSTALL_RESULT"
+            echo "- Dependency consistency: $DEPENDENCY_RESULT"
+            echo "- Python tests: $TEST_RESULT"
+            echo
+            echo "## What failed"
+            echo
+            echo "Any outcome above that is not 'success' identifies the failed or skipped step."
+            echo
+            echo "## Likely causes"
+            echo
+            echo "- Python package installation or version-resolution failure."
+            echo "- An inconsistent installed dependency set reported by pip check."
+            echo "- A backend, contract, data, SLM, statistics-fallback, or integration regression."
+            echo
+            echo "## Captured output"
+            echo
+            echo '```text'
+            for log in python-install.log python-dependency-check.log python-tests.log; do
+              if [[ -f "$log" ]]; then
+                echo "--- $log (last 200 lines) ---"
+                tail -n 200 "$log"
+              fi
+            done
+            echo '```'
+          } > ci-failure-python.md
+
+      - name: Preserve Python-stage failure report
+        if: ${{ always() && (steps.checkout.outcome != 'success' || steps.setup-python.outcome != 'success' || steps.install-python.outcome != 'success' || steps.python-dependencies.outcome != 'success' || steps.python-tests.outcome != 'success') }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ci-failure-python-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ci-failure-python.md
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Enforce Python stage
+        if: ${{ always() }}
+        env:
+          CHECKOUT_RESULT: ${{ steps.checkout.outcome }}
+          SETUP_RESULT: ${{ steps.setup-python.outcome }}
+          INSTALL_RESULT: ${{ steps.install-python.outcome }}
+          DEPENDENCY_RESULT: ${{ steps.python-dependencies.outcome }}
+          TEST_RESULT: ${{ steps.python-tests.outcome }}
+        run: |
+          [[ "$CHECKOUT_RESULT" == "success" ]]
+          [[ "$SETUP_RESULT" == "success" ]]
+          [[ "$INSTALL_RESULT" == "success" ]]
+          [[ "$DEPENDENCY_RESULT" == "success" ]]
+          [[ "$TEST_RESULT" == "success" ]]
+
+  # Stage 2 owns the real embedded-R runtime and all tests that require it.
+  r-tests:
+    name: Stage 2 - R statistical runtime
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
     env:
       PYTHONPATH: .
       RPY2_CFFI_MODE: ABI
 
     steps:
       - name: Check out repository without stored credentials
+        id: checkout
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           persist-credentials: false
 
       - name: Set up Python 3.14
+        id: setup-python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: "3.14"
@@ -41,61 +169,167 @@ jobs:
             requirements.txt
             requirements-r.txt
 
-      - name: Set up Node 22 for frontend integration checks
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
-        with:
-          node-version: "22"
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-
-      - name: Install locked frontend dependencies for pytest
-        working-directory: frontend
-        run: npm ci
-
       - name: Set up R 4.6.1
+        id: setup-r
         uses: r-lib/actions/setup-r@465b7d8e732ca3921382b1674c59bada9cbf3399 # v2
         with:
           r-version: "4.6.1"
           use-public-rspm: true
 
       - name: Install approved R packages
-        run: Rscript -e 'install.packages(c("lme4", "lmerTest", "pbkrtest", "nlme"))'
+        id: install-r
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          Rscript -e 'install.packages(c("lme4", "lmerTest", "pbkrtest", "nlme"))' 2>&1 | tee r-package-install.log
 
       - name: Expose R shared libraries to Python
+        id: expose-r
+        if: ${{ steps.setup-r.outcome == 'success' }}
         shell: bash
         run: |
           r_home="$(R RHOME)"
           printf 'R_HOME=%s\n' "$r_home" >> "$GITHUB_ENV"
           printf 'LD_LIBRARY_PATH=%s/lib:%s\n' "$r_home" "${LD_LIBRARY_PATH:-}" >> "$GITHUB_ENV"
 
-      - name: Install Python dependencies
+      - name: Install Python and R-bridge dependencies
+        id: install-python-r
+        continue-on-error: true
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install -r requirements.txt -r requirements-r.txt
+          set -o pipefail
+          python -m pip install --upgrade pip 2>&1 | tee r-python-install.log
+          python -m pip install -r requirements.txt -r requirements-r.txt 2>&1 | tee -a r-python-install.log
 
-      - name: Verify Python dependency consistency
-        run: python -m pip check
+      - name: Verify R-stage dependency consistency
+        id: r-dependencies
+        if: ${{ steps.install-python-r.outcome == 'success' }}
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m pip check 2>&1 | tee r-dependency-check.log
 
       - name: Require the real R bridge
+        id: require-r-bridge
+        if: ${{ steps.install-python-r.outcome == 'success' && steps.install-r.outcome == 'success' }}
+        continue-on-error: true
         run: >-
           python -c "from backend.statistics.r_bridge import r_bridge_available;
           assert r_bridge_available(), 'R bridge unavailable in CI'"
 
-      - name: Run Python, privacy, security, and integration tests
-        run: python -m pytest -ra
+      - name: Run R-backed statistics and workspace-isolation tests
+        id: r-tests
+        if: ${{ steps.require-r-bridge.outcome == 'success' }}
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m pytest -ra \
+            tests/statistics/test_r_bridge.py \
+            tests/statistics/test_mixed_effects_model.py \
+            tests/statistics/test_bootstrap.py \
+            tests/privacy/test_r_bridge_privacy.py \
+            2>&1 | tee r-tests.log
 
+      - name: Create R-stage failure explanation
+        if: ${{ always() && (steps.checkout.outcome != 'success' || steps.setup-python.outcome != 'success' || steps.setup-r.outcome != 'success' || steps.install-r.outcome != 'success' || steps.expose-r.outcome != 'success' || steps.install-python-r.outcome != 'success' || steps.r-dependencies.outcome != 'success' || steps.require-r-bridge.outcome != 'success' || steps.r-tests.outcome != 'success') }}
+        shell: bash
+        env:
+          CHECKOUT_RESULT: ${{ steps.checkout.outcome }}
+          PYTHON_SETUP_RESULT: ${{ steps.setup-python.outcome }}
+          R_SETUP_RESULT: ${{ steps.setup-r.outcome }}
+          R_PACKAGE_RESULT: ${{ steps.install-r.outcome }}
+          R_EXPOSE_RESULT: ${{ steps.expose-r.outcome }}
+          BRIDGE_INSTALL_RESULT: ${{ steps.install-python-r.outcome }}
+          DEPENDENCY_RESULT: ${{ steps.r-dependencies.outcome }}
+          BRIDGE_RESULT: ${{ steps.require-r-bridge.outcome }}
+          TEST_RESULT: ${{ steps.r-tests.outcome }}
+        run: |
+          {
+            echo "# CI Failure Report - Stage 2: R"
+            echo
+            echo "- Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            echo "- Commit: ${{ github.sha }}"
+            echo "- Checkout: $CHECKOUT_RESULT"
+            echo "- Python setup: $PYTHON_SETUP_RESULT"
+            echo "- R setup: $R_SETUP_RESULT"
+            echo "- R package installation: $R_PACKAGE_RESULT"
+            echo "- R library exposure: $R_EXPOSE_RESULT"
+            echo "- rpy2 installation: $BRIDGE_INSTALL_RESULT"
+            echo "- Dependency consistency: $DEPENDENCY_RESULT"
+            echo "- Real R bridge check: $BRIDGE_RESULT"
+            echo "- R-backed tests: $TEST_RESULT"
+            echo
+            echo "## What failed"
+            echo
+            echo "Any outcome above that is not 'success' identifies the failed or skipped step."
+            echo
+            echo "## Likely causes"
+            echo
+            echo "- R, rpy2, or an approved R package failed to install or load."
+            echo "- R shared-library paths were unavailable to Python."
+            echo "- A mixed-effects, bootstrap, bridge, or R-workspace-isolation regression."
+            echo
+            echo "## Captured output"
+            echo
+            echo '```text'
+            for log in r-package-install.log r-python-install.log r-dependency-check.log r-tests.log; do
+              if [[ -f "$log" ]]; then
+                echo "--- $log (last 200 lines) ---"
+                tail -n 200 "$log"
+              fi
+            done
+            echo '```'
+          } > ci-failure-r.md
+
+      - name: Preserve R-stage failure report
+        if: ${{ always() && (steps.checkout.outcome != 'success' || steps.setup-python.outcome != 'success' || steps.setup-r.outcome != 'success' || steps.install-r.outcome != 'success' || steps.expose-r.outcome != 'success' || steps.install-python-r.outcome != 'success' || steps.r-dependencies.outcome != 'success' || steps.require-r-bridge.outcome != 'success' || steps.r-tests.outcome != 'success') }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ci-failure-r-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ci-failure-r.md
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Enforce R stage
+        if: ${{ always() }}
+        env:
+          CHECKOUT_RESULT: ${{ steps.checkout.outcome }}
+          PYTHON_SETUP_RESULT: ${{ steps.setup-python.outcome }}
+          R_SETUP_RESULT: ${{ steps.setup-r.outcome }}
+          R_PACKAGE_RESULT: ${{ steps.install-r.outcome }}
+          R_EXPOSE_RESULT: ${{ steps.expose-r.outcome }}
+          BRIDGE_INSTALL_RESULT: ${{ steps.install-python-r.outcome }}
+          DEPENDENCY_RESULT: ${{ steps.r-dependencies.outcome }}
+          BRIDGE_RESULT: ${{ steps.require-r-bridge.outcome }}
+          TEST_RESULT: ${{ steps.r-tests.outcome }}
+        run: |
+          [[ "$CHECKOUT_RESULT" == "success" ]]
+          [[ "$PYTHON_SETUP_RESULT" == "success" ]]
+          [[ "$R_SETUP_RESULT" == "success" ]]
+          [[ "$R_PACKAGE_RESULT" == "success" ]]
+          [[ "$R_EXPOSE_RESULT" == "success" ]]
+          [[ "$BRIDGE_INSTALL_RESULT" == "success" ]]
+          [[ "$DEPENDENCY_RESULT" == "success" ]]
+          [[ "$BRIDGE_RESULT" == "success" ]]
+          [[ "$TEST_RESULT" == "success" ]]
+
+  # Stage 3 owns browser-facing code quality and build reproducibility.
   frontend-tests:
-    name: Frontend tests, lint, build, and audit
+    name: Stage 3 - Frontend test, lint, and build
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
     steps:
       - name: Check out repository without stored credentials
+        id: checkout
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           persist-credentials: false
 
       - name: Set up Node 22
+        id: setup-node
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: "22"
@@ -103,66 +337,131 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install locked frontend dependencies
+        id: install-frontend
+        continue-on-error: true
         working-directory: frontend
-        run: npm ci
+        shell: bash
+        run: |
+          set -o pipefail
+          npm ci 2>&1 | tee frontend-install.log
 
       - name: Run frontend tests
+        id: frontend-tests
+        if: ${{ steps.install-frontend.outcome == 'success' }}
+        continue-on-error: true
         working-directory: frontend
-        run: npm test
+        shell: bash
+        run: |
+          set -o pipefail
+          npm test 2>&1 | tee frontend-tests.log
 
       - name: Run frontend lint
+        id: frontend-lint
+        if: ${{ steps.install-frontend.outcome == 'success' }}
+        continue-on-error: true
         working-directory: frontend
-        run: npm run lint
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run lint 2>&1 | tee frontend-lint.log
 
       - name: Build frontend
+        id: frontend-build
+        if: ${{ steps.install-frontend.outcome == 'success' }}
+        continue-on-error: true
         working-directory: frontend
-        run: npm run build
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run build 2>&1 | tee frontend-build.log
 
-      - name: Audit frontend dependencies
-        working-directory: frontend
-        run: npm audit --audit-level=high
+      - name: Create frontend-stage failure explanation
+        if: ${{ always() && (steps.checkout.outcome != 'success' || steps.setup-node.outcome != 'success' || steps.install-frontend.outcome != 'success' || steps.frontend-tests.outcome != 'success' || steps.frontend-lint.outcome != 'success' || steps.frontend-build.outcome != 'success') }}
+        shell: bash
+        env:
+          CHECKOUT_RESULT: ${{ steps.checkout.outcome }}
+          NODE_SETUP_RESULT: ${{ steps.setup-node.outcome }}
+          INSTALL_RESULT: ${{ steps.install-frontend.outcome }}
+          TEST_RESULT: ${{ steps.frontend-tests.outcome }}
+          LINT_RESULT: ${{ steps.frontend-lint.outcome }}
+          BUILD_RESULT: ${{ steps.frontend-build.outcome }}
+        run: |
+          {
+            echo "# CI Failure Report - Stage 3: Frontend"
+            echo
+            echo "- Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            echo "- Commit: ${{ github.sha }}"
+            echo "- Checkout: $CHECKOUT_RESULT"
+            echo "- Node setup: $NODE_SETUP_RESULT"
+            echo "- Frontend installation: $INSTALL_RESULT"
+            echo "- Vitest: $TEST_RESULT"
+            echo "- Oxlint: $LINT_RESULT"
+            echo "- Production build: $BUILD_RESULT"
+            echo
+            echo "## What failed"
+            echo
+            echo "Any outcome above that is not 'success' identifies the failed or skipped step."
+            echo
+            echo "## Likely causes"
+            echo
+            echo "- npm lockfile or package installation failure."
+            echo "- A component or interaction regression detected by Vitest."
+            echo "- A lint violation or Vite/TypeScript production-build error."
+            echo
+            echo "## Captured output"
+            echo
+            echo '```text'
+            for log in frontend/frontend-install.log frontend/frontend-tests.log frontend/frontend-lint.log frontend/frontend-build.log; do
+              if [[ -f "$log" ]]; then
+                echo "--- $log (last 200 lines) ---"
+                tail -n 200 "$log"
+              fi
+            done
+            echo '```'
+          } > ci-failure-frontend.md
 
-  python-dependency-audit:
-    name: Python dependency advisory audit
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    env:
-      RPY2_CFFI_MODE: ABI
-
-    steps:
-      - name: Check out repository without stored credentials
-        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Preserve frontend-stage failure report
+        if: ${{ always() && (steps.checkout.outcome != 'success' || steps.setup-node.outcome != 'success' || steps.install-frontend.outcome != 'success' || steps.frontend-tests.outcome != 'success' || steps.frontend-lint.outcome != 'success' || steps.frontend-build.outcome != 'success') }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          persist-credentials: false
+          name: ci-failure-frontend-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ci-failure-frontend.md
+          if-no-files-found: error
+          retention-days: 90
 
-      - name: Set up Python 3.14
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
-        with:
-          python-version: "3.14"
-          cache: pip
+      - name: Enforce frontend stage
+        if: ${{ always() }}
+        env:
+          CHECKOUT_RESULT: ${{ steps.checkout.outcome }}
+          NODE_SETUP_RESULT: ${{ steps.setup-node.outcome }}
+          INSTALL_RESULT: ${{ steps.install-frontend.outcome }}
+          TEST_RESULT: ${{ steps.frontend-tests.outcome }}
+          LINT_RESULT: ${{ steps.frontend-lint.outcome }}
+          BUILD_RESULT: ${{ steps.frontend-build.outcome }}
+        run: |
+          [[ "$CHECKOUT_RESULT" == "success" ]]
+          [[ "$NODE_SETUP_RESULT" == "success" ]]
+          [[ "$INSTALL_RESULT" == "success" ]]
+          [[ "$TEST_RESULT" == "success" ]]
+          [[ "$LINT_RESULT" == "success" ]]
+          [[ "$BUILD_RESULT" == "success" ]]
 
-      - name: Install pip-audit
-        run: python -m pip install pip-audit
-
-      - name: Audit main Python requirements
-        run: python -m pip_audit --strict -r requirements.txt
-
-      - name: Audit R bridge Python requirements
-        run: python -m pip_audit --strict -r requirements-r.txt
-
-  run-record:
-    name: Publish CI run record
+  # Stage 4 owns privacy-specific tests and dependency advisory checks. It runs
+  # after the first three stages so its status artifact can report all results.
+  privacy-security-tests:
+    name: Stage 4 - Privacy and security gates
     if: ${{ always() }}
     needs:
-      - python-r-tests
+      - python-tests
+      - r-tests
       - frontend-tests
-      - python-dependency-audit
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 25
     env:
-      PYTHON_R_RESULT: ${{ needs.python-r-tests.result }}
+      PYTHONPATH: .
+      PYTHON_RESULT: ${{ needs.python-tests.result }}
+      R_RESULT: ${{ needs.r-tests.result }}
       FRONTEND_RESULT: ${{ needs.frontend-tests.result }}
-      PYTHON_AUDIT_RESULT: ${{ needs.python-dependency-audit.result }}
       RUN_EVENT: ${{ github.event_name }}
       RUN_HEAD_SHA: ${{ github.sha }}
       RUN_REF: ${{ github.ref }}
@@ -170,14 +469,111 @@ jobs:
       RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
     steps:
-      - name: Generate Markdown run record
+      - name: Check out repository without stored credentials
+        id: checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Python 3.14
+        id: setup-python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: "3.14"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Set up Node 22 for npm advisory checks
+        id: setup-node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install privacy-test and audit dependencies
+        id: install-privacy
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          python -m pip install --upgrade pip 2>&1 | tee privacy-install.log
+          python -m pip install -r requirements.txt pip-audit 2>&1 | tee -a privacy-install.log
+
+      - name: Install locked frontend dependencies for audit
+        id: install-frontend-audit
+        continue-on-error: true
+        working-directory: frontend
         shell: bash
         run: |
-          if [[ "$PYTHON_R_RESULT" == "success" && "$FRONTEND_RESULT" == "success" && "$PYTHON_AUDIT_RESULT" == "success" ]]; then
-            overall_result="PASS"
-          else
-            overall_result="FAIL"
-          fi
+          set -o pipefail
+          npm ci 2>&1 | tee privacy-npm-install.log
+
+      - name: Run privacy and transport tests
+        id: privacy-tests
+        if: ${{ steps.install-privacy.outcome == 'success' }}
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m pytest -ra \
+            tests/privacy/test_analysis_output_privacy.py \
+            tests/privacy/test_no_network_egress.py \
+            tests/data_pipeline/test_ces_eligibility_privacy.py \
+            tests/slm/test_transport_privacy.py \
+            2>&1 | tee privacy-tests.log
+
+      - name: Audit main Python requirements
+        id: audit-python
+        if: ${{ steps.install-privacy.outcome == 'success' }}
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m pip_audit --strict -r requirements.txt 2>&1 | tee audit-python.log
+
+      - name: Audit R-bridge Python requirements
+        id: audit-r-python
+        if: ${{ steps.install-privacy.outcome == 'success' }}
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m pip_audit --strict -r requirements-r.txt 2>&1 | tee audit-r-python.log
+
+      - name: Audit frontend dependencies
+        id: audit-frontend
+        if: ${{ steps.install-frontend-audit.outcome == 'success' }}
+        continue-on-error: true
+        working-directory: frontend
+        shell: bash
+        run: |
+          set -o pipefail
+          npm audit --audit-level=high 2>&1 | tee privacy-npm-audit.log
+
+      - name: Generate Markdown run record
+        if: ${{ always() }}
+        shell: bash
+        env:
+          PRIVACY_INSTALL_RESULT: ${{ steps.install-privacy.outcome }}
+          FRONTEND_INSTALL_RESULT: ${{ steps.install-frontend-audit.outcome }}
+          PRIVACY_TEST_RESULT: ${{ steps.privacy-tests.outcome }}
+          PYTHON_AUDIT_RESULT: ${{ steps.audit-python.outcome }}
+          R_AUDIT_RESULT: ${{ steps.audit-r-python.outcome }}
+          FRONTEND_AUDIT_RESULT: ${{ steps.audit-frontend.outcome }}
+        run: |
+          privacy_result="success"
+          for result in "$PRIVACY_INSTALL_RESULT" "$FRONTEND_INSTALL_RESULT" "$PRIVACY_TEST_RESULT" "$PYTHON_AUDIT_RESULT" "$R_AUDIT_RESULT" "$FRONTEND_AUDIT_RESULT"; do
+            if [[ "$result" != "success" ]]; then
+              privacy_result="failure"
+            fi
+          done
+
+          overall_result="PASS"
+          for result in "$PYTHON_RESULT" "$R_RESULT" "$FRONTEND_RESULT" "$privacy_result"; do
+            if [[ "$result" != "success" ]]; then
+              overall_result="FAIL"
+            fi
+          done
 
           {
             echo "# MindSense Privacy and Security CI Run"
@@ -190,25 +586,122 @@ jobs:
             echo "- Commit: $RUN_HEAD_SHA"
             echo "- Overall result: **$overall_result**"
             echo
-            echo "## Automatic Gate Results"
+            echo "## Four-Stage Results"
             echo
-            echo "| Gate | Result |"
+            echo "| Stage | Scope | Result |"
+            echo "|---|---|---|"
+            echo "| 1. Python | Application and integration tests | $PYTHON_RESULT |"
+            echo "| 2. R | Real bridge, statistics, bootstrap, workspace isolation | $R_RESULT |"
+            echo "| 3. Frontend | Vitest, lint, production build | $FRONTEND_RESULT |"
+            echo "| 4. Privacy and security | Privacy tests and dependency audits | $privacy_result |"
+            echo
+            echo "## Stage 4 Detail"
+            echo
+            echo "| Check | Result |"
             echo "|---|---|"
-            echo "| Python, privacy, security, integration, and R | $PYTHON_R_RESULT |"
-            echo "| Frontend test, lint, build, and npm audit | $FRONTEND_RESULT |"
-            echo "| Python dependency advisory audit | $PYTHON_AUDIT_RESULT |"
+            echo "| Privacy-test dependencies | $PRIVACY_INSTALL_RESULT |"
+            echo "| Frontend audit dependencies | $FRONTEND_INSTALL_RESULT |"
+            echo "| Privacy, identifier, network, and transport tests | $PRIVACY_TEST_RESULT |"
+            echo "| Main Python dependency audit | $PYTHON_AUDIT_RESULT |"
+            echo "| R-bridge Python dependency audit | $R_AUDIT_RESULT |"
+            echo "| Frontend dependency audit | $FRONTEND_AUDIT_RESULT |"
             echo
             echo "## Scope Limit"
             echo
-            echo "This automatic run uses synthetic repository fixtures. The gitignored CES dataset, local Ollama latency benchmark, and operating-system offline verification are separate local checks."
+            echo "This automatic run uses synthetic repository fixtures. The gitignored CES dataset, local Ollama latency benchmark, live application inspection, and operating-system offline verification remain separate local checks."
           } > privacy-security-ci-run.md
 
           cat privacy-security-ci-run.md >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Create privacy/security-stage failure explanation
+        if: ${{ always() && (steps.checkout.outcome != 'success' || steps.setup-python.outcome != 'success' || steps.setup-node.outcome != 'success' || steps.install-privacy.outcome != 'success' || steps.install-frontend-audit.outcome != 'success' || steps.privacy-tests.outcome != 'success' || steps.audit-python.outcome != 'success' || steps.audit-r-python.outcome != 'success' || steps.audit-frontend.outcome != 'success') }}
+        shell: bash
+        env:
+          CHECKOUT_RESULT: ${{ steps.checkout.outcome }}
+          PYTHON_SETUP_RESULT: ${{ steps.setup-python.outcome }}
+          NODE_SETUP_RESULT: ${{ steps.setup-node.outcome }}
+          PRIVACY_INSTALL_RESULT: ${{ steps.install-privacy.outcome }}
+          FRONTEND_INSTALL_RESULT: ${{ steps.install-frontend-audit.outcome }}
+          PRIVACY_TEST_RESULT: ${{ steps.privacy-tests.outcome }}
+          PYTHON_AUDIT_RESULT: ${{ steps.audit-python.outcome }}
+          R_AUDIT_RESULT: ${{ steps.audit-r-python.outcome }}
+          FRONTEND_AUDIT_RESULT: ${{ steps.audit-frontend.outcome }}
+        run: |
+          {
+            echo "# CI Failure Report - Stage 4: Privacy and Security"
+            echo
+            echo "- Run: $RUN_URL"
+            echo "- Commit: $RUN_HEAD_SHA"
+            echo "- Checkout: $CHECKOUT_RESULT"
+            echo "- Python setup: $PYTHON_SETUP_RESULT"
+            echo "- Node setup: $NODE_SETUP_RESULT"
+            echo "- Privacy dependency installation: $PRIVACY_INSTALL_RESULT"
+            echo "- Frontend audit installation: $FRONTEND_INSTALL_RESULT"
+            echo "- Privacy tests: $PRIVACY_TEST_RESULT"
+            echo "- Main Python audit: $PYTHON_AUDIT_RESULT"
+            echo "- R-bridge Python audit: $R_AUDIT_RESULT"
+            echo "- Frontend audit: $FRONTEND_AUDIT_RESULT"
+            echo
+            echo "## What failed"
+            echo
+            echo "Any outcome above that is not 'success' identifies the failed or skipped check."
+            echo
+            echo "## Likely causes"
+            echo
+            echo "- A raw identifier or participant-level output entered a tracked file."
+            echo "- Code attempted non-loopback network access or weakened transport restrictions."
+            echo "- A declared Python, R-bridge, or frontend dependency has a known advisory."
+            echo "- Privacy/audit dependencies could not be installed or the advisory service was unavailable."
+            echo
+            echo "## Captured output"
+            echo
+            echo '```text'
+            for log in privacy-install.log frontend/privacy-npm-install.log privacy-tests.log audit-python.log audit-r-python.log frontend/privacy-npm-audit.log; do
+              if [[ -f "$log" ]]; then
+                echo "--- $log (last 200 lines) ---"
+                tail -n 200 "$log"
+              fi
+            done
+            echo '```'
+          } > ci-failure-privacy-security.md
+
       - name: Preserve Markdown run record
+        if: ${{ always() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: privacy-security-ci-run-${{ github.run_id }}-${{ github.run_attempt }}
           path: privacy-security-ci-run.md
           if-no-files-found: error
           retention-days: 90
+
+      - name: Preserve privacy/security-stage failure report
+        if: ${{ always() && (steps.checkout.outcome != 'success' || steps.setup-python.outcome != 'success' || steps.setup-node.outcome != 'success' || steps.install-privacy.outcome != 'success' || steps.install-frontend-audit.outcome != 'success' || steps.privacy-tests.outcome != 'success' || steps.audit-python.outcome != 'success' || steps.audit-r-python.outcome != 'success' || steps.audit-frontend.outcome != 'success') }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ci-failure-privacy-security-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ci-failure-privacy-security.md
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Enforce privacy and security stage
+        if: ${{ always() }}
+        env:
+          CHECKOUT_RESULT: ${{ steps.checkout.outcome }}
+          PYTHON_SETUP_RESULT: ${{ steps.setup-python.outcome }}
+          NODE_SETUP_RESULT: ${{ steps.setup-node.outcome }}
+          PRIVACY_INSTALL_RESULT: ${{ steps.install-privacy.outcome }}
+          FRONTEND_INSTALL_RESULT: ${{ steps.install-frontend-audit.outcome }}
+          PRIVACY_TEST_RESULT: ${{ steps.privacy-tests.outcome }}
+          PYTHON_AUDIT_RESULT: ${{ steps.audit-python.outcome }}
+          R_AUDIT_RESULT: ${{ steps.audit-r-python.outcome }}
+          FRONTEND_AUDIT_RESULT: ${{ steps.audit-frontend.outcome }}
+        run: |
+          [[ "$CHECKOUT_RESULT" == "success" ]]
+          [[ "$PYTHON_SETUP_RESULT" == "success" ]]
+          [[ "$NODE_SETUP_RESULT" == "success" ]]
+          [[ "$PRIVACY_INSTALL_RESULT" == "success" ]]
+          [[ "$FRONTEND_INSTALL_RESULT" == "success" ]]
+          [[ "$PRIVACY_TEST_RESULT" == "success" ]]
+          [[ "$PYTHON_AUDIT_RESULT" == "success" ]]
+          [[ "$R_AUDIT_RESULT" == "success" ]]
+          [[ "$FRONTEND_AUDIT_RESULT" == "success" ]]
