@@ -72,16 +72,28 @@ export class RespondError extends Error {
 // `participant_id` via backend/statistics/participant_evidence.py — the
 // browser only ever identifies WHICH participant is asking, never what
 // their evidence looks like.
+//
+// FIXED 2026-09-20: this used to also send a hardcoded `feature_id`
+// ('gps_distance') on every request, so any question — no matter what it
+// actually asked about — was answered from GPS evidence. `feature_id` is
+// now an optional override: when omitted, the backend infers the feature
+// from the question text itself (backend/slm/request_policy.py's
+// `infer_feature_from_question`). Callers that need to force a specific
+// feature (e.g. a future feature picker) may still pass one explicitly.
 export async function respond(
   participantId: string,
   question: string,
-  featureId = 'gps_distance',
+  featureId?: string,
 ): Promise<SafeSLMResponse> {
   const res = await fetch(`${API_BASE_URL}/respond`, {
     method: 'POST',
     redirect: 'error',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ participant_id: participantId, question, feature_id: featureId }),
+    body: JSON.stringify({
+      participant_id: participantId,
+      question,
+      ...(featureId ? { feature_id: featureId } : {}),
+    }),
   })
 
   if (!res.ok) {
