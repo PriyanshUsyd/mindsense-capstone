@@ -130,7 +130,7 @@ describe('NormalResponse', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('unknown error')
   })
 
-  it('calls Richard’s response route wrapper with a participant id and exact question, never a client-built EvidencePacket', async () => {
+  it('calls Richard’s response route wrapper with a participant id and exact question, never a client-built EvidencePacket, and lets the backend infer the feature', async () => {
     const user = userEvent.setup()
     mockedRespond.mockResolvedValueOnce(NORMAL_RESPONSE)
 
@@ -142,7 +142,7 @@ describe('NormalResponse', () => {
     expect(question).toBe('How was my movement different from my recent baseline?')
     expect(typeof participantId).toBe('string')
     expect(participantId.length).toBeGreaterThan(0)
-    expect(featureId).toBe('gps_distance')
+    expect(featureId).toBeUndefined()
   })
 
   it('keeps earlier turns visible and sends a second normal question end to end', async () => {
