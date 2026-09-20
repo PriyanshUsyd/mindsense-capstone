@@ -933,12 +933,18 @@ available command output. These diagnostics do not replace root-cause review.
 - Workflow YAML parsed successfully with exactly four jobs, and Git diff
   validation passed.
 
-The first Stage 4 attempt failed because the restricted local test sandbox
+The first local Stage 4 attempt failed because the restricted local test sandbox
 blocked a temporary loopback server and public package-advisory endpoints. The
 permitted rerun passed all checks. This was a local execution-environment
-restriction, not an application, privacy, or dependency finding. A real GitHub
-Actions result remains pending until this workflow change is committed and
-pushed to the branch.
+restriction, not an application, privacy, or dependency finding.
+
+The first branch run of the separated workflow (`35478537804`) proved that all
+four jobs and the failure-artifact path execute. Stages 1-3 passed. Every Stage
+4 privacy test and advisory check passed except the `requirements-r.txt` audit,
+which could not inspect `rpy2` because the audit job omitted the established
+`RPY2_CFFI_MODE=ABI` environment setting. The generated Stage 4 failure report
+captured that cause. The workflow was then corrected to set ABI mode for this
+audit-only environment; a successful GitHub rerun is required before merge.
 
 The stable stage definitions and artifact behaviour are documented in
 `docs/privacy/ci-pipeline-guide.md`.

@@ -459,6 +459,7 @@ jobs:
     timeout-minutes: 25
     env:
       PYTHONPATH: .
+      RPY2_CFFI_MODE: ABI
       PYTHON_RESULT: ${{ needs.python-tests.result }}
       R_RESULT: ${{ needs.r-tests.result }}
       FRONTEND_RESULT: ${{ needs.frontend-tests.result }}
