@@ -4,6 +4,8 @@ import pytest
 
 from backend.contracts.evidence import EvidencePacket
 from backend.slm.runtime import (
+    OLLAMA_TIMEOUT_SECONDS_ENV,
+    configured_timeout_seconds,
     create_local_service,
     default_model_tag,
     listed_model_tags,
@@ -42,3 +44,20 @@ def test_runtime_default_is_a_manifest_candidate():
 def test_runtime_rejects_model_not_in_versioned_manifest():
     with pytest.raises(ValueError, match="pinned comparison candidates"):
         create_local_service(model_tag="unreviewed-model:latest")
+
+
+def test_runtime_uses_bounded_configurable_timeout(monkeypatch):
+    monkeypatch.delenv(OLLAMA_TIMEOUT_SECONDS_ENV, raising=False)
+    assert configured_timeout_seconds() == 180.0
+    assert create_local_service().client.config.timeout_seconds == 180.0
+
+    monkeypatch.setenv(OLLAMA_TIMEOUT_SECONDS_ENV, "210")
+    assert configured_timeout_seconds() == 210.0
+    assert create_local_service().client.config.timeout_seconds == 210.0
+
+
+@pytest.mark.parametrize("value", ["slow", "0", "301", "nan", "inf"])
+def test_runtime_rejects_invalid_timeout(monkeypatch, value):
+    monkeypatch.setenv(OLLAMA_TIMEOUT_SECONDS_ENV, value)
+    with pytest.raises(ValueError, match="1 to 300"):
+        configured_timeout_seconds()
