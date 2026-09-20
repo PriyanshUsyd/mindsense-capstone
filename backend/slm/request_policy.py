@@ -13,12 +13,15 @@ before any human pilot.
 
 from __future__ import annotations
 
+import logging
 import re
 from enum import Enum
 
 from pydantic import BaseModel, ConfigDict
 
 REQUEST_POLICY_VERSION = "0.2.1"
+
+_logger = logging.getLogger(__name__)
 
 
 class RequestDisposition(str, Enum):
@@ -203,6 +206,66 @@ _CONTEXTUAL_IN_SCOPE_PATTERNS = (
         re.IGNORECASE,
     ),
 )
+
+
+# Which statistics-side feature (backend.statistics.participant_evidence's
+# `_FEATURES` dict keys) a question is actually about. Kept separate from
+# the in/out-of-scope patterns above: those decide WHETHER to answer, this
+# decides WHICH feature's evidence packet to answer from. Before this
+# existed, `/respond` always answered from `gps_distance` regardless of
+# what was asked (see backend/api/app.py's `RespondRequest.feature_id`
+# default) — an unlock-related question silently got a GPS answer.
+DEFAULT_FEATURE_ID = "gps_distance"
+
+_UNLOCK_FEATURE_PATTERNS = (
+    re.compile(r"\bunlock(?:s|ed|ing)?\b", re.IGNORECASE),
+    re.compile(r"\bphone (?:use|usage|activity)\b", re.IGNORECASE),
+    re.compile(r"\bscreen time\b", re.IGNORECASE),
+    re.compile(r"\bpick(?:s|ed|ing)?[- ]?up(?:s)?\b", re.IGNORECASE),
+)
+
+_GPS_FEATURE_PATTERNS = (
+    re.compile(r"\bgps\b", re.IGNORECASE),
+    re.compile(r"\btravel(?:l?ed|ling|s)?\b", re.IGNORECASE),
+    re.compile(r"\bdistance\b", re.IGNORECASE),
+    re.compile(r"\bmovement\b", re.IGNORECASE),
+    re.compile(r"\blocation\b", re.IGNORECASE),
+)
+
+
+def infer_feature_from_question(question: str) -> str:
+    """Deterministic keyword match from question text to a `feature_id`.
+
+    Matches only one of the two Tier-1 features
+    (`backend.statistics.participant_evidence._FEATURES`: `gps_distance`,
+    `unlock_count`) — never inspects participant data, mirrors
+    `classify_request`'s text-only contract. A question that matches
+    neither feature's keywords, or matches both (genuinely ambiguous), is
+    not silently guessed: it falls back to `DEFAULT_FEATURE_ID` and that
+    fallback is logged so it stays visible instead of looking like a
+    confident match.
+    """
+
+    clean_question = question.strip()
+    matches_unlock = any(
+        pattern.search(clean_question) for pattern in _UNLOCK_FEATURE_PATTERNS
+    )
+    matches_gps = any(
+        pattern.search(clean_question) for pattern in _GPS_FEATURE_PATTERNS
+    )
+
+    if matches_unlock and not matches_gps:
+        return "unlock_count"
+    if matches_gps and not matches_unlock:
+        return "gps_distance"
+
+    _logger.warning(
+        "feature_inference_ambiguous: question matched %s feature keywords; "
+        "defaulting to %r",
+        "both" if (matches_unlock and matches_gps) else "no",
+        DEFAULT_FEATURE_ID,
+    )
+    return DEFAULT_FEATURE_ID
 
 
 def _is_in_scope(question: str) -> bool:

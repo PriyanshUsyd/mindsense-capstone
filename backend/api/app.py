@@ -55,6 +55,7 @@ from backend.slm.runtime import (
     default_model_tag,
     listed_model_tags,
 )
+from backend.slm.request_policy import infer_feature_from_question
 from backend.slm.service import SafeSLMResponse, SLMService
 from backend.statistics.participant_evidence import (
     LOCAL_DEMO_PARTICIPANT_ALIAS,
@@ -157,13 +158,23 @@ class RespondRequest(BaseModel):
     would believe it. The request now carries only a `participant_id` (and
     optional `feature_id` and manifest-bounded `model_tag`); the packet is always built server-side by
     `backend.statistics.participant_evidence.build_evidence_packet` from
-    the real CES pipeline output, never accepted from the caller."""
+    the real CES pipeline output, never accepted from the caller.
+
+    FIXED 2026-09-20: `feature_id` used to default to `"gps_distance"`, and
+    the frontend sent that literal on every request — so a question about
+    phone unlocks was still answered from GPS evidence, because nothing in
+    the request path ever read the question text to pick a feature.
+    `feature_id` is now optional; when a caller omits it, `/respond` infers
+    the feature from the question via
+    `backend.slm.request_policy.infer_feature_from_question`. A caller that
+    still sends an explicit `feature_id` (tooling, tests) keeps full
+    control — inference only fills the gap when none is given."""
 
     model_config = ConfigDict(extra="forbid")
 
     participant_id: str
     question: str
-    feature_id: str = "gps_distance"
+    feature_id: str | None = None
     model_tag: str | None = None
 
 
@@ -247,12 +258,13 @@ def create_app(
             request_service = service_for(payload.model_tag)
         except ValueError as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
+        feature_id = payload.feature_id or infer_feature_from_question(payload.question)
         try:
             participant_id = payload.participant_id
             if participant_id == LOCAL_DEMO_PARTICIPANT_ALIAS:
-                participant_id = select_local_demo_participant(payload.feature_id)
+                participant_id = select_local_demo_participant(feature_id)
             packet = build_evidence_packet(
-                participant_id, feature_id=payload.feature_id
+                participant_id, feature_id=feature_id
             )
         except UnknownParticipant as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc

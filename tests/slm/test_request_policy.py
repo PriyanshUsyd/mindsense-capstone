@@ -1,10 +1,12 @@
 import pytest
 
 from backend.slm.request_policy import (
+    DEFAULT_FEATURE_ID,
     REQUEST_POLICY_VERSION,
     RequestCategory,
     RequestDisposition,
     classify_request,
+    infer_feature_from_question,
 )
 
 
@@ -152,3 +154,64 @@ def test_exact_evaluation_plan_diagnosis_question_stops_before_generation():
     assert response.response_mode.value == "refusal"
     assert response.model_invoked is False
     assert response.request_policy_version == REQUEST_POLICY_VERSION == "0.2.1"
+
+
+# --- feature inference: which feature a question is actually about --------
+#
+# Regression coverage for the week 8 pilot bug: `/respond` used to always
+# build its evidence packet from `gps_distance`, no matter what the
+# question asked about, because nothing read the question text. See
+# backend/api/app.py's `RespondRequest.feature_id` and
+# frontend/src/api/client.ts's `respond()`.
+
+
+@pytest.mark.parametrize(
+    "question",
+    [
+        "How has my phone-unlock activity changed over the past couple of weeks?",
+        "Am I unlocking my phone more than usual?",
+        "Has my screen time gone up recently?",
+        "Is my phone pickup frequency different from my baseline?",
+    ],
+)
+def test_unlock_related_questions_resolve_to_unlock_count(question):
+    assert infer_feature_from_question(question) == "unlock_count"
+
+
+@pytest.mark.parametrize(
+    "question",
+    [
+        "How was my movement different from my recent baseline?",
+        "Has my GPS distance changed recently?",
+        "Am I travelling less than my usual baseline?",
+        "Is my location activity different than normal?",
+    ],
+)
+def test_gps_related_questions_resolve_to_gps_distance(question):
+    assert infer_feature_from_question(question) == "gps_distance"
+
+
+@pytest.mark.parametrize(
+    "question",
+    [
+        "What's changed in my behavior over the last 3 days?",
+        "How am I doing?",
+        "",
+    ],
+)
+def test_ambiguous_questions_fall_back_to_the_default_feature(question, caplog):
+    with caplog.at_level("WARNING"):
+        feature_id = infer_feature_from_question(question)
+
+    assert feature_id == DEFAULT_FEATURE_ID == "gps_distance"
+    assert "feature_inference_ambiguous" in caplog.text
+
+
+def test_a_question_naming_both_features_falls_back_without_crashing(caplog):
+    with caplog.at_level("WARNING"):
+        feature_id = infer_feature_from_question(
+            "Is my GPS distance related to how often I unlock my phone?"
+        )
+
+    assert feature_id == DEFAULT_FEATURE_ID
+    assert "feature_inference_ambiguous" in caplog.text
