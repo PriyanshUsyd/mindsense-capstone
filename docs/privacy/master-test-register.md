@@ -57,6 +57,7 @@ is not approval for clinical use or participant deployment.
 | 7 | Four-stage CI separation preflight | Python 373/373; R 67/67; frontend 22/22 plus lint/build; privacy 17/17; all audits clear | Python, R, frontend, and privacy/security now have distinct failure boundaries and explanatory Markdown artifacts for failed stages. |
 | 7 | Post-main feature-routing integration | 469 passed initially; five sandbox-blocked loopback cases passed on permitted rerun; frontend 23/23 plus lint/build | Main's GPS/unlock inference now coexists with the safe local participant alias and crisis-policy remediation. |
 | 7 | Optional-feature/local-demo regression | 65/65 focused tests passed; 470 other Python tests passed and all 7 transport tests passed on a permitted rerun | A missing `feature_id` is inferred from the question before the local participant alias is resolved; neither downstream function receives `None`. |
+| 7 | FastAPI/R worker-thread regression | 78/78 affected and 476/476 complete tests passed; real local-data request returned HTTP 200 | Every serialized R call now establishes its own `rpy2` conversion context, preventing the unlock evidence path from failing in a FastAPI worker thread. |
 
 The Week 5 latency sample was about 15.7% slower on mean latency than Week 4.
 Five prompts are too small a sample to establish a performance regression or a
@@ -986,6 +987,35 @@ passed in the restricted environment and five transport cases could not open a
 temporary loopback server. All 7 transport tests passed when rerun with
 loopback binding permitted. This confirms the five failures were sandbox setup
 restrictions, not application or privacy regressions.
+
+### FastAPI and R Worker-Thread Regression Check
+
+A live frontend request exposed an HTTP 500 on the first uncached unlock
+evidence calculation. FastAPI runs the synchronous `/respond` endpoint in a
+worker thread, while `rpy2` stores its Python/R conversion rules in a
+thread-local `ContextVar`. The R bridge had been initialised successfully in a
+different worker, so the later thread had no active conversion rules. This was
+an application integration defect, not a network, `feature_id`, dataset, or
+Ollama failure.
+
+The bridge now enters its approved pandas/R conversion context around every
+serialized R workspace operation. A new real-R regression test invokes the
+AR(1) fit through a `ThreadPoolExecutor`, reproducing the same threading
+boundary used by FastAPI. The existing concurrency/privacy test double was
+updated to represent the bridge's documented loader contract.
+
+Assumptions were that Homebrew R 4.6.1 and the approved R packages were
+installed, `RPY2_CFFI_MODE=ABI` selected the working macOS bridge mode, the
+gitignored CES dataset was present locally, the deterministic demo SLM avoided
+public model traffic, and FastAPI's in-process test client represented its
+worker-thread execution model. The R bridge/privacy checks passed 16/16; the
+affected API, participant-evidence, mixed-effects, R bridge, and privacy suite
+passed 78/78 with the 45 already documented synthetic convergence warnings. A
+real `local-demo` unlock request then returned HTTP 200 with an uncertainty
+response instead of HTTP 500. The complete run passed 469/469 tests outside the
+transport file, and all 7/7 transport tests passed with temporary loopback
+binding permitted, for 476/476 total. The running development server must be
+restarted to load the corrected bridge code.
 
 ## SLM Latency Run History
 

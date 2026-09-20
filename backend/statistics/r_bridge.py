@@ -87,8 +87,17 @@ def _r_workspace_scoped(function: Callable[..., Any]) -> Callable[..., Any]:
     @functools.wraps(function)
     def wrapped(*args: Any, **kwargs: Any) -> Any:
         with _R_WORKSPACE_LOCK:
-            ro = _load_r()[0]
-            with _temporary_r_workspace(ro):
+            loaded = _load_r()
+            ro = loaded[0]
+            converter = loaded[5]
+            localconverter = loaded[6]
+            # rpy2 stores conversion rules in a ContextVar. FastAPI runs
+            # synchronous endpoints in worker threads, so each thread must
+            # establish its own conversion context before touching R objects.
+            with (
+                localconverter(ro.default_converter + converter),
+                _temporary_r_workspace(ro),
+            ):
                 return function(*args, **kwargs)
 
     return wrapped

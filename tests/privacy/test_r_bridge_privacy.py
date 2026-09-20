@@ -5,6 +5,7 @@ from __future__ import annotations
 import ast
 import time
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import nullcontext
 from pathlib import Path
 from threading import Lock
 from typing import Any
@@ -112,6 +113,7 @@ def test_r_package_allowlist_requires_privacy_review_for_new_imports():
 class _FakeRObjects:
     def __init__(self, values: dict[str, Any] | None = None) -> None:
         self.globalenv = dict(values or {})
+        self.default_converter = 0
 
 
 @pytest.mark.parametrize("fail_inside_scope", [False, True])
@@ -150,7 +152,11 @@ def test_r_workspace_scope_serialises_concurrent_fits(monkeypatch: pytest.Monkey
     state_lock = Lock()
     active = 0
     maximum_active = 0
-    monkeypatch.setattr(r_bridge, "_load_r", lambda: (ro,))
+    monkeypatch.setattr(
+        r_bridge,
+        "_load_r",
+        lambda: (ro, None, None, None, None, 0, lambda _converter: nullcontext()),
+    )
 
     @r_bridge._r_workspace_scoped
     def simulated_fit(value: str) -> str:
