@@ -38,5 +38,19 @@ The Ollama client accepts only manifest-listed model tags and the loopback
 an invalid draft, `SLMService` fails closed to the version-controlled generic
 fallback; the frontend never receives an unvalidated model draft.
 
+The production local-runtime deadline defaults to 180 seconds because the Week
+7 UI pilot measured one cold Phi generation at approximately 134.7 seconds.
+It can be changed locally with `MINDSENSE_OLLAMA_TIMEOUT_SECONDS`, restricted to
+1-300 seconds. Timeouts, an unavailable daemon, invalid model output, and an
+unavailable evidence source produce separate stable `rejection_reason` values
+while using the same reviewed fallback copy.
+
+Deterministic crisis/refusal/off-topic routing runs before participant data is
+loaded. If the approved local dataset is missing or unreadable, an otherwise
+allowed question receives HTTP 200 with `response_mode=generic_fallback`,
+`rejection_reason=evidence_source_unavailable`, and `model_invoked=false`.
+Filesystem paths and exception text are never returned. Unknown participant
+and unknown feature requests remain explicit 404 and 422 responses.
+
 `MINDSENSE_SLM_RUNTIME` accepts only `demo` or `ollama`. An unknown value stops
 startup instead of silently choosing another runtime.

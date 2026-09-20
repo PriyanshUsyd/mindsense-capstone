@@ -50,12 +50,12 @@ from backend.contracts.evidence import (
 )
 from backend.slm.client import GenerationMetrics, GenerationResult
 from backend.slm.output_grounding import render_grounded_example
+from backend.slm.request_policy import infer_feature_from_question
 from backend.slm.runtime import (
     create_local_service,
     default_model_tag,
     listed_model_tags,
 )
-from backend.slm.request_policy import infer_feature_from_question
 from backend.slm.service import SafeSLMResponse, SLMService
 from backend.statistics.participant_evidence import (
     UnknownFeature,
@@ -256,6 +256,10 @@ def create_app(
             request_service = service_for(payload.model_tag)
         except ValueError as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
+        preflight = request_service.preflight_response(payload.question)
+        if preflight is not None:
+            return preflight
+
         feature_id = payload.feature_id or infer_feature_from_question(payload.question)
         try:
             packet = build_evidence_packet(
@@ -265,6 +269,8 @@ def create_app(
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         except UnknownFeature as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
+        except (FileNotFoundError, PermissionError):
+            return request_service.evidence_unavailable_response(payload.question)
         try:
             return request_service.respond(packet, payload.question)
         except Exception as exc:

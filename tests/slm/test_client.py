@@ -1,5 +1,6 @@
 import json
 from typing import Any
+from urllib import error
 
 import pytest
 from pydantic import ValidationError
@@ -12,9 +13,12 @@ from backend.contracts.evidence import (
     ResponseMode,
 )
 from backend.slm.client import (
+    DEFAULT_OLLAMA_TIMEOUT_SECONDS,
     OllamaClient,
     OllamaClientConfig,
     SLMResponseError,
+    SLMTimeoutError,
+    UrllibLoopbackTransport,
 )
 from backend.slm.output_grounding import render_grounded_example
 from benchmarks.slm_model_comparison import comparison_cases
@@ -70,7 +74,7 @@ def test_payload_is_schema_constrained_and_deterministic(
     assert result.prompt_sha256
     endpoint, payload, timeout = transport.calls[0]
     assert endpoint == "http://127.0.0.1:11434/api/chat"
-    assert timeout == 120.0
+    assert timeout == DEFAULT_OLLAMA_TIMEOUT_SECONDS == 180.0
     assert payload["stream"] is False
     assert payload["think"] is False
     assert payload["options"] == {"temperature": 0, "seed": 42}
@@ -209,3 +213,26 @@ def test_model_payload_redacts_participant_reference_without_mutating_packet(
     assert original_reference not in content
     assert eligible_packet.identity.participant_ref == original_reference
     assert model_packet["identity"]["packet_id"] == eligible_packet.identity.packet_id
+
+
+class _RaisingOpener:
+    def __init__(self, failure: BaseException) -> None:
+        self.failure = failure
+
+    def open(self, req, timeout):
+        del req, timeout
+        raise self.failure
+
+
+@pytest.mark.parametrize(
+    "failure",
+    [TimeoutError("deadline"), error.URLError(TimeoutError("deadline"))],
+)
+def test_loopback_transport_classifies_timeout_separately(monkeypatch, failure):
+    monkeypatch.setattr(
+        "backend.slm.client.request.build_opener",
+        lambda *handlers: _RaisingOpener(failure),
+    )
+
+    with pytest.raises(SLMTimeoutError, match="timed out"):
+        UrllibLoopbackTransport().post_json("http://127.0.0.1:11434/api/chat", {}, 1.0)
