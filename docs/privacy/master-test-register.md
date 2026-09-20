@@ -53,6 +53,7 @@ is not approval for clinical use or participant deployment.
 | 7 | Frozen-build regression gates | 31 passed, 2 failed | New checks reproduce the frontend identifier exposure and crisis-language coverage gap. |
 | 7 | Frozen-build complete local suite | 457/457 passed; 45 warnings before the new regression gates | Existing Python, R, CES, privacy, security, SLM, API, integration, and statistics tests remained stable at commit `1341cea`. |
 | 7 | Frozen-build latency confirmation | 5/5 completed; mean 2.23 s; sample p95 3.83 s | Local Phi-4 Mini remained operational with effectively unchanged mean latency versus the Week 6 post-merge sample. |
+| 7 | Privacy and crisis remediation | 72/72 focused and 460/460 complete tests passed; live browser rerun passed | Raw CES identifiers were removed from the tracked tree and browser request, the missed crisis phrase now routes correctly, and app processes showed no public TCP connection. |
 
 The Week 5 latency sample was about 15.7% slower on mean latency than Week 4.
 Five prompts are too small a sample to establish a performance regression or a
@@ -835,6 +836,61 @@ blocking findings for participant-facing use. The application should not be
 approved until both regression gates pass and the integrated run is repeated
 with public networking disabled at operating-system level. Synthetic local
 development may continue if the real CES-backed frontend flow is not used.
+
+## Week 7 Remediation Rerun - 20 September 2026
+
+### Changes Verified
+
+The remediation working tree was based on commit `d70fa6d`. No dependency
+manifest changed.
+
+- The frontend now sends the non-sensitive `local-demo` alias. FastAPI resolves
+  it inside the local process to a deterministic participant with sufficient
+  local data. The raw CES identifier is not included in browser source, the
+  production bundle, the HTTP request, or access logs.
+- Real CES identifiers were also removed from the dataset-backed statistics
+  tests and eligibility methodology note. The statistics tests now select the
+  required long- and short-history records from the gitignored local dataset
+  at run time.
+- The privacy gate now scans tracked source, tests, benchmark text, privacy
+  material, and documentation for 32-character CES-UID-shaped values, with an
+  explicit exception only for three intentionally synthetic repeated-character
+  fixtures.
+- Request policy `0.2.1` recognises `killing`, `hurting`, and `harming myself`
+  in addition to the existing base forms. The observed phrase that previously
+  failed now receives the deterministic crisis-aware fallback.
+- `frontend/.npmrc` disables npm's update notifier. The final live process
+  snapshot showed no non-loopback TCP connection owned by npm, Vite, FastAPI,
+  or Ollama.
+
+### Remediation Results
+
+- Focused privacy, crisis, API, evaluation, and real CES evidence checks:
+  72/72 passed.
+- Complete Python/R/CES/privacy/security/integration suite: 460/460 passed
+  with the same 45 known synthetic `statsmodels` convergence warnings.
+- Frontend: 22/22 tests passed; Oxlint and the production build passed.
+- Ruff passed on all changed Python files.
+- The built frontend contained no CES-UID-shaped value.
+- A live browser request completed through FastAPI, the local evidence builder,
+  and `phi4-mini:3.8b`; the formerly missed self-harm phrase displayed the
+  version-controlled Australian crisis resources.
+- FastAPI, Vite, npm, and Ollama exposed only loopback listeners/connections in
+  the final process snapshot.
+
+### Remediation Decision
+
+**The two new regression gates pass and the branch is expected to pass CI.**
+The privacy/safety hold caused by the raw identifier and crisis-language gap is
+cleared for local prototype development.
+
+This does not yet implement the client's per-user access requirement. The
+`local-demo` alias is a development mechanism, not authentication. Before
+participant-facing use, each person needs an assigned opaque user ID plus an
+agreed authentication mechanism such as a PIN/password or signed local session,
+with a backend-only mapping to that person's local data. Participant-facing
+approval and the operating-system-level disconnected run therefore remain
+outstanding.
 
 ## SLM Latency Run History
 

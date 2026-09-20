@@ -220,6 +220,40 @@ def test_respond_builds_the_real_packet_server_side_not_from_the_client(monkeypa
     assert "3.8" in body["text"] or "3.80" in body["text"]
 
 
+def test_respond_resolves_the_local_demo_alias_only_inside_the_backend(monkeypatch):
+    fixture_packet = _load_packet("week5_gps_eligible.json")
+    built_for: list[tuple[str, str]] = []
+
+    monkeypatch.setattr(
+        "backend.api.app.select_local_demo_participant",
+        lambda feature_id="gps_distance": "resolved-local-participant",
+    )
+
+    def fake_build_evidence_packet(
+        participant_id: str, feature_id: str = "gps_distance"
+    ):
+        built_for.append((participant_id, feature_id))
+        return fixture_packet
+
+    monkeypatch.setattr(
+        "backend.api.app.build_evidence_packet", fake_build_evidence_packet
+    )
+    client = TestClient(create_app())
+
+    resp = client.post(
+        "/respond",
+        json={
+            "participant_id": "local-demo",
+            "question": "How was my movement different from my recent baseline?",
+            "feature_id": "gps_distance",
+        },
+    )
+
+    assert resp.status_code == 200
+    assert built_for == [("resolved-local-participant", "gps_distance")]
+    assert "resolved-local-participant" not in resp.text
+
+
 def test_respond_selects_a_manifest_model_only_in_ollama_mode(monkeypatch):
     fixture_packet = _load_packet("week5_gps_eligible.json")
     selected: list[str | None] = []

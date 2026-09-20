@@ -10,9 +10,9 @@ Real-dataset tests are skipped when the dataset isn't present locally
 
 from __future__ import annotations
 
-from datetime import date
 from pathlib import Path
 
+import pandas as pd
 import pytest
 
 from backend.contracts.evidence import EligibilityStatus, ResponseMode
@@ -20,6 +20,7 @@ from backend.statistics.participant_evidence import (
     UnknownFeature,
     UnknownParticipant,
     build_evidence_packet,
+    select_local_demo_participant,
 )
 
 DATASET_DIR = Path(__file__).resolve().parents[2] / "dataset"
@@ -29,12 +30,24 @@ requires_dataset = pytest.mark.skipif(
     reason="real CES dataset not present locally (gitignored) — cannot run end-to-end",
 )
 
-# Real CES uids picked from the local dataset for these tests: one with a
-# near-full history (long-running participant, expected State C), one with
-# almost none (expected State A). Not synthetic — see the module docstring
-# for why fabricating these would defeat the point of this module.
-LONG_HISTORY_UID = "1ff6d7f34acb354430e7323a35ff7703"  # 1370 sensing rows
-SHORT_HISTORY_UID = "df5e798581def8d477316520953b9171"  # 2 sensing rows
+def _short_history_uid() -> str:
+    if not (DATASET_DIR / "Sensing" / "sensing.csv").exists():
+        return "dataset-not-present"
+    sensing = pd.read_csv(DATASET_DIR / "Sensing" / "sensing.csv", usecols=["uid"])
+    counts = sensing.groupby("uid").size()
+    minimum = counts[counts == counts.min()]
+    return str(min(minimum.index.astype(str)))
+
+
+# Resolve real local participants at test time instead of publishing raw CES
+# identifiers in the repository. The long-running participant is selected by
+# the same private backend helper used by the browser's local demo alias.
+LONG_HISTORY_UID = (
+    select_local_demo_participant("gps_distance")
+    if (DATASET_DIR / "Sensing" / "sensing.csv").exists()
+    else "dataset-not-present"
+)
+SHORT_HISTORY_UID = _short_history_uid()
 
 
 @requires_dataset
@@ -124,7 +137,12 @@ def test_as_of_recomputes_state_fresh_not_persisted():
     does not persist.' An early `as_of` for the long-history participant
     (before they had accumulated enough history) must NOT be State C just
     because they eventually reach it."""
+    sensing = pd.read_csv(
+        DATASET_DIR / "Sensing" / "sensing.csv", usecols=["uid", "day"]
+    )
+    first_day = sensing.loc[sensing["uid"] == LONG_HISTORY_UID, "day"].min()
+    early_as_of = pd.to_datetime(str(first_day), format="%Y%m%d").date()
     early_packet = build_evidence_packet(
-        LONG_HISTORY_UID, feature_id="gps_distance", as_of=date(2017, 9, 10)
+        LONG_HISTORY_UID, feature_id="gps_distance", as_of=early_as_of
     )
     assert early_packet.baseline.eligibility_status != EligibilityStatus.ELIGIBLE

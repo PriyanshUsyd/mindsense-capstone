@@ -22,12 +22,11 @@ import {
 // `participant_id` (see backend/statistics/participant_evidence.py); the
 // browser only sends which participant is asking, never their evidence.
 //
-// There is no auth/session system yet (see AppShell), so there is no real
-// signed-in participant to read this id from — DEMO_PARTICIPANT_ID is a
-// real CES uid used as a placeholder until one exists, exactly the same
-// dev-only role the old synthetic packet played, just narrowed to an
-// identifier instead of fabricated evidence.
-const DEMO_PARTICIPANT_ID = '1ff6d7f34acb354430e7323a35ff7703'
+// There is no auth/session system yet (see AppShell), so the browser sends a
+// non-sensitive local alias. The backend resolves it to a suitable participant
+// inside the local process; a raw CES identifier never enters tracked browser
+// source, the production bundle, the HTTP request, or access logs.
+const LOCAL_DEMO_PARTICIPANT_ALIAS = 'local-demo'
 const DEFAULT_FEATURE_ID = 'gps_distance'
 
 const DEFAULT_QUESTION = 'How was my movement different from my recent baseline?'
@@ -95,7 +94,11 @@ export function NormalResponse() {
     setPendingQuestion(question)
 
     try {
-      const response = await respond(DEMO_PARTICIPANT_ID, question, DEFAULT_FEATURE_ID)
+      const response = await respond(
+        LOCAL_DEMO_PARTICIPANT_ALIAS,
+        question,
+        DEFAULT_FEATURE_ID,
+      )
       const turn = { id: nextTurnId.current, question, response }
       nextTurnId.current += 1
       setTurns((currentTurns) => [...currentTurns, turn])
