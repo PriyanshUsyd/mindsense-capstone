@@ -9,6 +9,27 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 RAW_CES_UID = re.compile(r"^[0-9a-f]{32}$")
+RAW_CES_UID_IN_TEXT = re.compile(r"(?<![0-9a-f])[0-9a-f]{32}(?![0-9a-f])")
+SYNTHETIC_UIDS = {
+    "a" * 32,
+    "b" * 32,
+    "c" * 32,
+}
+TRACKED_TEXT_SUFFIXES = {
+    ".css",
+    ".html",
+    ".js",
+    ".json",
+    ".jsx",
+    ".md",
+    ".py",
+    ".toml",
+    ".ts",
+    ".tsx",
+    ".txt",
+    ".yaml",
+    ".yml",
+}
 
 
 def _shared_analysis_csvs() -> list[Path]:
@@ -59,4 +80,44 @@ def test_analysis_outputs_do_not_expose_raw_ces_uids():
         f"Found {leak_count} raw CES uid rows in analysis outputs. "
         "Keep participant-level exports local or replace raw identifiers with "
         f"approved opaque references. First locations: {', '.join(examples)}"
+    )
+
+
+def test_tracked_text_does_not_embed_raw_ces_uid_shaped_values():
+    """Shared source and documentation must not publish raw CES identifiers."""
+    result = subprocess.run(
+        [
+            "git",
+            "ls-files",
+            "--",
+            "analysis",
+            "backend",
+            "benchmarks",
+            "docs",
+            "frontend/src",
+            "privacy",
+            "tests",
+        ],
+        cwd=REPO_ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    leaks: list[str] = []
+
+    for relative_path in result.stdout.splitlines():
+        path = REPO_ROOT / relative_path
+        if not path.is_file() or path.suffix not in TRACKED_TEXT_SUFFIXES:
+            continue
+        for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+            matches = {
+                match.group(0) for match in RAW_CES_UID_IN_TEXT.finditer(line)
+            } - SYNTHETIC_UIDS
+            if matches:
+                leaks.append(f"{relative_path}:{line_number}")
+
+    assert not leaks, (
+        "Tracked source or documentation contains raw CES uid-shaped values. "
+        "Shared artefacts must use an approved opaque local "
+        f"reference instead. Locations: {', '.join(leaks)}"
     )
