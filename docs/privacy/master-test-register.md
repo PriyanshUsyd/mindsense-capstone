@@ -55,6 +55,7 @@ is not approval for clinical use or participant deployment.
 | 7 | Frozen-build latency confirmation | 5/5 completed; mean 2.23 s; sample p95 3.83 s | Local Phi-4 Mini remained operational with effectively unchanged mean latency versus the Week 6 post-merge sample. |
 | 7 | Privacy and crisis remediation | 72/72 focused and 460/460 complete tests passed; live browser rerun passed | Raw CES identifiers were removed from the tracked tree and browser request, the missed crisis phrase now routes correctly, and app processes showed no public TCP connection. |
 | 7 | Four-stage CI separation preflight | Python 373/373; R 67/67; frontend 22/22 plus lint/build; privacy 17/17; all audits clear | Python, R, frontend, and privacy/security now have distinct failure boundaries and explanatory Markdown artifacts for failed stages. |
+| 7 | Post-main feature-routing integration | 469 passed initially; five sandbox-blocked loopback cases passed on permitted rerun; frontend 23/23 plus lint/build | Main's GPS/unlock inference now coexists with the safe local participant alias and crisis-policy remediation. |
 
 The Week 5 latency sample was about 15.7% slower on mean latency than Week 4.
 Five prompts are too small a sample to establish a performance regression or a
@@ -948,6 +949,22 @@ audit-only environment; a successful GitHub rerun is required before merge.
 
 The stable stage definitions and artifact behaviour are documented in
 `docs/privacy/ci-pipeline-guide.md`.
+
+### Latest Main Integration Check
+
+`origin/main` at `a376715` added deterministic GPS/unlock question routing,
+evaluation evidence, data-storage scope, and bootstrap-caching documentation.
+The request-path conflicts were resolved by preserving both controls: the
+frontend sends `local-demo` without a feature override, the backend infers the
+feature from the question, and only then resolves the alias to an appropriate
+local participant. Raw CES identifiers remain out of frontend source and HTTP
+requests, and request-policy version `0.2.1` retains the crisis-language fix.
+
+The merged local suite collected 474 tests. It recorded 469 passes and five
+temporary-loopback binding failures caused by the restricted test sandbox; all
+seven transport tests passed in the permitted rerun. Frontend verification
+passed 23/23 tests, lint, and production build. No product defect was observed
+in the post-main integration check.
 
 ## SLM Latency Run History
 
