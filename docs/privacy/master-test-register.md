@@ -56,6 +56,7 @@ is not approval for clinical use or participant deployment.
 | 7 | Privacy and crisis remediation | 72/72 focused and 460/460 complete tests passed; live browser rerun passed | Raw CES identifiers were removed from the tracked tree and browser request, the missed crisis phrase now routes correctly, and app processes showed no public TCP connection. |
 | 7 | Four-stage CI separation preflight | Python 373/373; R 67/67; frontend 22/22 plus lint/build; privacy 17/17; all audits clear | Python, R, frontend, and privacy/security now have distinct failure boundaries and explanatory Markdown artifacts for failed stages. |
 | 7 | Post-main feature-routing integration | 469 passed initially; five sandbox-blocked loopback cases passed on permitted rerun; frontend 23/23 plus lint/build | Main's GPS/unlock inference now coexists with the safe local participant alias and crisis-policy remediation. |
+| 7 | Optional-feature/local-demo regression | 65/65 focused tests passed; 470 other Python tests passed and all 7 transport tests passed on a permitted rerun | A missing `feature_id` is inferred from the question before the local participant alias is resolved; neither downstream function receives `None`. |
 
 The Week 5 latency sample was about 15.7% slower on mean latency than Week 4.
 Five prompts are too small a sample to establish a performance regression or a
@@ -968,6 +969,23 @@ temporary-loopback binding failures caused by the restricted test sandbox; all
 seven transport tests passed in the permitted rerun. Frontend verification
 passed 23/23 tests, lint, and production build. No product defect was observed
 in the post-main integration check.
+
+### Optional Feature and Local-Demo Regression Check
+
+A follow-up review checked the case where the frontend sends the non-sensitive
+`local-demo` alias without `feature_id`, as required by the current request
+contract. The test assumed that an unlock-related question should resolve to
+`unlock_count`, that alias selection must receive a concrete feature string,
+and that the resolved local participant must remain internal to the backend.
+
+`tests/api/test_app.py` now directly verifies that feature inference runs
+before `select_local_demo_participant`, and that both the selector and evidence
+builder receive `unlock_count` rather than `None`. The focused API and request
+policy run passed 65/65 tests. The complete suite collected 475 tests: 470
+passed in the restricted environment and five transport cases could not open a
+temporary loopback server. All 7 transport tests passed when rerun with
+loopback binding permitted. This confirms the five failures were sandbox setup
+restrictions, not application or privacy regressions.
 
 ## SLM Latency Run History
 
