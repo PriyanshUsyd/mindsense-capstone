@@ -295,6 +295,9 @@ def test_respond_rejects_unlisted_model_before_building_packet(monkeypatch):
 
 
 def test_respond_defaults_feature_id_to_gps_distance_when_omitted(monkeypatch):
+    """"How am I doing?" matches neither feature's keywords, so with
+    feature_id omitted this exercises infer_feature_from_question's
+    ambiguous fallback, not a hardcoded default."""
     fixture_packet = _load_packet("week5_gps_eligible.json")
     calls: list[tuple[str, str]] = []
 
@@ -311,6 +314,68 @@ def test_respond_defaults_feature_id_to_gps_distance_when_omitted(monkeypatch):
 
     resp = client.post(
         "/respond", json={"participant_id": "u42", "question": "How am I doing?"}
+    )
+
+    assert resp.status_code == 200
+    assert calls == [("u42", "gps_distance")]
+
+
+def test_respond_infers_unlock_count_from_an_unlock_question_when_feature_id_omitted(
+    monkeypatch,
+):
+    """FIXED 2026-09-20: the week 8 pilot bug — an unlock-related question
+    used to still be answered from gps_distance because /respond never read
+    the question text. feature_id omitted here so inference actually runs."""
+    fixture_packet = _load_packet("week5_gps_eligible.json")
+    calls: list[tuple[str, str]] = []
+
+    def fake_build_evidence_packet(
+        participant_id: str, feature_id: str = "gps_distance"
+    ):
+        calls.append((participant_id, feature_id))
+        return fixture_packet
+
+    monkeypatch.setattr(
+        "backend.api.app.build_evidence_packet", fake_build_evidence_packet
+    )
+    client = TestClient(create_app())
+
+    resp = client.post(
+        "/respond",
+        json={
+            "participant_id": "u42",
+            "question": "How has my phone-unlock activity changed over the past couple of weeks?",
+        },
+    )
+
+    assert resp.status_code == 200
+    assert calls == [("u42", "unlock_count")]
+
+
+def test_respond_honours_an_explicit_feature_id_over_inference(monkeypatch):
+    """An explicit feature_id (tooling/tests) still wins even when the
+    question text points elsewhere — inference only fills the gap."""
+    fixture_packet = _load_packet("week5_gps_eligible.json")
+    calls: list[tuple[str, str]] = []
+
+    def fake_build_evidence_packet(
+        participant_id: str, feature_id: str = "gps_distance"
+    ):
+        calls.append((participant_id, feature_id))
+        return fixture_packet
+
+    monkeypatch.setattr(
+        "backend.api.app.build_evidence_packet", fake_build_evidence_packet
+    )
+    client = TestClient(create_app())
+
+    resp = client.post(
+        "/respond",
+        json={
+            "participant_id": "u42",
+            "question": "How has my phone-unlock activity changed?",
+            "feature_id": "gps_distance",
+        },
     )
 
     assert resp.status_code == 200

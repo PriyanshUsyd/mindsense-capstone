@@ -28,8 +28,13 @@ import {
 // dev-only role the old synthetic packet played, just narrowed to an
 // identifier instead of fabricated evidence.
 const DEMO_PARTICIPANT_ID = '1ff6d7f34acb354430e7323a35ff7703'
-const DEFAULT_FEATURE_ID = 'gps_distance'
 
+// FIXED 2026-09-20: this used to also hardcode `DEFAULT_FEATURE_ID =
+// 'gps_distance'` and pass it on every request, so every question got
+// answered from GPS evidence regardless of what was actually asked. The
+// backend now infers the feature from the question text
+// (backend/slm/request_policy.py's `infer_feature_from_question`), so the
+// frontend no longer sends a feature_id at all.
 const DEFAULT_QUESTION = 'How was my movement different from my recent baseline?'
 
 // The evidence numbers shown alongside a NORMAL response are still a
@@ -95,7 +100,7 @@ export function NormalResponse() {
     setPendingQuestion(question)
 
     try {
-      const response = await respond(DEMO_PARTICIPANT_ID, question, DEFAULT_FEATURE_ID)
+      const response = await respond(DEMO_PARTICIPANT_ID, question)
       const turn = { id: nextTurnId.current, question, response }
       nextTurnId.current += 1
       setTurns((currentTurns) => [...currentTurns, turn])
