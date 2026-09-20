@@ -945,7 +945,10 @@ four jobs and the failure-artifact path execute. Stages 1-3 passed. Every Stage
 which could not inspect `rpy2` because the audit job omitted the established
 `RPY2_CFFI_MODE=ABI` environment setting. The generated Stage 4 failure report
 captured that cause. The workflow was then corrected to set ABI mode for this
-audit-only environment; a successful GitHub rerun is required before merge.
+audit-only environment. Corrected branch run `35478727512` passed all four
+stages at commit `6a0b1ea`. After the latest `main` changes were merged, run
+`35493857235` also passed all four stages at merge commit `17702e3` and
+published the combined Markdown run artifact.
 
 The stable stage definitions and artifact behaviour are documented in
 `docs/privacy/ci-pipeline-guide.md`.
