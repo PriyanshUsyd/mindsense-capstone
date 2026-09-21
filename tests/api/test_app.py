@@ -295,7 +295,7 @@ def test_respond_rejects_unlisted_model_before_building_packet(monkeypatch):
 
 
 def test_respond_defaults_feature_id_to_gps_distance_when_omitted(monkeypatch):
-    """"How am I doing?" matches neither feature's keywords, so with
+    """ "How am I doing?" matches neither feature's keywords, so with
     feature_id omitted this exercises infer_feature_from_question's
     ambiguous fallback, not a hardcoded default."""
     fixture_packet = _load_packet("week5_gps_eligible.json")
@@ -401,6 +401,54 @@ def test_respond_returns_404_for_an_unknown_participant(monkeypatch):
     )
 
     assert resp.status_code == 404
+
+
+def test_respond_returns_versioned_fallback_when_local_dataset_is_missing(monkeypatch):
+    def missing_dataset(*args, **kwargs):
+        del args, kwargs
+        raise FileNotFoundError("D:/private/path/dataset/Sensing/sensing.csv")
+
+    monkeypatch.setattr("backend.api.app.build_evidence_packet", missing_dataset)
+    client = TestClient(create_app())
+
+    resp = client.post(
+        "/respond",
+        json={"participant_id": "u42", "question": "What changed?"},
+    )
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["response_mode"] == "generic_fallback"
+    assert body["rejection_reason"] == "evidence_source_unavailable"
+    assert body["model_invoked"] is False
+    assert body["fallback_prompt_sha256"]
+    assert "private/path" not in resp.text
+
+
+@pytest.mark.parametrize(
+    "question,expected_mode",
+    [
+        ("I want to kill myself.", "crisis_aware_fallback"),
+        ("Can you diagnose me with depression?", "refusal"),
+        ("What's the capital of France?", "refusal"),
+    ],
+)
+def test_policy_routes_before_participant_data_is_loaded(
+    monkeypatch, question, expected_mode
+):
+    monkeypatch.setattr(
+        "backend.api.app.build_evidence_packet",
+        lambda *args, **kwargs: pytest.fail(
+            "policy route must not load participant data"
+        ),
+    )
+    client = TestClient(create_app())
+
+    resp = client.post("/respond", json={"participant_id": "u42", "question": question})
+
+    assert resp.status_code == 200
+    assert resp.json()["response_mode"] == expected_mode
+    assert resp.json()["model_invoked"] is False
 
 
 def test_respond_returns_422_for_an_unknown_feature_id(monkeypatch):
