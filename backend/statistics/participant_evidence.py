@@ -59,7 +59,6 @@ silently left stale or hastily bolted on as a slow first-request path.
 
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
@@ -85,7 +84,11 @@ from backend.contracts.evidence import (
 from backend.data_pipeline.ces_eligibility import make_pseudonymizer
 from backend.statistics import evidence as evidence_module
 from backend.statistics import r_bridge
-from backend.statistics.eligibility import ColdStartState, classify_state, to_eligibility_status
+from backend.statistics.eligibility import (
+    ColdStartState,
+    classify_state,
+    to_eligibility_status,
+)
 from backend.statistics.feature_specs import (
     GPS_DISTANCE_SPEC,
     UNLOCK_FREQUENCY_SPEC,
@@ -94,6 +97,7 @@ from backend.statistics.feature_specs import (
 from backend.statistics.mixed_effects_model import build_model_frame, fit_ar1_effect
 
 DATASET_DIR = Path(__file__).resolve().parents[2] / "dataset"
+LOCAL_DEMO_PARTICIPANT_ALIAS = "local-demo"
 
 # CLAUDE.md "Finalised decisions": comparison window [-14, -1], baseline
 # window [-42, -15] (the narrower of the two locked options; [-70, -15] is
@@ -154,7 +158,8 @@ class UnknownFeature(ValueError):
 
 
 def _to_date(day_value: int) -> date:
-    return datetime.strptime(str(day_value), "%Y%m%d").date()
+    value = str(day_value)
+    return date(int(value[:4]), int(value[4:6]), int(value[6:8]))
 
 
 def _load_cleaned_sensing(feature_id: str) -> pd.DataFrame:
@@ -184,6 +189,41 @@ def _ema() -> pd.DataFrame:
             DATASET_DIR / "EMA" / "general_ema.csv", usecols=["uid", "day", "phq4_score"]
         ).dropna(subset=["phq4_score"])
     return _EMA_CACHE
+
+
+def select_local_demo_participant(feature_id: str = "gps_distance") -> str:
+    """Choose a deterministic local participant without publishing a raw UID.
+
+    The browser sends :data:`LOCAL_DEMO_PARTICIPANT_ALIAS`; only the backend
+    resolves that alias. Selection favours the participant with the most valid
+    feature days and EMA observations so the local demonstration has a useful
+    evidence window. The raw identifier remains process-local and is never
+    returned by the API.
+    """
+    cleaned = _cleaned_sensing(feature_id)
+    meta = _FEATURES[feature_id]
+    sensor_counts = (
+        cleaned.groupby("uid")[meta.spec.value_col]
+        .count()
+        .rename("valid_sensor_days")
+    )
+    ema_counts = _ema().groupby("uid")["phq4_score"].count().rename("ema_count")
+    candidates = sensor_counts.to_frame().join(ema_counts, how="inner")
+    candidates = candidates[
+        (candidates["valid_sensor_days"] > 0) & (candidates["ema_count"] > 0)
+    ].copy()
+    if candidates.empty:
+        raise UnknownParticipant(
+            f"no local demo participant is available for feature_id {feature_id!r}"
+        )
+
+    candidates = candidates.reset_index()
+    candidates["uid"] = candidates["uid"].astype(str)
+    candidates = candidates.sort_values(
+        ["valid_sensor_days", "ema_count", "uid"],
+        ascending=[False, False, True],
+    )
+    return str(candidates.iloc[0]["uid"])
 
 
 def _evidence_table(feature_id: str) -> pd.DataFrame | None:
@@ -335,7 +375,7 @@ def build_evidence_packet(
         (history["date"] >= comparison_start) & (history["date"] <= comparison_end)
     ]
     comparison_values = comparison_rows[clean_col].dropna()
-    observed_days = int(len(comparison_values))
+    observed_days = len(comparison_values)
     value_scale = meta.value_scale
     feature_value = float(comparison_values.mean()) * value_scale if observed_days > 0 else 0.0
 
@@ -384,7 +424,7 @@ def build_evidence_packet(
             (history["date"] >= baseline_start) & (history["date"] <= baseline_end)
         ]
         baseline_values = baseline_rows[clean_col].dropna()
-        n_baseline = int(len(baseline_values))
+        n_baseline = len(baseline_values)
 
         evidence_label: str | None = None
         if n_baseline > 0:

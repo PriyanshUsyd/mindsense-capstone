@@ -58,9 +58,11 @@ from backend.slm.runtime import (
 )
 from backend.slm.service import SafeSLMResponse, SLMService
 from backend.statistics.participant_evidence import (
+    LOCAL_DEMO_PARTICIPANT_ALIAS,
     UnknownFeature,
     UnknownParticipant,
     build_evidence_packet,
+    select_local_demo_participant,
 )
 
 SLM_RUNTIME_ENV = "MINDSENSE_SLM_RUNTIME"
@@ -262,8 +264,11 @@ def create_app(
 
         feature_id = payload.feature_id or infer_feature_from_question(payload.question)
         try:
+            participant_id = payload.participant_id
+            if participant_id == LOCAL_DEMO_PARTICIPANT_ALIAS:
+                participant_id = select_local_demo_participant(feature_id)
             packet = build_evidence_packet(
-                payload.participant_id, feature_id=feature_id
+                participant_id, feature_id=feature_id
             )
         except UnknownParticipant as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc

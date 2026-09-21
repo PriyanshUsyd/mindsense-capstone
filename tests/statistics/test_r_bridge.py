@@ -10,12 +10,13 @@ including the git-bash/MSYS caveat that matters on Windows.
 
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
+
 import numpy as np
 import pandas as pd
 import pytest
 
 from backend.statistics.r_bridge import (
-    RBridgeUnavailable,
     fit_lme_ar1,
     fit_lmer_with_denominator_df,
     r_bridge_available,
@@ -104,6 +105,25 @@ def test_fit_lme_ar1_recovers_a_real_signal_and_blups():
     assert len(result.blups) == 30
     sample = next(iter(result.blups.values()))
     assert "(Intercept)" in sample
+
+
+@requires_r
+def test_fit_lme_ar1_establishes_conversion_context_in_a_worker_thread():
+    frame = _synthetic_frame(n_people=20, n_occasions=10, seed=45)
+
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        future = executor.submit(
+            fit_lme_ar1,
+            frame,
+            "phq4_score",
+            ["x_within", "x_between"],
+            "uid",
+        )
+        result = future.result(timeout=30)
+
+    assert result.params["x_within"] < 0
+    assert np.isfinite(result.ar1_phi)
+    assert len(result.blups) == 20
 
 
 @requires_r
