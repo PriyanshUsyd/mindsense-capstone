@@ -22,6 +22,8 @@ from backend.contracts.evidence import (
 from backend.slm.output_grounding import render_grounded_response_option
 from backend.slm.prompt_loader import LoadedEvidencePrompt, load_evidence_prompt
 
+DEFAULT_OLLAMA_TIMEOUT_SECONDS = 180.0
+
 
 class SLMClientError(RuntimeError):
     """Base error for safe, non-sensitive SLM client failures."""
@@ -29,6 +31,10 @@ class SLMClientError(RuntimeError):
 
 class SLMUnavailableError(SLMClientError):
     """The local model runtime could not be reached."""
+
+
+class SLMTimeoutError(SLMUnavailableError):
+    """The local model runtime exceeded the configured response deadline."""
 
 
 class SLMResponseError(SLMClientError):
@@ -42,7 +48,9 @@ class OllamaClientConfig(BaseModel):
 
     model_tag: str = Field(min_length=3)
     endpoint: str = "http://127.0.0.1:11434/api/chat"
-    timeout_seconds: float = Field(default=120.0, gt=0.0, le=300.0)
+    timeout_seconds: float = Field(
+        default=DEFAULT_OLLAMA_TIMEOUT_SECONDS, gt=0.0, le=300.0
+    )
     keep_alive: str = "5m"
     seed: int = Field(default=42, ge=0)
 
@@ -126,7 +134,13 @@ class UrllibLoopbackTransport:
         try:
             with opener.open(req, timeout=timeout_seconds) as response:
                 raw = response.read(self._MAX_RESPONSE_BYTES + 1)
-        except (error.URLError, TimeoutError, OSError) as exc:
+        except TimeoutError as exc:
+            raise SLMTimeoutError("local Ollama request timed out") from exc
+        except error.URLError as exc:
+            if isinstance(exc.reason, TimeoutError):
+                raise SLMTimeoutError("local Ollama request timed out") from exc
+            raise SLMUnavailableError("local Ollama request failed") from exc
+        except OSError as exc:
             raise SLMUnavailableError("local Ollama request failed") from exc
 
         if len(raw) > self._MAX_RESPONSE_BYTES:

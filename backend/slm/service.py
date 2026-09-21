@@ -11,6 +11,9 @@ from backend.slm.client import (
     GenerationMetrics,
     GenerationResult,
     SLMClientError,
+    SLMResponseError,
+    SLMTimeoutError,
+    SLMUnavailableError,
 )
 from backend.slm.prompt_loader import (
     DEFAULT_CRISIS_FALLBACK,
@@ -26,6 +29,12 @@ from backend.slm.request_policy import (
 )
 from backend.slm.response_health import ResponseHealthReport, check_response_health
 from backend.slm.safety_gate import validate_draft
+
+FALLBACK_REASON_EVIDENCE_SOURCE_UNAVAILABLE = "evidence_source_unavailable"
+FALLBACK_REASON_MODEL_TIMEOUT = "model_timeout"
+FALLBACK_REASON_MODEL_UNAVAILABLE = "model_unavailable"
+FALLBACK_REASON_MODEL_RESPONSE_INVALID = "model_response_invalid"
+FALLBACK_REASON_MODEL_GENERATION_FAILED = "model_generation_failed"
 
 
 class DraftGenerator(Protocol):
@@ -110,9 +119,24 @@ class SLMService:
 
         try:
             generation = self.client.generate_draft(packet, question)
+        except SLMTimeoutError:
+            return self._fallback(
+                FALLBACK_REASON_MODEL_TIMEOUT, request_decision=request_decision
+            )
+        except SLMUnavailableError:
+            return self._fallback(
+                FALLBACK_REASON_MODEL_UNAVAILABLE,
+                request_decision=request_decision,
+            )
+        except SLMResponseError:
+            return self._fallback(
+                FALLBACK_REASON_MODEL_RESPONSE_INVALID,
+                request_decision=request_decision,
+            )
         except (SLMClientError, ValueError):
             return self._fallback(
-                "model_generation_failed", request_decision=request_decision
+                FALLBACK_REASON_MODEL_GENERATION_FAILED,
+                request_decision=request_decision,
             )
 
         draft = generation.draft
@@ -162,6 +186,26 @@ class SLMService:
         """Expose the SLM boundary health check for Integration/QA wiring."""
 
         return check_response_health(packet)
+
+    def preflight_response(self, question: str) -> SafeSLMResponse | None:
+        """Route deterministic policy cases before participant data is loaded."""
+
+        decision = classify_request(question)
+        if decision.disposition == RequestDisposition.ALLOW:
+            return None
+        return self._policy_response(decision)
+
+    def evidence_unavailable_response(self, question: str) -> SafeSLMResponse:
+        """Fail closed when the approved local evidence source cannot be read."""
+
+        decision = classify_request(question)
+        if decision.disposition != RequestDisposition.ALLOW:
+            return self._policy_response(decision)
+        return self._fallback(
+            FALLBACK_REASON_EVIDENCE_SOURCE_UNAVAILABLE,
+            request_decision=decision,
+            model_invoked=False,
+        )
 
     def _policy_response(self, decision: RequestPolicyDecision) -> SafeSLMResponse:
         if decision.disposition == RequestDisposition.CRISIS:

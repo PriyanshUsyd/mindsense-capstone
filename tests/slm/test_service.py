@@ -1,3 +1,5 @@
+import pytest
+
 from backend.contracts.evidence import (
     AssistantDraft,
     EligibilityStatus,
@@ -7,6 +9,8 @@ from backend.contracts.evidence import (
 from backend.slm.client import (
     GenerationMetrics,
     GenerationResult,
+    SLMResponseError,
+    SLMTimeoutError,
     SLMUnavailableError,
 )
 from backend.slm.request_policy import RequestCategory, RequestDisposition
@@ -33,8 +37,11 @@ class StubGenerator:
 
 
 class FailingGenerator:
+    def __init__(self, failure: Exception | None = None) -> None:
+        self.failure = failure or SLMUnavailableError("offline")
+
     def generate_draft(self, packet: EvidencePacket, question: str) -> GenerationResult:
-        raise SLMUnavailableError("offline")
+        raise self.failure
 
 
 class MustNotRunGenerator:
@@ -57,16 +64,52 @@ def test_valid_draft_becomes_response(
     assert response.model_invoked is True
 
 
-def test_client_failure_uses_versioned_generic_fallback(
-    eligible_packet: EvidencePacket,
+@pytest.mark.parametrize(
+    "failure,expected_reason",
+    [
+        (SLMTimeoutError("deadline"), "model_timeout"),
+        (SLMUnavailableError("offline"), "model_unavailable"),
+        (SLMResponseError("bad response"), "model_response_invalid"),
+        (ValueError("invalid generation"), "model_generation_failed"),
+    ],
+)
+def test_client_failures_use_auditable_versioned_generic_fallback(
+    eligible_packet: EvidencePacket, failure: Exception, expected_reason: str
 ):
-    response = SLMService(FailingGenerator()).respond(eligible_packet, "What changed?")
+    response = SLMService(FailingGenerator(failure)).respond(
+        eligible_packet, "What changed?"
+    )
 
     assert response.used_fallback is True
     assert response.response_mode == ResponseMode.GENERIC_FALLBACK
-    assert response.rejection_reason == "model_generation_failed"
+    assert response.rejection_reason == expected_reason
     assert response.fallback_prompt_sha256
     assert response.model_invoked is True
+
+
+def test_evidence_unavailable_fails_closed_without_model_or_sensitive_detail(
+    eligible_packet: EvidencePacket,
+):
+    del eligible_packet
+    response = SLMService(MustNotRunGenerator()).evidence_unavailable_response(
+        "What changed?"
+    )
+
+    assert response.response_mode == ResponseMode.GENERIC_FALLBACK
+    assert response.rejection_reason == "evidence_source_unavailable"
+    assert response.model_invoked is False
+    assert response.fallback_prompt_sha256
+
+
+def test_preflight_crisis_routing_needs_no_evidence_packet():
+    response = SLMService(MustNotRunGenerator()).preflight_response(
+        "I want to kill myself."
+    )
+
+    assert response is not None
+    assert response.response_mode == ResponseMode.CRISIS_AWARE_FALLBACK
+    assert response.rejection_reason == "crisis_language_detected"
+    assert response.model_invoked is False
 
 
 def test_prohibited_phrase_uses_fallback(
