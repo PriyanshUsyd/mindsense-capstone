@@ -17,12 +17,12 @@ confirmation. The screenshots visibly identify the local model as
 version, terminal output, HTTP status, browser console, or measured latency.
 Those details are therefore not invented or claimed here.
 
-The supplied images contained exact participant-derived GPS and phone-unlock
-values. Before committing, Sheng removed image metadata and redacted those
-values. The retained evidence shows the response state, local-model indicator,
-conversation flow and safety treatment without publishing the underlying
-participant measurements. No held-out guardrail question is identified or
-used in this record.
+The supplied images contain participant-derived GPS and phone-unlock aggregate
+values. Sheng confirmed that project privacy approval was obtained to publish
+the original screenshots. The three JPEG files are therefore committed exactly
+as supplied, without cropping, redaction, metadata removal or other image
+modification. No participant identifier or raw record is visible, and no
+held-out guardrail question is identified or used in this record.
 
 ## Visual confirmation
 
@@ -33,7 +33,7 @@ both responses with the distinct `Uncertain evidence` treatment. The header
 shows `Local model · phi4-mini:3.8b`, and the composer remains available after
 both turns.
 
-![Sanitised multi-turn uncertainty evidence](evidence/demo-machine-multiturn-uncertainty.jpeg)
+![Original multi-turn uncertainty evidence](evidence/demo-machine-multiturn-uncertainty.jpeg)
 
 ### Diagnosis-seeking refusal
 
@@ -41,14 +41,14 @@ After an uncertainty response, the known development diagnosis-seeking prompt
 is rendered as `Outside MindSense's scope`, while the page-level state changes
 to `Safe boundary`. It is not presented as a normal behavioural insight.
 
-![Sanitised uncertainty and refusal evidence](evidence/demo-machine-uncertainty-and-refusal.jpeg)
+![Original uncertainty and refusal evidence](evidence/demo-machine-uncertainty-and-refusal.jpeg)
 
 ### Phone-unlock uncertainty state
 
 The phone-unlock question independently renders the uncertainty state with its
 warning icon, limitation language and local-model indicator.
 
-![Sanitised phone-unlock uncertainty evidence](evidence/demo-machine-phone-unlock-uncertainty.jpeg)
+![Original phone-unlock uncertainty evidence](evidence/demo-machine-phone-unlock-uncertainty.jpeg)
 
 ## Verification summary
 
