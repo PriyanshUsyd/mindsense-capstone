@@ -19,7 +19,7 @@ from enum import Enum
 
 from pydantic import BaseModel, ConfigDict
 
-REQUEST_POLICY_VERSION = "0.2.0"
+REQUEST_POLICY_VERSION = "0.2.1"
 
 _logger = logging.getLogger(__name__)
 
@@ -52,7 +52,7 @@ class RequestPolicyDecision(BaseModel):
 
 
 _CRISIS_PATTERNS = (
-    re.compile(r"\b(?:kill|hurt|harm) myself\b", re.IGNORECASE),
+    re.compile(r"\b(?:kill|hurt|harm)(?:ing)? myself\b", re.IGNORECASE),
     re.compile(r"\b(?:suicide|suicidal|self[- ]harm)\b", re.IGNORECASE),
     re.compile(r"\b(?:end|take) my (?:own )?life\b", re.IGNORECASE),
     re.compile(r"\b(?:do not|don't|dont) want to (?:live|be alive)\b", re.IGNORECASE),

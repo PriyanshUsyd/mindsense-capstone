@@ -10,8 +10,8 @@ Yuktha Naveen owns this area as Privacy and Security Lead. The operational polic
 - [Pull request privacy gate](../../.github/pull_request_template.md): the standing requirement that every dependency change records a privacy spot-check in its PR description.
 - [Network-egress tests](../../tests/privacy/test_no_network_egress.py): automated enforcement that permits loopback traffic and blocks public Python socket connections during tests.
 - [R-bridge privacy tests](../../tests/privacy/test_r_bridge_privacy.py): enforce temporary-data cleanup, package allowlisting, and the absence of network, shell, install, logging, and file-write calls in the embedded-R bridge.
-- [Privacy and Security CI](../../.github/workflows/privacy-security-ci.yml): runs the reproducible Python/R, frontend, privacy, security, build, and dependency gates for pull requests and updates to `main`.
-- [Automated CI run register](automated-ci-run-register.md): separates automatically recorded GitHub run evidence from local-only checks and the master test register.
+- [Privacy and Security CI](../../.github/workflows/privacy-security-ci.yml): runs four clearly separated Python, R, frontend, and privacy/security stages for pull requests and updates to `main`.
+- [Four-stage CI pipeline guide](ci-pipeline-guide.md): defines each stage's scope, test ownership, automatic run record, and failure-explanation artifacts.
 
 ## Weekly verification evidence
 

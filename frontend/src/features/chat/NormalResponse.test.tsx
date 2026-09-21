@@ -140,8 +140,7 @@ describe('NormalResponse', () => {
     await waitFor(() => expect(mockedRespond).toHaveBeenCalledTimes(1))
     const [participantId, question, featureId] = mockedRespond.mock.calls[0]
     expect(question).toBe('How was my movement different from my recent baseline?')
-    expect(typeof participantId).toBe('string')
-    expect(participantId.length).toBeGreaterThan(0)
+    expect(participantId).toBe('local-demo')
     expect(featureId).toBeUndefined()
   })
 

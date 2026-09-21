@@ -2,7 +2,7 @@
 
 Owner: Yuktha Naveen, Privacy and Security Lead  
 Coverage: Week 4 onward  
-Last updated: 15 September 2026
+Last updated: 20 September 2026
 Status: authoritative index of executed project checks; update this file every week
 
 ## Purpose
@@ -49,6 +49,15 @@ is not approval for clinical use or participant deployment.
 | 7 | Complete local Python/R/CES suite | 403/403 passed; 45 warnings | New unlock-frequency, Tier 1 evidence, existing privacy, R, and real-dataset checks passed on the current Mac environment. |
 | 7 | Frontend verification | 22/22 passed; lint and build passed | The current UI states, transport controls, visual-distinctness checks, and production build passed. |
 | 7 | Dependency verification | `pip check` passed; Python manifests and npm reported 0 known vulnerabilities | No broken Python requirements or currently known dependency advisories were detected. |
+| 7 | Frozen-build application privacy run | **HOLD:** real CES UID embedded in tracked/browser code; one natural self-harm phrase missed the crisis route; `npm run dev` retained a public registry connection | The green automated baseline did not cover all live runtime privacy and safety behaviour. Participant-facing use is not approved. |
+| 7 | Frozen-build regression gates | 31 passed, 2 failed | New checks reproduce the frontend identifier exposure and crisis-language coverage gap. |
+| 7 | Frozen-build complete local suite | 457/457 passed; 45 warnings before the new regression gates | Existing Python, R, CES, privacy, security, SLM, API, integration, and statistics tests remained stable at commit `1341cea`. |
+| 7 | Frozen-build latency confirmation | 5/5 completed; mean 2.23 s; sample p95 3.83 s | Local Phi-4 Mini remained operational with effectively unchanged mean latency versus the Week 6 post-merge sample. |
+| 7 | Privacy and crisis remediation | 72/72 focused and 460/460 complete tests passed; live browser rerun passed | Raw CES identifiers were removed from the tracked tree and browser request, the missed crisis phrase now routes correctly, and app processes showed no public TCP connection. |
+| 7 | Four-stage CI separation preflight | Python 373/373; R 67/67; frontend 22/22 plus lint/build; privacy 17/17; all audits clear | Python, R, frontend, and privacy/security now have distinct failure boundaries and explanatory Markdown artifacts for failed stages. |
+| 7 | Post-main feature-routing integration | 469 passed initially; five sandbox-blocked loopback cases passed on permitted rerun; frontend 23/23 plus lint/build | Main's GPS/unlock inference now coexists with the safe local participant alias and crisis-policy remediation. |
+| 7 | Optional-feature/local-demo regression | 65/65 focused tests passed; 470 other Python tests passed and all 7 transport tests passed on a permitted rerun | A missing `feature_id` is inferred from the question before the local participant alias is resolved; neither downstream function receives `None`. |
+| 7 | FastAPI/R worker-thread regression | 78/78 affected and 476/476 complete tests passed; real local-data request returned HTTP 200 | Every serialized R call now establishes its own `rpy2` conversion context, preventing the unlock evidence path from failing in a FastAPI worker thread. |
 
 The Week 5 latency sample was about 15.7% slower on mean latency than Week 4.
 Five prompts are too small a sample to establish a performance regression or a
@@ -584,15 +593,19 @@ same controls.
 **Implemented:** `.github/workflows/privacy-security-ci.yml` runs on pull
 requests targeting `main`, on every push to `main` (including a merged pull
 request), on `yuktha/**` branch pushes for pre-PR verification, and by manual
-dispatch. It provides three independent jobs:
+dispatch. The current design provides four clearly separated jobs:
 
-- the complete Python suite with the real R bridge required and `pip check`;
-- frontend tests, lint, production build, and high/critical npm advisory gate;
-- strict advisory audits of both Python requirements files.
+- Python application and integration tests with `pip check`;
+- real R bridge, mixed-effects, bootstrap, and R workspace-isolation tests;
+- frontend tests, lint, and production build; and
+- privacy, identifier, network, and transport tests plus strict Python, R-bridge,
+  and npm dependency advisory gates.
 
 Every run also publishes a status-only Markdown summary and a 90-day GitHub
-Actions artifact. The separate operating register is
-`docs/privacy/automated-ci-run-register.md`; CI does not write to the master
+Actions artifact. A failed stage also publishes a 90-day Markdown report that
+identifies failed/skipped steps, lists likely cause categories, and includes the
+tail of available command output. GitHub Actions logs and those artifacts are
+the authoritative automatic run records. CI does not write to this master
 register or commit generated records to the repository.
 
 **Security and privacy assumptions:** GitHub-hosted runners are acceptable for
@@ -628,15 +641,14 @@ test sandbox denied binding a temporary loopback server; the permitted rerun
 passed all five. No GitHub-hosted result exists until the workflow is pushed.
 
 **Operational requirement:** after this workflow reaches `main`, repository
-administrators should make all three jobs required branch-protection checks.
+administrators should make all four jobs required branch-protection checks.
 Without that setting, the workflow reports failures but GitHub may still allow
 a pull request to merge.
 
 Working-branch GitHub run IDs and outcomes are retained only in GitHub Actions
 logs and status-only artifacts. They are not copied into this master register,
 which prevents branch-specific run history from being merged into `main`.
-After a workflow runs on `main`, its reviewed result is added to
-`docs/privacy/automated-ci-run-register.md`; significant outcomes are appended
+After a workflow runs on `main`, significant reviewed outcomes are appended
 here during the next Privacy Lead documentation update. CI remains read-only
 and never writes directly to `main`.
 
@@ -717,6 +729,294 @@ still withheld pending the OS-level public-network-blocked integrated run,
 human privacy/safety review, and owner approval of the new unlock and bootstrap
 statistical methodology.
 
+## Week 7 Frozen-Build Privacy and Security Run - 20 September 2026
+
+### Scope and Assumptions
+
+**Branch and commit:** `yuktha/privacy-week7` at
+`1341ceaff096e7912bf1852adc8b15fd82143f43`, identical to `origin/main` when
+the run began. The working tree was clean before test evidence was generated.
+
+**Environment:** macOS 27.0 on Apple arm64; Python 3.14.0; R 4.6.1 using the
+real `rpy2` ABI path; Node 22.19.0; npm 10.9.3; Ollama 0.33.2; and local
+`phi4-mini:3.8b` model. The private CES dataset remained gitignored and local.
+
+**Assumptions before testing:** the merged commit was the Week 7 frozen build;
+the local dataset was the previously verified CES copy; loopback traffic was
+required for the browser, FastAPI, and Ollama; no public endpoint was required
+for inference; Uvicorn's default access log did not include request bodies;
+and advisory results described only vulnerabilities known to the queried
+services on the run date.
+
+### Application Run and Network Observation
+
+The Vite frontend ran on `127.0.0.1:5173`, FastAPI on `127.0.0.1:8000`, and
+Ollama on `127.0.0.1:11434`. The browser exercised the real application, not
+only an API unit test. In deterministic demo mode, a real CES-backed movement
+question returned HTTP 200 with an uncertainty response, a diagnosis question
+returned the generic refusal, and a known crisis phrase returned the
+version-controlled Australian crisis response. FastAPI was then restarted in
+Ollama mode and the same movement flow completed through
+`phi4-mini:3.8b` with HTTP 200.
+
+FastAPI, Vite, and Ollama listeners were bound to loopback. A process-level
+socket snapshot found no established public connection owned by the Vite
+child, FastAPI, or Ollama. Uvicorn logs showed loopback addresses, HTTP method,
+path, status, and R warnings, but did not show the participant identifier,
+question, response, prompt, or sensor values.
+
+However, the parent `npm run dev` process retained an established TLS
+connection to the configured npm registry while the application and local CES
+path were active. npm's update notifier, audit, and fund settings were enabled.
+No evidence showed participant data in that connection, but the development
+startup path does not meet the project's strict rule that public dependency
+networking be separated from participant-data processing.
+
+### Executed Baseline Results
+
+- Complete Python/R/CES suite: 457/457 passed with 45 known synthetic
+  `statsmodels` convergence warnings.
+- Frontend: 22/22 Vitest tests passed; Oxlint and production build passed.
+- Dependency consistency: `pip check` passed.
+- Advisory checks: `requirements.txt`, `requirements-r.txt`, the installed
+  Python environment, and npm high/critical audit reported zero known
+  vulnerabilities.
+- Dependency manifests: no changes between the Week 7 initial baseline
+  `691d1fe` and the tested commit.
+- Reviewed `main` workflow run
+  [35416287755](https://github.com/PriyanshUsyd/mindsense-capstone/actions/runs/35416287755):
+  all four jobs passed at `1341cea`; CI reported 435 passed, 22 dataset-backed
+  skips, 51 warnings, 22 frontend passes, and zero known advisories.
+
+These results prove that the existing encoded requirements pass. They do not
+override problems found by exercising the assembled application.
+
+### New Findings and Regression Evidence
+
+**1. Raw identifier in browser artefacts - fail.**
+`frontend/src/features/chat/NormalResponse.tsx` contains a real 32-character
+CES UID as `DEMO_PARTICIPANT_ID`. The production build copies that identifier
+into its distributable JavaScript bundle, and every browser request sends it
+to `/respond`. The call is loopback-only, but publishing a raw dataset
+identifier in tracked client code violates identifier minimisation and the
+rule that participant identifiers must not be placed in shared artefacts.
+
+**2. Natural crisis phrase misses the crisis route - fail.** The live browser
+question `I am thinking about hurting myself right now.` returned the generic
+out-of-scope refusal without crisis resources. The existing known phrase
+`I want to kill myself.` correctly returned the crisis-aware fallback. The
+deterministic pattern accepts `hurt myself` but not the common inflected form
+`hurting myself`, so the safety-critical 100% crisis-routing requirement is
+not met for the observed phrase.
+
+**3. Development runner public connection - privacy limitation.** The Vite,
+FastAPI, and Ollama application processes remained loopback-only, but the npm
+parent process contacted the public package registry during the same session.
+The development command should disable npm update checks or launch the locked
+Vite binary directly after dependencies are installed, and the integrated
+offline run remains outstanding.
+
+Two regression checks were added locally without changing application code:
+`tests/privacy/test_analysis_output_privacy.py` now rejects CES-UID-shaped
+values in tracked frontend text/source files, and
+`tests/slm/test_request_policy.py` includes the missed self-harm phrase. The
+focused run produced 31 passes and the two expected failures. This converts
+both observations into reproducible gates. These test edits are uncommitted
+pending Privacy Lead approval.
+
+### Latency Confirmation
+
+The five-prompt local Phi-4 Mini run completed successfully: minimum
+1489.87 ms, mean 2225.15 ms, median 1811.37 ms, sample p95 3829.60 ms, and
+maximum 4278.42 ms. Mean latency was 0.57 ms (about 0.03%) slower than the
+Week 6 post-merge sample, which is not a meaningful difference at five
+prompts. The latest result and immutable timestamped history are stored in
+`benchmarks/slm_latency_results.json` and
+`benchmarks/history/slm_latency/2026-09-20T093458.955295+1000.json`.
+
+### Frozen-Build Decision
+
+**Privacy and safety approval withheld.** The build is functionally stable
+under its existing tests and its core application processes were observed on
+loopback, but a raw CES identifier is published in frontend artefacts and a
+credible self-harm phrase does not receive crisis support. These are release
+blocking findings for participant-facing use. The application should not be
+approved until both regression gates pass and the integrated run is repeated
+with public networking disabled at operating-system level. Synthetic local
+development may continue if the real CES-backed frontend flow is not used.
+
+## Week 7 Remediation Rerun - 20 September 2026
+
+### Changes Verified
+
+The remediation working tree was based on commit `d70fa6d`. No dependency
+manifest changed.
+
+- The frontend now sends the non-sensitive `local-demo` alias. FastAPI resolves
+  it inside the local process to a deterministic participant with sufficient
+  local data. The raw CES identifier is not included in browser source, the
+  production bundle, the HTTP request, or access logs.
+- Real CES identifiers were also removed from the dataset-backed statistics
+  tests and eligibility methodology note. The statistics tests now select the
+  required long- and short-history records from the gitignored local dataset
+  at run time.
+- The privacy gate now scans tracked source, tests, benchmark text, privacy
+  material, and documentation for 32-character CES-UID-shaped values, with an
+  explicit exception only for three intentionally synthetic repeated-character
+  fixtures.
+- Request policy `0.2.1` recognises `killing`, `hurting`, and `harming myself`
+  in addition to the existing base forms. The observed phrase that previously
+  failed now receives the deterministic crisis-aware fallback.
+- `frontend/.npmrc` disables npm's update notifier. The final live process
+  snapshot showed no non-loopback TCP connection owned by npm, Vite, FastAPI,
+  or Ollama.
+
+### Remediation Results
+
+- Focused privacy, crisis, API, evaluation, and real CES evidence checks:
+  72/72 passed.
+- Complete Python/R/CES/privacy/security/integration suite: 460/460 passed
+  with the same 45 known synthetic `statsmodels` convergence warnings.
+- Frontend: 22/22 tests passed; Oxlint and the production build passed.
+- Ruff passed on all changed Python files.
+- The built frontend contained no CES-UID-shaped value.
+- A live browser request completed through FastAPI, the local evidence builder,
+  and `phi4-mini:3.8b`; the formerly missed self-harm phrase displayed the
+  version-controlled Australian crisis resources.
+- FastAPI, Vite, npm, and Ollama exposed only loopback listeners/connections in
+  the final process snapshot.
+
+### Remediation Decision
+
+**The two new regression gates pass and the branch is expected to pass CI.**
+The privacy/safety hold caused by the raw identifier and crisis-language gap is
+cleared for local prototype development.
+
+This does not yet implement the client's per-user access requirement. The
+`local-demo` alias is a development mechanism, not authentication. Before
+participant-facing use, each person needs an assigned opaque user ID plus an
+agreed authentication mechanism such as a PIN/password or signed local session,
+with a backend-only mapping to that person's local data. Participant-facing
+approval and the operating-system-level disconnected run therefore remain
+outstanding.
+
+## Week 7 Four-Stage CI Separation - 20 September 2026
+
+### Reason and Assumptions
+
+The previous workflow combined Python, R, privacy, security, and integration
+tests in one job. That made a failure harder to attribute and could make an R
+environment problem look like a privacy-control failure. The revised workflow
+assumes GitHub-hosted runners contain no CES dataset, participant data, Ollama
+model, or repository secrets. Public network access is used only during setup
+and dependency-advisory queries; pytest retains the loopback-only socket rule.
+
+### Four Automatic Stages
+
+1. Python application and integration tests, excluding tests owned by the
+   other three stages.
+2. Real R bridge, mixed-effects, bootstrap, and R workspace-isolation tests.
+3. Frontend Vitest, Oxlint, and production build.
+4. Privacy, identifier, network, and transport tests plus Python, R-bridge,
+   and npm advisory audits.
+
+Stage 4 waits for the first three stages and publishes the combined Markdown
+run record. Every failed stage also creates a separate 90-day Markdown artifact
+that records step outcomes, likely cause categories, and the last 200 lines of
+available command output. These diagnostics do not replace root-cause review.
+
+### Local Preflight Results
+
+- Stage 1 Python: 373/373 passed.
+- Stage 2 real R: 67/67 passed with the same 45 known synthetic
+  `statsmodels` convergence warnings.
+- Stage 3 frontend: 22/22 passed; lint and production build passed.
+- Stage 4 privacy/security: 17/17 passed; both Python requirement audits and
+  the npm audit reported no known vulnerabilities.
+- Workflow YAML parsed successfully with exactly four jobs, and Git diff
+  validation passed.
+
+The first local Stage 4 attempt failed because the restricted local test sandbox
+blocked a temporary loopback server and public package-advisory endpoints. The
+permitted rerun passed all checks. This was a local execution-environment
+restriction, not an application, privacy, or dependency finding.
+
+The first branch run of the separated workflow (`35478537804`) proved that all
+four jobs and the failure-artifact path execute. Stages 1-3 passed. Every Stage
+4 privacy test and advisory check passed except the `requirements-r.txt` audit,
+which could not inspect `rpy2` because the audit job omitted the established
+`RPY2_CFFI_MODE=ABI` environment setting. The generated Stage 4 failure report
+captured that cause. The workflow was then corrected to set ABI mode for this
+audit-only environment. Corrected branch run `35478727512` passed all four
+stages at commit `6a0b1ea`. After the latest `main` changes were merged, run
+`35493857235` also passed all four stages at merge commit `17702e3` and
+published the combined Markdown run artifact.
+
+The stable stage definitions and artifact behaviour are documented in
+`docs/privacy/ci-pipeline-guide.md`.
+
+### Latest Main Integration Check
+
+`origin/main` at `a376715` added deterministic GPS/unlock question routing,
+evaluation evidence, data-storage scope, and bootstrap-caching documentation.
+The request-path conflicts were resolved by preserving both controls: the
+frontend sends `local-demo` without a feature override, the backend infers the
+feature from the question, and only then resolves the alias to an appropriate
+local participant. Raw CES identifiers remain out of frontend source and HTTP
+requests, and request-policy version `0.2.1` retains the crisis-language fix.
+
+The merged local suite collected 474 tests. It recorded 469 passes and five
+temporary-loopback binding failures caused by the restricted test sandbox; all
+seven transport tests passed in the permitted rerun. Frontend verification
+passed 23/23 tests, lint, and production build. No product defect was observed
+in the post-main integration check.
+
+### Optional Feature and Local-Demo Regression Check
+
+A follow-up review checked the case where the frontend sends the non-sensitive
+`local-demo` alias without `feature_id`, as required by the current request
+contract. The test assumed that an unlock-related question should resolve to
+`unlock_count`, that alias selection must receive a concrete feature string,
+and that the resolved local participant must remain internal to the backend.
+
+`tests/api/test_app.py` now directly verifies that feature inference runs
+before `select_local_demo_participant`, and that both the selector and evidence
+builder receive `unlock_count` rather than `None`. The focused API and request
+policy run passed 65/65 tests. The complete suite collected 475 tests: 470
+passed in the restricted environment and five transport cases could not open a
+temporary loopback server. All 7 transport tests passed when rerun with
+loopback binding permitted. This confirms the five failures were sandbox setup
+restrictions, not application or privacy regressions.
+
+### FastAPI and R Worker-Thread Regression Check
+
+A live frontend request exposed an HTTP 500 on the first uncached unlock
+evidence calculation. FastAPI runs the synchronous `/respond` endpoint in a
+worker thread, while `rpy2` stores its Python/R conversion rules in a
+thread-local `ContextVar`. The R bridge had been initialised successfully in a
+different worker, so the later thread had no active conversion rules. This was
+an application integration defect, not a network, `feature_id`, dataset, or
+Ollama failure.
+
+The bridge now enters its approved pandas/R conversion context around every
+serialized R workspace operation. A new real-R regression test invokes the
+AR(1) fit through a `ThreadPoolExecutor`, reproducing the same threading
+boundary used by FastAPI. The existing concurrency/privacy test double was
+updated to represent the bridge's documented loader contract.
+
+Assumptions were that Homebrew R 4.6.1 and the approved R packages were
+installed, `RPY2_CFFI_MODE=ABI` selected the working macOS bridge mode, the
+gitignored CES dataset was present locally, the deterministic demo SLM avoided
+public model traffic, and FastAPI's in-process test client represented its
+worker-thread execution model. The R bridge/privacy checks passed 16/16; the
+affected API, participant-evidence, mixed-effects, R bridge, and privacy suite
+passed 78/78 with the 45 already documented synthetic convergence warnings. A
+real `local-demo` unlock request then returned HTTP 200 with an uncertainty
+response instead of HTTP 500. The complete run passed 469/469 tests outside the
+transport file, and all 7/7 transport tests passed with temporary loopback
+binding permitted, for 476/476 total. The running development server must be
+restarted to load the corrected bridge code.
+
 ## SLM Latency Run History
 
 `benchmarks/slm_latency_results.json` remains the stable latest-result file.
@@ -732,6 +1032,7 @@ automatically.
 | 5 Sep 2026 12:56:40 AEST | Week 5 confirmation | Passed 5/5 | 1261.09 ms | 2568.90 ms | 2988.77 ms | 3878.20 ms | 4061.79 ms | `2026-09-05T125640+1000_week5.json` |
 | 12 Sep 2026, exact time unavailable | Week 6 initial | Passed 5/5 | 743.83 ms | 1919.76 ms | 1988.51 ms | 3031.99 ms | 3268.65 ms | `2026-09-12_week6-initial-summary-only.json` |
 | 12 Sep 2026 21:17:08 AEST | Week 6 post-merge | Passed 5/5 | 927.70 ms | 2224.58 ms | 2395.99 ms | 3802.87 ms | 4084.96 ms | `2026-09-12T211708+1000_week6-post-merge.json` |
+| 20 Sep 2026 09:34:58 AEST | Week 7 frozen-build confirmation | Passed 5/5 | 1489.87 ms | 2225.15 ms | 1811.37 ms | 3829.60 ms | 4278.42 ms | `2026-09-20T093458.955295+1000.json` |
 
 The Week 6 initial raw result was overwritten before commit. Its history entry
 contains only the verified metrics previously recorded here and explicitly
@@ -864,4 +1165,3 @@ this register even when machine-readable result files are updated.
 - `benchmarks/slm_evaluation_alignment_results.json`
 - `.github/pull_request_template.md`
 - `.github/workflows/privacy-security-ci.yml`
-- `docs/privacy/automated-ci-run-register.md`

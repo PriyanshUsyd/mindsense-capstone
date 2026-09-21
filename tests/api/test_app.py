@@ -220,6 +220,75 @@ def test_respond_builds_the_real_packet_server_side_not_from_the_client(monkeypa
     assert "3.8" in body["text"] or "3.80" in body["text"]
 
 
+def test_respond_resolves_the_local_demo_alias_only_inside_the_backend(monkeypatch):
+    fixture_packet = _load_packet("week5_gps_eligible.json")
+    built_for: list[tuple[str, str]] = []
+
+    monkeypatch.setattr(
+        "backend.api.app.select_local_demo_participant",
+        lambda feature_id="gps_distance": "resolved-local-participant",
+    )
+
+    def fake_build_evidence_packet(
+        participant_id: str, feature_id: str = "gps_distance"
+    ):
+        built_for.append((participant_id, feature_id))
+        return fixture_packet
+
+    monkeypatch.setattr(
+        "backend.api.app.build_evidence_packet", fake_build_evidence_packet
+    )
+    client = TestClient(create_app())
+
+    resp = client.post(
+        "/respond",
+        json={
+            "participant_id": "local-demo",
+            "question": "How was my movement different from my recent baseline?",
+            "feature_id": "gps_distance",
+        },
+    )
+
+    assert resp.status_code == 200
+    assert built_for == [("resolved-local-participant", "gps_distance")]
+    assert "resolved-local-participant" not in resp.text
+
+
+def test_respond_infers_feature_before_resolving_the_local_demo_alias(monkeypatch):
+    fixture_packet = _load_packet("week5_gps_eligible.json")
+    selected_for: list[str] = []
+    built_for: list[tuple[str, str]] = []
+
+    def fake_select_local_demo_participant(feature_id: str) -> str:
+        selected_for.append(feature_id)
+        return "resolved-local-participant"
+
+    def fake_build_evidence_packet(participant_id: str, feature_id: str):
+        built_for.append((participant_id, feature_id))
+        return fixture_packet
+
+    monkeypatch.setattr(
+        "backend.api.app.select_local_demo_participant",
+        fake_select_local_demo_participant,
+    )
+    monkeypatch.setattr(
+        "backend.api.app.build_evidence_packet", fake_build_evidence_packet
+    )
+    client = TestClient(create_app())
+
+    resp = client.post(
+        "/respond",
+        json={
+            "participant_id": "local-demo",
+            "question": "How has my phone-unlock activity changed?",
+        },
+    )
+
+    assert resp.status_code == 200
+    assert selected_for == ["unlock_count"]
+    assert built_for == [("resolved-local-participant", "unlock_count")]
+
+
 def test_respond_selects_a_manifest_model_only_in_ollama_mode(monkeypatch):
     fixture_packet = _load_packet("week5_gps_eligible.json")
     selected: list[str | None] = []

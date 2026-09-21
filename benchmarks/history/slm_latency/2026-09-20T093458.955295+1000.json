@@ -1,0 +1,60 @@
+{
+  "timestamp_local": "2026-09-20 09:34:58 AEST",
+  "timestamp_utc": "2026-09-19T23:34:58.955295Z",
+  "history_file": "benchmarks/history/slm_latency/2026-09-20T093458.955295+1000.json",
+  "environment": {
+    "python": "3.14.0",
+    "platform": "macOS-27.0-arm64-arm-64bit-Mach-O",
+    "machine": "arm64",
+    "processor": "arm",
+    "ollama_path": "/usr/local/bin/ollama",
+    "llama_cli_path": null
+  },
+  "status": "ok",
+  "benchmark": {
+    "provider": "ollama",
+    "model": "phi4-mini:3.8b",
+    "url": "http://127.0.0.1:11434/api/generate",
+    "cmd": null,
+    "runs": 5,
+    "latency_ms": {
+      "min": 1489.87,
+      "mean": 2225.15,
+      "median": 1811.37,
+      "p95": 3829.6,
+      "max": 4278.42
+    },
+    "outputs": [
+      {
+        "prompt_index": 1,
+        "latency_ms": 1511.75,
+        "output_chars": 162,
+        "output_preview": "Cautious summary: The user's sleep duration has decreased from their baseline, with no change in activity levels and moderate confidence in the observed pattern"
+      },
+      {
+        "prompt_index": 2,
+        "latency_ms": 1811.37,
+        "output_chars": 259,
+        "output_preview": "To provide the most accurate and helpful response, I would need more context or details about the specific topic or issue you're interested in. Could you please"
+      },
+      {
+        "prompt_index": 3,
+        "latency_ms": 1489.87,
+        "output_chars": 216,
+        "output_preview": "I'm sorry, but I can't assist with diagnosing issues based on sensor data. It's important to consult a qualified professional for an accurate diagnosis and appr"
+      },
+      {
+        "prompt_index": 4,
+        "latency_ms": 2034.34,
+        "output_chars": 313,
+        "output_preview": "We appreciate your interest in tracking your sleep patterns! While we currently don't have specific activity data for you, we can still share insights based on "
+      },
+      {
+        "prompt_index": 5,
+        "latency_ms": 4278.42,
+        "output_chars": 578,
+        "output_preview": "In the event of a local model failure, please be assured that our team is actively working on resolving the issue. We apologize for any inconvenience this may c"
+      }
+    ]
+  }
+}
