@@ -64,6 +64,13 @@ export function AppShell({
           </span>
         </div>
 
+        <div className="sidebar-spirit" aria-hidden="true">
+          <span className="sidebar-spirit__glow" />
+          <BrandMark compact />
+          <span className="sidebar-spirit__leaf sidebar-spirit__leaf--one" />
+          <span className="sidebar-spirit__leaf sidebar-spirit__leaf--two" />
+        </div>
+
         <section className="privacy-card" aria-label="Privacy summary">
           <span className="privacy-check" aria-hidden="true">
             ✓
@@ -99,6 +106,9 @@ export function AppShell({
         </header>
 
         <section className="wellbeing-banner" aria-label="MindSense wellbeing reminder">
+          <span className="floating-leaf floating-leaf--one" aria-hidden="true" />
+          <span className="floating-leaf floating-leaf--two" aria-hidden="true" />
+          <span className="floating-leaf floating-leaf--three" aria-hidden="true" />
           <p className="wellbeing-banner__lead">
             <span>Same data.</span>
             <strong>A kinder you.</strong>
