@@ -4,10 +4,10 @@ React 19 + TypeScript 6, built with **Vite 8**. Owned by the Conversational
 Interface Lead (Sheng Wang) — see `skills/frontend-react.md` and
 `docs/ui/chat-states-design.md`.
 
-**Status (2026-09-07):** Week 5 UI merged in PR #10. The Week 6 normal-chat
-flow retains prior turns, accepts follow-up questions, and calls the same local
-`/respond` contract for every turn. FastAPI can now be launched with Richard's
-manifest-pinned Ollama service instead of the deterministic demo client.
+**Status (2026-09-22):** The Week 8 UI hardening pass keeps the local end-to-end
+chat flow, removes obsolete synthetic-evidence placeholders, distinguishes
+transport failures from handled backend failures, and refreshes the visual
+system without changing Richard's response text or safety decisions.
 
 ## Rules (do not deviate — see skills/frontend-react.md and build-reference.md)
 
@@ -54,6 +54,9 @@ ollama pull phi4-mini:3.8b
 MINDSENSE_SLM_RUNTIME=ollama python -m uvicorn backend.api.app:app --reload
 ```
 
-The frontend posts `{ evidence_packet, question }` to
-`http://127.0.0.1:8000/respond`. Its bundled demonstration packet is explicitly
-labelled synthetic in the UI.
+The frontend posts `{ participant_id, question }` to
+`http://127.0.0.1:8000/respond`. `feature_id` is an optional override; when it is
+omitted, the backend infers the feature from the question. Evidence is built
+from the approved local dataset by the backend and is never assembled in the
+browser. Until the response contract returns a structured evidence summary,
+the UI shows the validated response text without inventing numeric cards.

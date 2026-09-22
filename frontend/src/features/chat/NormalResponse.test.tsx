@@ -90,7 +90,7 @@ describe('NormalResponse', () => {
     expect(screen.getByRole('button', { name: /ask mindsense/i })).toBeDisabled()
   })
 
-  it('renders the fully wired normal state with evidence provenance', async () => {
+  it('renders the normal state without inventing unavailable evidence fields', async () => {
     const user = userEvent.setup()
     mockedRespond.mockResolvedValueOnce(NORMAL_RESPONSE)
 
@@ -100,24 +100,39 @@ describe('NormalResponse', () => {
     expect(await screen.findByText(NORMAL_RESPONSE.text)).toBeInTheDocument()
     expect(document.querySelector('[data-response-mode="normal"]')).toBeInTheDocument()
     expect(screen.getAllByText('Normal response')).toHaveLength(2)
-    expect(screen.getByText('Synthetic demo data')).toBeInTheDocument()
-    expect(screen.getAllByText('see response text').length).toBeGreaterThan(0)
-    expect(screen.getByText(/does not infer one/i)).toBeInTheDocument()
-    expect(screen.getByText(/does not yet echo them back/i)).toBeInTheDocument()
+    expect(screen.getByText('Local evidence response')).toBeInTheDocument()
+    expect(screen.getByText(/an observation from your local data/i)).toBeInTheDocument()
+    expect(screen.queryByText('Synthetic demo data')).not.toBeInTheDocument()
+    expect(screen.queryByText('see response text')).not.toBeInTheDocument()
   })
 
-  it('renders a recoverable local-only fallback when the API is unreachable', async () => {
+  it('reports a handled server failure as local processing failure, not unreachable', async () => {
     const user = userEvent.setup()
-    mockedRespond.mockRejectedValueOnce(new RespondError('request failed with status 503', 503))
+    mockedRespond.mockRejectedValueOnce(new RespondError('request failed with status 500', 500))
 
     render(<NormalResponse />)
     await user.click(screen.getByRole('button', { name: /ask about my recent movement/i }))
 
     const alert = await screen.findByRole('alert')
-    expect(alert).toHaveTextContent('request failed with status 503')
+    expect(alert).toHaveTextContent('HTTP 500: request failed with status 500')
+    expect(alert).toHaveTextContent('received your request but could not complete it safely')
     expect(alert).toHaveAttribute('data-response-mode', 'generic_fallback')
+    expect(screen.getByText('Local processing failed')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /try again/i })).toBeEnabled()
     expect(screen.getByRole('button', { name: /ask mindsense/i })).toBeEnabled()
+  })
+
+  it('reports a network error as an unreachable local service', async () => {
+    const user = userEvent.setup()
+    mockedRespond.mockRejectedValueOnce(new TypeError('Failed to fetch'))
+
+    render(<NormalResponse />)
+    await user.click(screen.getByRole('button', { name: /ask about my recent movement/i }))
+
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('could not reach the local response service')
+    expect(alert).toHaveTextContent('Local API: Failed to fetch')
+    expect(screen.getByText('Local service unavailable')).toBeInTheDocument()
   })
 
   it('handles a non-Error rejection without exposing an empty state', async () => {
