@@ -111,6 +111,12 @@ DEFAULT_CRISIS_FALLBACK = (
 DEFAULT_INSUFFICIENT_DATA_TEMPLATE = (
     Path(__file__).resolve().parent / "prompts" / "insufficient_data.yaml"
 )
+DEFAULT_SCOPE_FALLBACK = (
+    Path(__file__).resolve().parent / "prompts" / "request_scope.yaml"
+)
+DEFAULT_WINDOW_FALLBACK = (
+    Path(__file__).resolve().parent / "prompts" / "unsupported_window.yaml"
+)
 
 
 def load_evidence_prompt(

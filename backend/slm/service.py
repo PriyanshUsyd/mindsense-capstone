@@ -18,6 +18,8 @@ from backend.slm.client import (
 from backend.slm.prompt_loader import (
     DEFAULT_CRISIS_FALLBACK,
     DEFAULT_INSUFFICIENT_DATA_TEMPLATE,
+    DEFAULT_SCOPE_FALLBACK,
+    DEFAULT_WINDOW_FALLBACK,
     LoadedFallbackPrompt,
     load_fallback_prompt,
 )
@@ -26,6 +28,7 @@ from backend.slm.request_policy import (
     RequestDisposition,
     RequestPolicyDecision,
     classify_request,
+    request_scope_rejection,
 )
 from backend.slm.response_health import ResponseHealthReport, check_response_health
 from backend.slm.safety_gate import validate_draft
@@ -82,6 +85,8 @@ class SLMService:
             insufficient_data_template
             or load_fallback_prompt(DEFAULT_INSUFFICIENT_DATA_TEMPLATE)
         )
+        self.scope_fallback = load_fallback_prompt(DEFAULT_SCOPE_FALLBACK)
+        self.window_fallback = load_fallback_prompt(DEFAULT_WINDOW_FALLBACK)
         if (
             self.generic_fallback.manifest.response_mode
             != ResponseMode.GENERIC_FALLBACK
@@ -116,6 +121,12 @@ class SLMService:
             EligibilityStatus.INELIGIBLE_INSUFFICIENT_BASELINE,
         }:
             return self._insufficient_data_response(request_decision)
+
+        scope_reason = request_scope_rejection(
+            question, feature_id=packet.feature_window.feature_id
+        )
+        if scope_reason:
+            return self._scope_response(request_decision, scope_reason)
 
         try:
             generation = self.client.generate_draft(packet, question)
@@ -187,13 +198,51 @@ class SLMService:
 
         return check_response_health(packet)
 
-    def preflight_response(self, question: str) -> SafeSLMResponse | None:
+    def preflight_response(
+        self,
+        question: str,
+        *,
+        feature_id: str | None = None,
+        require_feature: bool = False,
+    ) -> SafeSLMResponse | None:
         """Route deterministic policy cases before participant data is loaded."""
 
         decision = classify_request(question)
-        if decision.disposition == RequestDisposition.ALLOW:
-            return None
-        return self._policy_response(decision)
+        if decision.disposition != RequestDisposition.ALLOW:
+            return self._policy_response(decision)
+        scope_reason = request_scope_rejection(
+            question, feature_id=feature_id, require_feature=require_feature
+        )
+        return self._scope_response(decision, scope_reason) if scope_reason else None
+
+    def context_unavailable_response(self, question: str) -> SafeSLMResponse:
+        """Safe public boundary for failed retrieval, tools or context validation."""
+
+        preflight = self.preflight_response(question)
+        if preflight is not None:
+            return preflight
+        return self._fallback(
+            "approved_context_unavailable",
+            request_decision=classify_request(question),
+            model_invoked=False,
+        )
+
+    def _scope_response(
+        self, decision: RequestPolicyDecision, reason: str
+    ) -> SafeSLMResponse:
+        template = (
+            self.window_fallback
+            if reason == "unsupported_time_window"
+            else self.scope_fallback
+        )
+        return self._fallback(
+            reason, request_decision=decision, model_invoked=False
+        ).model_copy(
+            update={
+                "text": template.manifest.text,
+                "fallback_prompt_sha256": template.sha256,
+            }
+        )
 
     def evidence_unavailable_response(self, question: str) -> SafeSLMResponse:
         """Fail closed when the approved local evidence source cannot be read."""

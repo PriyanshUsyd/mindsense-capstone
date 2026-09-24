@@ -1,7 +1,6 @@
 import pytest
 
 from backend.slm.request_policy import (
-    DEFAULT_FEATURE_ID,
     REQUEST_POLICY_VERSION,
     RequestCategory,
     RequestDisposition,
@@ -153,7 +152,7 @@ def test_exact_evaluation_plan_diagnosis_question_stops_before_generation():
     )
     assert response.response_mode.value == "refusal"
     assert response.model_invoked is False
-    assert response.request_policy_version == REQUEST_POLICY_VERSION == "0.2.1"
+    assert response.request_policy_version == REQUEST_POLICY_VERSION == "0.3.0"
 
 
 # --- feature inference: which feature a question is actually about --------
@@ -199,19 +198,19 @@ def test_gps_related_questions_resolve_to_gps_distance(question):
         "",
     ],
 )
-def test_ambiguous_questions_fall_back_to_the_default_feature(question, caplog):
+def test_ambiguous_questions_do_not_select_a_default_feature(question, caplog):
     with caplog.at_level("WARNING"):
         feature_id = infer_feature_from_question(question)
 
-    assert feature_id == DEFAULT_FEATURE_ID == "gps_distance"
+    assert feature_id is None
     assert "feature_inference_ambiguous" in caplog.text
 
 
-def test_a_question_naming_both_features_falls_back_without_crashing(caplog):
+def test_a_question_naming_both_features_does_not_select_either(caplog):
     with caplog.at_level("WARNING"):
         feature_id = infer_feature_from_question(
             "Is my GPS distance related to how often I unlock my phone?"
         )
 
-    assert feature_id == DEFAULT_FEATURE_ID
+    assert feature_id is None
     assert "feature_inference_ambiguous" in caplog.text

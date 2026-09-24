@@ -225,6 +225,15 @@ acceptance; see `docs/slm/week6-integration-report.md`.
 
 ## 7. Privacy Architecture
 
+**Week 8 local SLM continuation:** request policy `0.3.0` adds deterministic
+feature/time-scope clarification and the paired-pilot diagnosis wording.
+An opt-in packet-bound context responder now consumes approved descriptive
+ContextItems; production source adapters and promotion remain owner-reviewed
+dependencies. Generation Prompt `0.4.13`, contract `1.0.0` and the model-selection
+status remain unchanged. See [implementation and verification](docs/slm/week8-safety-context-integration.md)
+and the [documentation-only prompting methodology](docs/slm/week8-prompting-methodology.md),
+including its separate planned multi-turn method and empty results tables.
+
 "No data leaves the local environment" is defined precisely, not left implicit:
 
 - No runtime network requests except the local Ollama daemon (bound to loopback only)
