@@ -3,7 +3,7 @@
 - Owner: Richard Zhao, SLM Integration Lead
 - Date: 24 September 2026
 - Base: `main@822214ca75e84279c21c9c04cda0a718976c00e9`
-- Branch: `Rz-week8` (local work; not published)
+- Review branch: `Rz-week8` (Draft; approved-source retrieval remains pending)
 
 ## Problem and resulting behaviour
 
@@ -138,10 +138,13 @@ Use an explicit test allow-list:
 
 Do not run broad `pytest tests`. The sealed integrity test is prohibited, and
 `tests/privacy/test_analysis_output_privacy.py` includes a tracked-text scanner
-that would indirectly read the sealed JSON. Neither was executed. Current PR CI
-also needs Integration/Privacy coordination before a PR is opened; its existing
-broad collection is not safe under the current restriction. No CI workflow is
-modified by this SLM work.
+that would indirectly read the sealed JSON. Neither was executed. The current
+Draft uses an explicitly approved `[skip ci]` marker on its publication commit
+because the existing PR workflow would run these prohibited readers. GitHub CI
+is **not run**, not passed; the local allow-list above passed again before push.
+The workflow, tests and merge requirements are unchanged. Integration/Privacy
+must agree a permitted CI scope before any later workflow run or commit without
+the skip marker. Keep the PR Draft pending the required checks and owner review.
 
 Functional smoke, using an existing manifest-pinned local model and a **new**
 output filename each time:
