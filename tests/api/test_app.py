@@ -363,10 +363,8 @@ def test_respond_rejects_unlisted_model_before_building_packet(monkeypatch):
     assert "pinned comparison candidates" in resp.json()["detail"]
 
 
-def test_respond_defaults_feature_id_to_gps_distance_when_omitted(monkeypatch):
-    """ "How am I doing?" matches neither feature's keywords, so with
-    feature_id omitted this exercises infer_feature_from_question's
-    ambiguous fallback, not a hardcoded default."""
+def test_respond_clarifies_when_feature_id_and_feature_words_are_absent(monkeypatch):
+    """Week 8: ambiguity must not silently select GPS or load participant data."""
     fixture_packet = _load_packet("week5_gps_eligible.json")
     calls: list[tuple[str, str]] = []
 
@@ -386,7 +384,9 @@ def test_respond_defaults_feature_id_to_gps_distance_when_omitted(monkeypatch):
     )
 
     assert resp.status_code == 200
-    assert calls == [("u42", "gps_distance")]
+    assert calls == []
+    assert resp.json()["rejection_reason"] == "ambiguous_feature_request"
+    assert resp.json()["model_invoked"] is False
 
 
 def test_respond_infers_unlock_count_from_an_unlock_question_when_feature_id_omitted(
@@ -413,7 +413,7 @@ def test_respond_infers_unlock_count_from_an_unlock_question_when_feature_id_omi
         "/respond",
         json={
             "participant_id": "u42",
-            "question": "How has my phone-unlock activity changed over the past couple of weeks?",
+            "question": "How has my phone-unlock activity changed in the observed window?",
         },
     )
 
@@ -421,9 +421,10 @@ def test_respond_infers_unlock_count_from_an_unlock_question_when_feature_id_omi
     assert calls == [("u42", "unlock_count")]
 
 
-def test_respond_honours_an_explicit_feature_id_over_inference(monkeypatch):
-    """An explicit feature_id (tooling/tests) still wins even when the
-    question text points elsewhere — inference only fills the gap."""
+def test_respond_rejects_an_explicit_feature_that_conflicts_with_the_question(
+    monkeypatch,
+):
+    """A selected feature cannot authorise an answer to a different question."""
     fixture_packet = _load_packet("week5_gps_eligible.json")
     calls: list[tuple[str, str]] = []
 
@@ -448,7 +449,8 @@ def test_respond_honours_an_explicit_feature_id_over_inference(monkeypatch):
     )
 
     assert resp.status_code == 200
-    assert calls == [("u42", "gps_distance")]
+    assert calls == []
+    assert resp.json()["rejection_reason"] == "feature_request_mismatch"
 
 
 def test_respond_returns_404_for_an_unknown_participant(monkeypatch):
@@ -466,7 +468,7 @@ def test_respond_returns_404_for_an_unknown_participant(monkeypatch):
 
     resp = client.post(
         "/respond",
-        json={"participant_id": "not-a-real-uid", "question": "How am I doing?"},
+        json={"participant_id": "not-a-real-uid", "question": "How is my GPS data?"},
     )
 
     assert resp.status_code == 404
@@ -482,7 +484,7 @@ def test_respond_returns_versioned_fallback_when_local_dataset_is_missing(monkey
 
     resp = client.post(
         "/respond",
-        json={"participant_id": "u42", "question": "What changed?"},
+        json={"participant_id": "u42", "question": "What changed in my GPS data?"},
     )
 
     assert resp.status_code == 200

@@ -167,8 +167,9 @@ class RespondRequest(BaseModel):
     `feature_id` is now optional; when a caller omits it, `/respond` infers
     the feature from the question via
     `backend.slm.request_policy.infer_feature_from_question`. A caller that
-    still sends an explicit `feature_id` (tooling, tests) keeps full
-    control — inference only fills the gap when none is given."""
+    sends an explicit `feature_id` can scope a contextual question. Week 8
+    preflight rejects ambiguous or conflicting feature requests and explicit
+    time ranges before loading participant data; no GPS default is guessed."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -258,7 +259,9 @@ def create_app(
             request_service = service_for(payload.model_tag)
         except ValueError as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
-        preflight = request_service.preflight_response(payload.question)
+        preflight = request_service.preflight_response(
+            payload.question, feature_id=payload.feature_id, require_feature=True
+        )
         if preflight is not None:
             return preflight
 
@@ -267,9 +270,7 @@ def create_app(
             participant_id = payload.participant_id
             if participant_id == LOCAL_DEMO_PARTICIPANT_ALIAS:
                 participant_id = select_local_demo_participant(feature_id)
-            packet = build_evidence_packet(
-                participant_id, feature_id=feature_id
-            )
+            packet = build_evidence_packet(participant_id, feature_id=feature_id)
         except UnknownParticipant as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         except UnknownFeature as exc:

@@ -1,5 +1,10 @@
 # Week 7 SLM Variant Interface and Comparison Plan
 
+> Week 8 continuation: [safety and context integration](week8-safety-context-integration.md)
+> adds an opt-in packet-bound responder and synthetic functional verification.
+> Production retrieval/tool sources and owner acceptance remain pending. The
+> dated Week 7 implementation and test records below are historical snapshots.
+
 - Owner: Richard Zhao, SLM Integration Lead
 - Date: 2026-09-15; updated 2026-09-18 (Australia/Sydney)
 - Branch: `Rz-week7`
