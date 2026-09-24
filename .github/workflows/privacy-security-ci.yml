@@ -9,6 +9,23 @@ on:
       - main
       - "yuktha/**"
   workflow_dispatch:
+    inputs:
+      validation_scope:
+        description: "sealed-excluded is development validation, not full acceptance"
+        required: true
+        type: choice
+        default: sealed-excluded
+        options:
+          - sealed-excluded
+          - full
+
+run-name: Privacy and Security CI (${{ github.event_name == 'workflow_dispatch' && (inputs.validation_scope || 'sealed-excluded') || 'full' }})
+
+env:
+  MINDSENSE_CI_SCOPE: ${{ github.event_name == 'workflow_dispatch' && (inputs.validation_scope || 'sealed-excluded') || 'full' }}
+  MINDSENSE_CI_SPARSE_PATHS: |
+    /*
+    !/tests/evaluation/held_out/
 
 permissions:
   contents: read
@@ -33,6 +50,8 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           persist-credentials: false
+          sparse-checkout: ${{ env.MINDSENSE_CI_SCOPE != 'full' && env.MINDSENSE_CI_SPARSE_PATHS || '' }}
+          sparse-checkout-cone-mode: false
 
       - name: Set up Python 3.14
         id: setup-python
@@ -66,7 +85,16 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          python -m pytest -ra \
+          scope_args=()
+          case "$MINDSENSE_CI_SCOPE" in
+            sealed-excluded)
+              scope_args+=(--ignore=tests/evaluation/held_out)
+              scope_args+=(--ignore=tests/evaluation/test_held_out_integrity.py)
+              ;;
+            full) ;;
+            *) echo "Unknown validation scope" >&2; exit 1 ;;
+          esac
+          python -m pytest -ra "${scope_args[@]}" \
             --ignore=tests/privacy \
             --ignore=tests/data_pipeline/test_ces_eligibility_privacy.py \
             --ignore=tests/slm/test_transport_privacy.py \
@@ -158,6 +186,8 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           persist-credentials: false
+          sparse-checkout: ${{ env.MINDSENSE_CI_SCOPE != 'full' && env.MINDSENSE_CI_SPARSE_PATHS || '' }}
+          sparse-checkout-cone-mode: false
 
       - name: Set up Python 3.14
         id: setup-python
@@ -327,6 +357,8 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           persist-credentials: false
+          sparse-checkout: ${{ env.MINDSENSE_CI_SCOPE != 'full' && env.MINDSENSE_CI_SPARSE_PATHS || '' }}
+          sparse-checkout-cone-mode: false
 
       - name: Set up Node 22
         id: setup-node
@@ -475,6 +507,8 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           persist-credentials: false
+          sparse-checkout: ${{ env.MINDSENSE_CI_SCOPE != 'full' && env.MINDSENSE_CI_SPARSE_PATHS || '' }}
+          sparse-checkout-cone-mode: false
 
       - name: Set up Python 3.14
         id: setup-python
@@ -585,7 +619,13 @@ jobs:
             echo "- Trigger: $RUN_EVENT"
             echo "- Ref: $RUN_REF"
             echo "- Commit: $RUN_HEAD_SHA"
-            echo "- Overall result: **$overall_result**"
+            echo "- Validation scope: $MINDSENSE_CI_SCOPE"
+            echo "- Selected-scope result: **$overall_result**"
+            if [[ "$MINDSENSE_CI_SCOPE" == "sealed-excluded" ]]; then
+              echo "- Full CI acceptance: **NOT ESTABLISHED**"
+              echo "- Excluded: sealed held-out checkout, integrity tests and sealed-text privacy scan."
+              echo "- Integration/Privacy/Evaluation review and authorised sealed validation remain pending."
+            fi
             echo
             echo "## Four-Stage Results"
             echo
