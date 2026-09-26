@@ -1,0 +1,62 @@
+{
+  "record_type": "summary_from_executed_tool_outputs_not_raw_log",
+  "week": 8,
+  "full_suite_started_at": "2026-09-26T20:22:28.546956+10:00",
+  "branch": "yuktha/privacy-week8",
+  "base_commit": "be40e3c00d9a14b268a9088f42c6ed896074be95",
+  "tested_working_tree_includes_uncommitted_fixes": true,
+  "user_confirmed_scope": "single_machine_local_demo_only",
+  "held_out_accessed": false,
+  "decision": "complete_scoped_pass_for_documented_hardened_local_demo",
+  "participant_deployment_approved": false,
+  "network_isolation": {
+    "mechanism": "macOS sandbox-exec",
+    "profile": "privacy/macos-loopback.sb",
+    "covered_processes": ["backend", "embedded_R", "Vite", "Ollama", "native_runner", "test_processes"],
+    "external_ipv4_tcp": "denied_errno_1",
+    "external_ipv4_udp": "denied_errno_1",
+    "external_ipv6_tcp": "denied_errno_1",
+    "external_ipv6_udp": "denied_errno_1",
+    "child_inherits_restriction": true,
+    "loopback_application_calls_work": true,
+    "browser_sandboxed": false,
+    "whole_device_offline": false,
+    "wifi_or_system_firewall_changed": false
+  },
+  "runner_cors": {
+    "setting": "LLAMA_ARG_CORS_ORIGINS=http://127.0.0.1:8000",
+    "health_untrusted_origin_http_status": 200,
+    "generation_preflight_http_status": 200,
+    "allow_origin_returned": "http://127.0.0.1:8000",
+    "untrusted_origin_reflected_or_wildcard": false,
+    "originless_health_http_status": 200,
+    "local_program_authentication_provided": false
+  },
+  "tests": [
+    {"check": "affected_api_privacy", "passed": 55, "failed": 0, "seconds": 1.41},
+    {"check": "os_isolated_unsealed_python_r", "passed": 563, "failed": 0,
+     "skipped": 0, "warnings": 45, "seconds": 95.308},
+    {"check": "os_isolated_frontend", "passed": 27, "failed": 0}
+  ],
+  "safe_exception_logging": {
+    "constant_event": "event=local_api_unexpected_failure",
+    "synthetic_private_marker_absent": true,
+    "traceback_absent_from_captured_logs": true,
+    "request_failure_returns_no_store_500": true
+  },
+  "live_cases": [
+    {"case": "gps", "status": 200, "mode": "uncertainty", "model_invoked": true, "seconds": 14.30},
+    {"case": "diagnosis", "status": 200, "mode": "refusal", "model_invoked": false},
+    {"case": "raw_coordinates", "status": 200, "mode": "refusal", "model_invoked": false}
+  ],
+  "browser_checks": ["unlock_uncertainty", "new_conversation_clears_history", "synthetic_diagnosis_refusal"],
+  "dataset_directory_mode": {"before": "755", "after": "700", "contents_changed": false},
+  "tracked_dataset_or_outputs_files": 0,
+  "model_unload": {"done_reason": "unload", "remaining_loaded_models": 0, "runner_listener_gone": true},
+  "remaining_out_of_scope": ["real_user_authentication", "whole_browser_offline", "real_personal_summary_enablement", "real_bootstrap_cache_enablement"],
+  "prior_record_preserved": "benchmarks/history/privacy_security/2026-09-26T200200+1000_week8.json",
+  "local_junit": "/tmp/mindsense-week8-isolated-python.xml",
+  "procedure": "docs/privacy/local-demo-privacy-check.md",
+  "github_actions_dispatched": false,
+  "commit_or_push_performed": false
+}

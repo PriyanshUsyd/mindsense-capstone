@@ -43,12 +43,21 @@ This stage installs the exact packages in `frontend/package-lock.json`, then
 runs Vitest, Oxlint, and the Vite production build. Dependency advisory scanning
 is not mixed into this stage; it belongs to Stage 4.
 
+Week 8 adds two synthetic tests in
+`frontend/src/features/chat/NormalResponse.test.tsx`: chat turns must not be
+written through Web Storage or survive a component remount, and model text
+must render as text rather than create remote HTML elements. These do not
+inspect all browser persistence mechanisms or prove memory erasure.
+
 ## Stage 4 - Privacy and Security Gates
 
 This stage waits for the first three stages so that its run artifact can report
 all four outcomes. It runs only privacy/security-specific checks:
 
 - tracked participant-output and raw-identifier controls;
+- API error redaction, `Cache-Control: no-store`, restricted CORS preflight,
+  and rejection before participant-data access
+  (`tests/privacy/test_api_response_privacy.py`, added in Week 8);
 - deny-by-default network-egress tests;
 - CES eligibility output privacy checks;
 - loopback-only SLM transport and redirect checks;
@@ -86,6 +95,15 @@ following checks still require the Privacy Lead's local machine:
 - an operating-system-level disconnected-network run.
 
 CI is read-only and never commits its generated Markdown artifacts to a branch.
+
+For local Week 8 verification, use `docs/privacy/local-demo-privacy-check.md`.
+Its tested macOS commands combine `privacy/macos-loopback.sb`, cloud-off, and
+`LLAMA_ARG_CORS_ORIGINS=http://127.0.0.1:8000` for the native runner. The initial
+runner-origin finding was mitigated in that configuration and the full
+unsealed suite passed under the OS process network block. These settings are
+not supplied by CI or applied to already-running processes. The browser and
+the whole computer were not made offline. Final real-user account/deployment
+approval remains outside this local-demo verification.
 
 ## Manual validation when sealed content cannot be accessed
 
@@ -149,4 +167,3 @@ try {
 
 The environment selection is scoped to this command session. Do not run the
 unrestricted integrity test or broad `pytest` under an active no-access rule.
-
