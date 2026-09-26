@@ -19,7 +19,7 @@ from enum import Enum
 
 from pydantic import BaseModel, ConfigDict
 
-REQUEST_POLICY_VERSION = "0.2.1"
+REQUEST_POLICY_VERSION = "0.3.0"
 
 _logger = logging.getLogger(__name__)
 
@@ -89,6 +89,10 @@ _PROHIBITED_PATTERNS: tuple[
                 re.IGNORECASE,
             ),
             re.compile(r"\bam i (?:depressed|anxious|mentally ill)\b", re.IGNORECASE),
+            re.compile(
+                r"\bdo you think i(?: am|['’]m) (?:depressed|anxious|mentally ill)\b",
+                re.IGNORECASE,
+            ),
             re.compile(
                 r"\b(?:can|could) you (?:tell|determine|assess) (?:if|whether) "
                 r"i(?: am|'m) (?:becoming |getting )?(?:depressed|anxious|mentally ill)\b",
@@ -229,11 +233,12 @@ _GPS_FEATURE_PATTERNS = (
     re.compile(r"\btravel(?:l?ed|ling|s)?\b", re.IGNORECASE),
     re.compile(r"\bdistance\b", re.IGNORECASE),
     re.compile(r"\bmovement\b", re.IGNORECASE),
+    re.compile(r"\bmobility\b", re.IGNORECASE),
     re.compile(r"\blocation\b", re.IGNORECASE),
 )
 
 
-def infer_feature_from_question(question: str) -> str:
+def infer_feature_from_question(question: str) -> str | None:
     """Deterministic keyword match from question text to a `feature_id`.
 
     Matches only one of the two Tier-1 features
@@ -241,9 +246,9 @@ def infer_feature_from_question(question: str) -> str:
     `unlock_count`) — never inspects participant data, mirrors
     `classify_request`'s text-only contract. A question that matches
     neither feature's keywords, or matches both (genuinely ambiguous), is
-    not silently guessed: it falls back to `DEFAULT_FEATURE_ID` and that
-    fallback is logged so it stays visible instead of looking like a
-    confident match.
+    not guessed: return None so the SLM preflight can request a supported
+    feature before loading participant data. DEFAULT_FEATURE_ID is retained
+    only for older callers that explicitly choose their own default.
     """
 
     clean_question = question.strip()
@@ -261,11 +266,69 @@ def infer_feature_from_question(question: str) -> str:
 
     _logger.warning(
         "feature_inference_ambiguous: question matched %s feature keywords; "
-        "defaulting to %r",
+        "no feature selected",
         "both" if (matches_unlock and matches_gps) else "no",
-        DEFAULT_FEATURE_ID,
     )
-    return DEFAULT_FEATURE_ID
+    return None
+
+
+# There is no user-selected calendar-window contract yet. Even a requested
+# fourteen-day period cannot be assumed to match a historical packet's dates.
+# Keep unspecified "recent" / "observed window" questions available, but stop
+# explicit time requests rather than silently substituting that packet.
+_EXPLICIT_WINDOW_PATTERNS = (
+    re.compile(
+        r"\b(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|fourteen|"
+        r"thirty|a|an|a couple of|couple of|few|several)[ -]+"
+        r"(?:hours?|days?|weeks?|months?|years?|fortnights?)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\b(?:last|past|previous|next|this)\s+(?:[\w-]+\s+){0,5}"
+        r"(?:hours?|days?|weeks?|months?|years?|fortnights?)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(r"\b(?:today|yesterday|tomorrow|tonight|weekends?)\b", re.IGNORECASE),
+    re.compile(r"\b\d{4}-\d{1,2}-\d{1,2}\b|\b\d{1,2}/\d{1,2}(?:/\d{2,4})?\b"),
+    re.compile(
+        r"\b(?:since|from|between|until|through|on|in) (?:the )?(?:\d{1,4}(?:st|nd|rd|th)?|"
+        r"monday|tuesday|wednesday|thursday|friday|saturday|sunday|"
+        r"january|february|march|april|may|june|july|august|september|"
+        r"october|november|december)\b",
+        re.IGNORECASE,
+    ),
+)
+
+
+def request_scope_rejection(
+    question: str, *, feature_id: str | None = None, require_feature: bool = False
+) -> str | None:
+    """Check answer scope after crisis/prohibited routing, without data access.
+
+    A supplied packet or explicit feature can scope a contextual question.
+    It cannot override conflicting feature words or an explicit time request.
+    Unknown feature IDs remain the API/Statistics owner's validation concern.
+    """
+
+    if any(pattern.search(question) for pattern in _EXPLICIT_WINDOW_PATTERNS):
+        return "unsupported_time_window"
+    matches_unlock = any(
+        pattern.search(question) for pattern in _UNLOCK_FEATURE_PATTERNS
+    )
+    matches_gps = any(pattern.search(question) for pattern in _GPS_FEATURE_PATTERNS)
+    if matches_unlock and matches_gps:
+        return "ambiguous_feature_request"
+    inferred = (
+        "unlock_count" if matches_unlock else "gps_distance" if matches_gps else None
+    )
+    if feature_id in {"gps_distance", "unlock_count"} and inferred not in {
+        None,
+        feature_id,
+    }:
+        return "feature_request_mismatch"
+    if require_feature and not feature_id and inferred is None:
+        return "ambiguous_feature_request"
+    return None
 
 
 def _is_in_scope(question: str) -> bool:

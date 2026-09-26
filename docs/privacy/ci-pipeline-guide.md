@@ -87,3 +87,66 @@ following checks still require the Privacy Lead's local machine:
 
 CI is read-only and never commits its generated Markdown artifacts to a branch.
 
+## Manual validation when sealed content cannot be accessed
+
+The `workflow_dispatch` input `validation_scope` provides two explicit modes:
+
+- `full`: the existing four-stage scope, including sealed integrity checks and
+  the tracked-text scan of sealed content. This requires authorisation to access
+  that content.
+- `sealed-excluded`: development validation without accessing the sealed
+  held-out working-tree directory. This is the default for manual runs only;
+  automatic pull-request/push runs retain `full` scope.
+
+A missing manual input falls back to `sealed-excluded`. An unknown scope cannot
+enable full checkout; Stage 1 rejects it before running pytest and Stage 4's
+identifier scanner rejects it before inventorying files.
+
+In `sealed-excluded` mode, all four jobs use non-cone sparse checkout to omit
+`tests/evaluation/held_out/`. Stage 1 also excludes that directory and
+`tests/evaluation/test_held_out_integrity.py` before collection. Stage 4 keeps the
+identifier gate enabled for other tracked text, excluding the sealed directory
+at both Git inventory and Python path-filtering boundaries, before file access.
+Synthetic regressions cover exclusion-before-access and detection of identifier
+leaks in the remaining scope. R, frontend, network-isolation and dependency-audit
+checks retain their existing commands.
+
+The run name and Markdown run record state the selected scope. A successful
+restricted run establishes only that scope; its report explicitly says full CI
+acceptance is not established. It cannot certify sealed integrity, sealed-text
+privacy, participant readiness or owner approval. Priyansh, Yuktha and Chonghao
+still decide the appropriate full-validation and merge-acceptance boundary.
+
+For a branch whose automatic runs must remain blocked, keep the authorised
+`[skip ci]` publication marker, then dispatch this existing workflow on that exact
+branch with `validation_scope=sealed-excluded` after the reviewed change is
+published. A skip marker does not block `workflow_dispatch`. Verify the resulting
+run's commit and scope before recording its results. Never dispatch the current
+unmodified workflow expecting this option: it runs the full scope. Do not remove
+the skip marker or start `full` while the sealed-file access restriction applies.
+
+GitHub may render the dispatch form from the default-branch workflow, where a
+new branch-only input is not yet available. In that case use an authorised CLI/API
+dispatch that explicitly supplies both the branch ref and input; do not fall back
+to submitting the old input-less form. No repository protection rule is changed
+by this proposal, and the workflow remains owned by the Privacy/Security Lead.
+
+Local reproduction of the restricted identifier gate:
+
+```powershell
+$priorCiScope = $env:MINDSENSE_CI_SCOPE
+$env:MINDSENSE_CI_SCOPE = 'sealed-excluded'
+try {
+    .venv/Scripts/python.exe -m pytest tests/privacy/test_analysis_output_privacy.py -q -p no:cacheprovider
+} finally {
+    if ($null -eq $priorCiScope) {
+        Remove-Item Env:MINDSENSE_CI_SCOPE -ErrorAction SilentlyContinue
+    } else {
+        $env:MINDSENSE_CI_SCOPE = $priorCiScope
+    }
+}
+```
+
+The environment selection is scoped to this command session. Do not run the
+unrestricted integrity test or broad `pytest` under an active no-access rule.
+

@@ -1,0 +1,18 @@
+template_id: unsupported_window
+template_version: "1.0.0"
+response_mode: generic_fallback
+allowed_claim_ids:
+  - non_diagnostic_boundary
+prohibited_claim_ids:
+  - diagnosis
+  - causal_explanation
+  - treatment_or_crisis_advice
+  - risk_prediction
+text: >
+  I can't provide the specific time range requested. This version can explain
+  only the observed window supplied with the evidence. Please ask about GPS
+  distance or phone unlock count in the observed window.
+review_note: >
+  Week 8 SLM guardrail draft. Does not select, recompute or imply support for
+  a calendar window. Requires normal Integration, UI and Evaluation review
+  before participant-facing release.
