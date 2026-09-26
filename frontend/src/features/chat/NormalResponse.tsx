@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 
-import { respond, type SafeSLMResponse } from '../../api/client'
+import { RespondError, respond, type SafeSLMResponse } from '../../api/client'
 import { AppShell } from '../../components/AppShell'
 import {
   CrisisAwareFallbackState,
@@ -11,7 +11,6 @@ import {
   RefusalState,
   UncertaintyState,
   WelcomeState,
-  type EvidenceSummaryView,
 } from './ChatStates'
 
 // FIXED 2026-09-16: this component used to build a hardcoded
@@ -36,26 +35,6 @@ const LOCAL_DEMO_PARTICIPANT_ALIAS = 'local-demo'
 // frontend no longer sends a feature_id at all.
 const DEFAULT_QUESTION = 'How was my movement different from my recent baseline?'
 
-// The evidence numbers shown alongside a NORMAL response are still a
-// placeholder: `SafeSLMResponse` (backend/slm/service.py) does not return
-// the EvidencePacket it was generated from, only the drafted text — so the
-// browser has no real per-request values to render here yet. Left generic
-// rather than reusing the old fixture's fabricated numbers, which would
-// misrepresent real per-participant data as if it were shown. Wiring real
-// numbers into this panel needs `SafeSLMResponse` extended to carry a
-// packet summary — out of this fix's scope (participant_evidence.py /
-// app.py's request contract), flagged for whoever owns
-// backend/slm/service.py next.
-const EVIDENCE_SUMMARY: EvidenceSummaryView = {
-  baseline: 'see response text',
-  coverage: 'see response text',
-  currentValue: 'see response text',
-  evidenceStrength: 'see response text',
-  featureLabel: 'GPS distance',
-  timeWindow: 'see response text',
-  uncertainty: ['Evidence figures are computed from this participant’s real data on the backend; this panel does not yet echo them back.'],
-}
-
 interface ConversationTurn {
   id: number
   question: string
@@ -63,8 +42,10 @@ interface ConversationTurn {
 }
 
 interface RequestFailure {
+  kind: 'network' | 'server' | 'unknown'
   message: string
   question: string
+  status?: number
 }
 
 const responseLabels: Record<SafeSLMResponse['response_mode'], string> = {
@@ -105,10 +86,22 @@ export function NormalResponse() {
       setTurns((currentTurns) => [...currentTurns, turn])
       setDraft('')
     } catch (error) {
-      setRequestFailure({
-        message: error instanceof Error ? error.message : 'unknown error',
-        question,
-      })
+      if (error instanceof RespondError) {
+        setRequestFailure({
+          kind: 'server',
+          message: error.message,
+          question,
+          status: error.status,
+        })
+      } else if (error instanceof TypeError) {
+        setRequestFailure({ kind: 'network', message: error.message, question })
+      } else {
+        setRequestFailure({
+          kind: 'unknown',
+          message: error instanceof Error ? error.message : 'unknown error',
+          question,
+        })
+      }
     } finally {
       requestInFlight.current = false
       setPendingQuestion(null)
@@ -128,9 +121,7 @@ export function NormalResponse() {
     const { question, response } = turn
     switch (response.response_mode) {
       case 'normal':
-        return (
-          <NormalState evidence={EVIDENCE_SUMMARY} question={question} response={response} />
-        )
+        return <NormalState question={question} response={response} />
       case 'insufficient_data':
         return <InsufficientDataState message={response.text} question={question} />
       case 'uncertainty':
@@ -155,7 +146,13 @@ export function NormalResponse() {
   const status = pendingQuestion
     ? { label: 'Reviewing evidence', tone: 'working' as const }
     : requestFailure
-      ? { label: 'Local service unavailable', tone: 'caution' as const }
+      ? {
+          label:
+            requestFailure.kind === 'network'
+              ? 'Local service unavailable'
+              : 'Local processing failed',
+          tone: 'caution' as const,
+        }
       : latestResponse
         ? {
             label: responseLabels[latestResponse.response_mode],
@@ -193,10 +190,18 @@ export function NormalResponse() {
 
         {requestFailure && (
           <GenericFallbackState
-            message="MindSense could not reach the local response service. Your data was not sent to an external service."
+            message={
+              requestFailure.kind === 'network'
+                ? 'MindSense could not reach the local response service. Check that the local API is running, then try again. Your data was not sent to an external service.'
+                : 'The local response service received your request but could not complete it safely. You can try again after the local data or model service is ready. Your data was not sent to an external service.'
+            }
             onRetry={() => handleAsk(requestFailure.question)}
             question={requestFailure.question}
-            technicalDetail={requestFailure.message}
+            technicalDetail={
+              requestFailure.status
+                ? `HTTP ${requestFailure.status}: ${requestFailure.message}`
+                : requestFailure.message
+            }
           />
         )}
         <div ref={conversationEnd} />
@@ -209,6 +214,7 @@ export function NormalResponse() {
           void handleAsk()
         }}
       >
+        <span className="composer-mark" aria-hidden="true">⌁</span>
         <label className="sr-only" htmlFor="chat-question">
           Ask MindSense about your behavioural data
         </label>
@@ -236,7 +242,7 @@ export function NormalResponse() {
           <span aria-hidden="true">↑</span>
         </button>
         <p>
-          <span aria-hidden="true">⌁</span> Enter to send · Shift+Enter for a new line ·
+          Enter to send · Shift+Enter for a new line ·
           Processed locally
         </p>
       </form>
