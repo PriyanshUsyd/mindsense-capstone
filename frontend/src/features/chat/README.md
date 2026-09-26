@@ -8,16 +8,17 @@ Week 5 visual system merged in PR #10. The Week 6 flow keeps successful turns
 visible, accepts subsequent questions, prevents duplicate in-flight requests,
 supports Enter-to-send, and can reset to a new conversation.
 
-Every turn posts the frozen-contract synthetic EvidencePacket to
-`backend/api/app.py`. That route passes the question through Richard's
-`SLMService` request policy, local generation, output grounding, and fail-closed
-fallback path. Launching FastAPI with `MINDSENSE_SLM_RUNTIME=ollama` selects the
-real manifest-pinned local client without changing frontend code.
+Every turn posts a local participant alias and question to
+`backend/api/app.py`. The backend selects the approved local evidence, then
+passes the question through Richard's `SLMService` request policy, local
+generation, output grounding, and fail-closed fallback path. Launching FastAPI
+with `MINDSENSE_SLM_RUNTIME=ollama` selects the real manifest-pinned local
+client without changing frontend code.
 
 Implemented required UI states:
 
 1. loading/processing;
-2. normal response with evidence provenance;
+2. normal response grounded in local evidence;
 3. insufficient data/cold start;
 4. uncertainty;
 5. refusal;
@@ -29,13 +30,16 @@ request; it is not counted as one of the seven required states.
 
 `ChatStates.tsx` maps each server `response_mode` directly. The crisis-aware
 message is rendered verbatim from `SafeSLMResponse.text`; client code never
-paraphrases it. A transport failure maps to generic fallback and offers retry.
+paraphrases it. A transport failure and a handled backend error both map to a
+recoverable generic fallback, but their status and guidance are intentionally
+different so a received HTTP 500 is not described as an unreachable API.
 
 The normal state is the fully interactive Week 6 flow. Other response states
 remain intentionally simple, but Richard's response modes cannot fall into an
 unstyled or misleading normal state.
 
-The frozen HTTP request contains one question and one EvidencePacket, not prior
-turns. The interface therefore preserves conversation history visually while
-each follow-up is independently grounded against the same evidence. Contextual
-memory would require an approved shared-contract change and is not claimed here.
+The HTTP request contains one question and a local participant alias, not prior
+turns or a browser-built EvidencePacket. The interface therefore preserves
+conversation history visually while each follow-up is independently grounded
+by the backend. Contextual memory would require an approved shared-contract
+change and is not claimed here.

@@ -35,6 +35,7 @@ export interface SafeSLMResponse {
     | 'causal_inference_seeking'
     | 'treatment_advice_seeking'
     | 'risk_prediction_seeking'
+    | 'off_topic'
     | 'prompt_injection'
     | 'sensitive_data_request'
   request_policy_version: string

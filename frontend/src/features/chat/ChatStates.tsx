@@ -3,16 +3,6 @@ import { useState, type ReactNode } from 'react'
 import type { SafeSLMResponse } from '../../api/client'
 import { BrandMark } from '../../components/BrandMark'
 
-export interface EvidenceSummaryView {
-  baseline: string
-  coverage: string
-  currentValue: string
-  evidenceStrength: string
-  featureLabel: string
-  timeWindow: string
-  uncertainty: readonly string[]
-}
-
 interface QuestionProps {
   question: string
 }
@@ -22,7 +12,12 @@ interface ResponseProps extends QuestionProps {
 }
 
 function QuestionBubble({ question }: QuestionProps) {
-  return <p className="message message--user">{question}</p>
+  return (
+    <div className="user-message-group">
+      <p className="message message--user">{question}</p>
+      <span className="message-meta">Processed locally <span aria-hidden="true">✓✓</span></span>
+    </div>
+  )
 }
 
 function AssistantMessage({ children }: { children: ReactNode }) {
@@ -129,71 +124,29 @@ export function LoadingState({ question }: QuestionProps) {
 }
 
 interface NormalStateProps extends QuestionProps {
-  evidence: EvidenceSummaryView
   response: SafeSLMResponse
 }
 
-export function NormalState({ evidence, question, response }: NormalStateProps) {
+export function NormalState({ question, response }: NormalStateProps) {
   const [feedback, setFeedback] = useState<'yes' | 'partly' | 'no' | null>(null)
 
   return (
-    <section className="chat-thread" aria-live="polite">
+    <section className="chat-thread" aria-live="polite" data-response-mode="normal">
       <QuestionBubble question={question} />
       <AssistantMessage>
-        <span className="response-mode-badge">Normal response</span>
-        <p>{response.text}</p>
-      </AssistantMessage>
-
-      <article className="evidence-card response-card" data-response-mode="normal">
-        <header>
-          <div>
-            <p className="eyebrow">Evidence behind this insight</p>
-            <h2>{evidence.featureLabel}</h2>
-          </div>
-          <span className="fixture-badge">Synthetic demo data</span>
-        </header>
-
-        <dl className="evidence-grid">
-          <div>
-            <dt>Observed value</dt>
-            <dd>{evidence.currentValue}</dd>
-          </div>
-          <div>
-            <dt>Personal baseline</dt>
-            <dd>{evidence.baseline}</dd>
-          </div>
-          <div>
-            <dt>Coverage</dt>
-            <dd>{evidence.coverage}</dd>
-          </div>
-          <div>
-            <dt>Evidence strength</dt>
-            <dd>
-              <span className="strength-badge">{evidence.evidenceStrength}</span>
-            </dd>
-          </div>
-        </dl>
-
-        <div className="evidence-details">
-          <p>
-            <strong>Window:</strong> {evidence.timeWindow}
-          </p>
-          <p>
-            <strong>Wellbeing relationship:</strong> Not included in this Week 5
-            evidence packet, so the UI does not infer one.
-          </p>
-          {evidence.uncertainty.map((item) => (
-            <p key={item}>
-              <strong>Limit:</strong> {item}
-            </p>
-          ))}
+        <div className="insight-heading">
+          <span className="insight-icon" aria-hidden="true">◇</span>
+          <span>
+            <strong>Local evidence response</strong>
+            <small>Compared with your own recent patterns</small>
+          </span>
+          <span className="response-mode-badge">Normal response</span>
         </div>
-
-        <p className="association-note">
-          Association only. This interface does not make causal, diagnostic, treatment,
-          or risk-prediction claims.
+        <p>{response.text}</p>
+        <p className="state-boundary">
+          An observation from your local data, not a diagnosis, cause, or prediction.
         </p>
-      </article>
+      </AssistantMessage>
 
       <section className="feedback-card" aria-label="Response feedback">
         <div>

@@ -13,15 +13,15 @@ interface AppShellProps {
 }
 
 const navigation = [
-  { symbol: '●', label: 'Today' },
-  { symbol: '✦', label: 'Chat', active: true },
-  { symbol: '↗', label: 'My patterns' },
-  { symbol: '✓', label: 'Privacy' },
+  { symbol: '⌂', label: 'Today' },
+  { symbol: '◌', label: 'Chat', active: true },
+  { symbol: '▥', label: 'My patterns' },
+  { symbol: '◇', label: 'Privacy' },
 ]
 
 export function AppShell({
   children,
-  modelLabel = 'Local SLM · on device',
+  modelLabel = 'Processed locally',
   onNewConversation,
   statusLabel,
   statusTone,
@@ -50,12 +50,25 @@ export function AppShell({
         <div className="sidebar-divider" />
         <p className="eyebrow">Recent chats</p>
         <div className="recent-chat recent-chat--active">
-          <strong>Activity this week</strong>
-          <span>Current conversation</span>
+          <span className="recent-chat-icon" aria-hidden="true">◯</span>
+          <span>
+            <strong>Activity this week</strong>
+            <small>Current conversation</small>
+          </span>
         </div>
         <div className="recent-chat">
-          <strong>Unlock pattern</strong>
-          <span>Previous conversation</span>
+          <span className="recent-chat-icon" aria-hidden="true">◯</span>
+          <span>
+            <strong>Unlock pattern</strong>
+            <small>Previous conversation</small>
+          </span>
+        </div>
+
+        <div className="sidebar-spirit" aria-hidden="true">
+          <span className="sidebar-spirit__glow" />
+          <BrandMark compact />
+          <span className="sidebar-spirit__leaf sidebar-spirit__leaf--one" />
+          <span className="sidebar-spirit__leaf sidebar-spirit__leaf--two" />
         </div>
 
         <section className="privacy-card" aria-label="Privacy summary">
@@ -63,20 +76,25 @@ export function AppShell({
             ✓
           </span>
           <strong>Private by design</strong>
-          <p>Local SLM. Personal data stays on this device.</p>
+          <p>Your data stays on this device. Processed locally, always.</p>
         </section>
+
+        <p className="sidebar-signoff"><span aria-hidden="true">◆</span> A calmer, kinder you.</p>
       </aside>
 
       <main className="chat-panel">
         <header className="chat-header">
-          <BrandMark compact />
-          <div className="chat-heading">
-            <strong>MindSense assistant</strong>
-            <span>Understand your own behavioural patterns</span>
+          <div className="header-identity">
+            <BrandMark compact />
+            <div className="chat-heading">
+              <strong>MindSense assistant</strong>
+              <span>A little space to understand yourself</span>
+            </div>
           </div>
           <div className="header-badges">
             {onNewConversation && (
               <button className="new-conversation-button" onClick={onNewConversation} type="button">
+                <span aria-hidden="true">＋</span>
                 New conversation
               </button>
             )}
@@ -86,6 +104,20 @@ export function AppShell({
             </span>
           </div>
         </header>
+
+        <section className="wellbeing-banner" aria-label="MindSense wellbeing reminder">
+          <span className="floating-leaf floating-leaf--one" aria-hidden="true" />
+          <span className="floating-leaf floating-leaf--two" aria-hidden="true" />
+          <span className="floating-leaf floating-leaf--three" aria-hidden="true" />
+          <p className="wellbeing-banner__lead">
+            <span>Same data.</span>
+            <strong>A kinder you.</strong>
+          </p>
+          <p className="wellbeing-banner__note">
+            <span>Small insights</span>
+            <strong>brighter days</strong>
+          </p>
+        </section>
 
         {children}
       </main>
