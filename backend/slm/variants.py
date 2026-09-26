@@ -15,17 +15,22 @@ from __future__ import annotations
 import re
 from collections.abc import Sequence
 from enum import Enum
+from itertools import islice
 from time import perf_counter
 from typing import Protocol
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from backend.contracts.evidence import EligibilityStatus, EvidencePacket
-from backend.slm.request_policy import RequestDisposition, classify_request
+from backend.slm.request_policy import (
+    RequestDisposition,
+    classify_request,
+    request_scope_rejection,
+)
 from backend.slm.response_health import check_response_health
 from backend.slm.service import SafeSLMResponse, SLMService
 
-VARIANT_INTERFACE_VERSION = "0.1.0"
+VARIANT_INTERFACE_VERSION = "0.2.0"
 _STRICT = ConfigDict(extra="forbid", frozen=True, strict=True)
 _CONTEXT_ID_PATTERN = r"^[A-Za-z0-9][A-Za-z0-9._:-]*$"
 _PROVENANCE_PATTERN = r"^[A-Za-z0-9][A-Za-z0-9._:/@-]*$"
@@ -295,7 +300,7 @@ class VariantRunner:
                     self._retrieve(request, seed_context=tuple(tool_items))
                 )
 
-        validated_context = self._validate_context(
+        validated_context = self.validate_context(
             request.packet, context_items, max_items=8
         )
         try:
@@ -323,12 +328,36 @@ class VariantRunner:
             wall_latency_ms=elapsed_ms,
         )
 
+    def respond_safely(
+        self, request: VariantRequest, *, fallback_service: SLMService
+    ) -> SafeSLMResponse:
+        """Convert pre-generation context failures to the versioned safe response.
+
+        ``run`` remains the diagnostic/benchmark interface. Unexpected responder
+        failures still raise a sanitised error: their invocation state is not
+        known and must not be recorded as a pre-model context failure.
+        """
+
+        try:
+            return self.run(request).response
+        except VariantError as exc:
+            if exc.reason_code in {
+                "responder_execution_failed",
+                "responder_return_invalid",
+            }:
+                raise
+            return fallback_service.context_unavailable_response(request.question)
+
     @staticmethod
     def _may_prepare_context(request: VariantRequest) -> bool:
         """Never retrieve or call tools before deterministic preflight gates."""
 
         decision = classify_request(request.question)
         if decision.disposition != RequestDisposition.ALLOW:
+            return False
+        if request_scope_rejection(
+            request.question, feature_id=request.packet.feature_window.feature_id
+        ):
             return False
         if not check_response_health(request.packet).healthy:
             return False
@@ -347,11 +376,14 @@ class VariantRunner:
             raise VariantConfigurationError("approved_retriever_not_configured")
         try:
             items = tuple(
-                self._retriever.retrieve(
-                    request.packet,
-                    request.question,
-                    top_k=request.top_k,
-                    seed_context=seed_context,
+                islice(
+                    self._retriever.retrieve(
+                        request.packet,
+                        request.question,
+                        top_k=request.top_k,
+                        seed_context=seed_context,
+                    ),
+                    request.top_k + 1,
                 )
             )
         except VariantError:
@@ -362,6 +394,8 @@ class VariantRunner:
             raise VariantExecutionError("retriever_return_invalid")
         if len(items) > request.top_k:
             raise VariantExecutionError("retriever_exceeded_top_k")
+        if not items:
+            raise VariantExecutionError("retriever_returned_no_context")
         return items
 
     def _run_tools(
@@ -372,11 +406,14 @@ class VariantRunner:
         allowed = tuple(sorted(self._tools))
         try:
             selected = tuple(
-                self._tool_selector.select_tools(
-                    request.packet,
-                    request.question,
-                    allowed_tools=allowed,
-                    max_tool_calls=request.max_tool_calls,
+                islice(
+                    self._tool_selector.select_tools(
+                        request.packet,
+                        request.question,
+                        allowed_tools=allowed,
+                        max_tool_calls=request.max_tool_calls,
+                    ),
+                    request.max_tool_calls + 1,
                 )
             )
         except VariantError:
@@ -391,13 +428,15 @@ class VariantRunner:
             raise VariantExecutionError("duplicate_tool_selection")
         if any(name not in self._tools for name in selected):
             raise VariantExecutionError("unapproved_tool_selected")
+        if not selected:
+            raise VariantExecutionError("no_agent_tool_selected")
 
         context_items: list[ContextItem] = []
         trace: list[ToolExecutionTrace] = []
         for name in selected:
             try:
                 returned = tuple(
-                    self._tools[name].run(request.packet, request.question)
+                    islice(self._tools[name].run(request.packet, request.question), 9)
                 )
             except VariantError:
                 raise
@@ -407,6 +446,10 @@ class VariantRunner:
                 raise VariantExecutionError("tool_return_invalid")
             if any(item.source != ContextSource.TOOL_RESULT for item in returned):
                 raise VariantExecutionError("tool_returned_wrong_context_source")
+            if not returned:
+                raise VariantExecutionError("tool_returned_no_context")
+            if len(context_items) + len(returned) > 8:
+                raise VariantExecutionError("context_item_limit_exceeded")
             context_items.extend(returned)
             trace.append(
                 ToolExecutionTrace(
@@ -417,13 +460,20 @@ class VariantRunner:
         return tuple(context_items), tuple(trace)
 
     @staticmethod
-    def _validate_context(
+    def validate_context(
         packet: EvidencePacket,
         items: Sequence[ContextItem],
         *,
         max_items: int,
     ) -> tuple[ContextItem, ...]:
-        validated = tuple(items)
+        if any(not isinstance(item, ContextItem) for item in items):
+            raise VariantExecutionError("context_item_invalid")
+        try:
+            validated = tuple(
+                ContextItem.model_validate(item.model_dump()) for item in items
+            )
+        except ValueError as exc:
+            raise VariantExecutionError("context_item_invalid") from exc
         if len(validated) > max_items:
             raise VariantExecutionError("context_item_limit_exceeded")
         ids = tuple(item.context_id for item in validated)
@@ -433,6 +483,7 @@ class VariantRunner:
         if participant_ref and any(
             participant_ref in item.content.casefold()
             or participant_ref in item.provenance_ref.casefold()
+            or participant_ref in item.context_id.casefold()
             for item in validated
         ):
             raise VariantExecutionError("participant_reference_in_context")
