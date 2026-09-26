@@ -36,10 +36,13 @@ candidate; `/models` exposes the bounded catalog for frontend integration.
 
 from __future__ import annotations
 
+import logging
 import os
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict
 
 from backend.contracts.evidence import (
@@ -66,6 +69,7 @@ from backend.statistics.participant_evidence import (
 )
 
 SLM_RUNTIME_ENV = "MINDSENSE_SLM_RUNTIME"
+logger = logging.getLogger(__name__)
 
 
 class DeterministicDemoClient:
@@ -239,6 +243,24 @@ def create_app(
         allow_headers=["*"],
     )
 
+    @app.middleware("http")
+    async def prevent_response_storage(request: Request, call_next):
+        try:
+            response = await call_next(request)
+        except Exception:
+            # Do not let an unexpected dataset/model exception leak into server traces.
+            logger.error("event=local_api_unexpected_failure")
+            response = JSONResponse(
+                status_code=500, content={"detail": "local processing failed"}
+            )
+        response.headers["Cache-Control"] = "no-store"
+        return response
+
+    @app.exception_handler(RequestValidationError)
+    async def private_validation_error(request: Request, exc: RequestValidationError):
+        # Framework validation details include submitted values and extra field names.
+        return JSONResponse(status_code=422, content={"detail": "invalid request body"})
+
     selected_runtime = (
         "injected" if service is not None else _selected_runtime_name(runtime_name)
     )
@@ -258,7 +280,10 @@ def create_app(
         try:
             request_service = service_for(payload.model_tag)
         except ValueError as exc:
-            raise HTTPException(status_code=422, detail=str(exc)) from exc
+            raise HTTPException(
+                status_code=422,
+                detail="model selection requires the ollama runtime and pinned comparison candidates",
+            ) from exc
         preflight = request_service.preflight_response(
             payload.question, feature_id=payload.feature_id, require_feature=True
         )
@@ -272,9 +297,9 @@ def create_app(
                 participant_id = select_local_demo_participant(feature_id)
             packet = build_evidence_packet(participant_id, feature_id=feature_id)
         except UnknownParticipant as exc:
-            raise HTTPException(status_code=404, detail=str(exc)) from exc
+            raise HTTPException(status_code=404, detail="participant data not found") from exc
         except UnknownFeature as exc:
-            raise HTTPException(status_code=422, detail=str(exc)) from exc
+            raise HTTPException(status_code=422, detail="unsupported feature") from exc
         except (FileNotFoundError, PermissionError):
             return request_service.evidence_unavailable_response(payload.question)
         try:

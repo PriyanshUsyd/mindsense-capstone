@@ -552,6 +552,7 @@ jobs:
           set -o pipefail
           python -m pytest -ra \
             tests/privacy/test_analysis_output_privacy.py \
+            tests/privacy/test_api_response_privacy.py \
             tests/privacy/test_no_network_egress.py \
             tests/data_pipeline/test_ces_eligibility_privacy.py \
             tests/slm/test_transport_privacy.py \
