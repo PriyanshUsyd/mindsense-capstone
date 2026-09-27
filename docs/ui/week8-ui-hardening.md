@@ -82,9 +82,21 @@ This evidence confirms that the frontend itself ran cleanly on Sheng's machine.
 It does not close the separate pipeline/data-provisioning gap: without the
 approved local sensing dataset, an allowed evidence question safely returns
 `generic_fallback` with `evidence_source_unavailable` rather than a normal
-evidence response. The cold-start notice and constrained setup added after
-`bc47185` require one final Mac rerun before the two pilot items can be marked
-closed on the latest commit.
+evidence response.
+
+On 2026-09-27, Sheng completed the final Mac rerun on the follow-up build:
+
+- the constrained environment completed with `No broken requirements found`;
+- NumPy 2.5.3, SciPy 1.18.1, and statsmodels 0.15.0 imported successfully;
+- after unloading `phi4-mini:3.8b`, the development GPS fixture returned
+  `normal` in 127.83 seconds, below the 180-second deadline, with
+  `used_fallback=false` and `model_invoked=true`;
+- the Vite application loaded and rendered the handled fallback correctly on
+  the MacBook Air.
+
+Therefore W7-UI-001 and W7-UI-005 are closed, and the frontend clean-run check
+is confirmed. W7-UI-006 remains partial only because approved local dataset
+provisioning is a Data Pipeline/Integration dependency.
 
 Run this final check from the repository root:
 
