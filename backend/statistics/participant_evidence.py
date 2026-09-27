@@ -33,7 +33,7 @@ comparison window `[-14, -1]` relative to `as_of`, baseline window
 `[-42, -15]`.
 
 Per-person `evidence_strength` (Section 7) goes through
-`evidence.extract_person_slopes` + `evidence.reclassify_family213`
+`evidence.extract_person_slopes` + `evidence.reclassify_cohort_family`
 UNCHANGED, using the non-bootstrapped SE (`slope_se=None`). This means
 `evidence_strength` resolves to `insufficient` (-> `no_claim`) for every
 participant here, REGARDLESS of the real AR(1) fit's point estimate.
@@ -227,7 +227,7 @@ def select_local_demo_participant(feature_id: str = "gps_distance") -> str:
 
 
 def _evidence_table(feature_id: str) -> pd.DataFrame | None:
-    """Per-person `evidence.reclassify_family213` table for `feature_id`,
+    """Per-person `evidence.reclassify_cohort_family` table for `feature_id`,
     computed once per process and cached — this is a cohort-wide model fit
     (spec §1.2-1.7), not something to redo per HTTP request.
 
@@ -259,7 +259,7 @@ def _evidence_table(feature_id: str) -> pd.DataFrame | None:
     person_slopes = evidence_module.extract_person_slopes(ar1, frame)
     outcome_sd = float(frame["phq4_score"].std())
     predictor_sd = float(frame["x_within"].std())
-    table = evidence_module.reclassify_family213(person_slopes, outcome_sd, predictor_sd)
+    table = evidence_module.reclassify_cohort_family(person_slopes, outcome_sd, predictor_sd)
     table = table.set_index("uid")
     _EVIDENCE_TABLE_CACHE[feature_id] = table
     return table

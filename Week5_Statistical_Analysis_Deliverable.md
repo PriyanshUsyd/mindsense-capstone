@@ -664,7 +664,7 @@ under one single, arbitrarily-chosen specification would have been, since
 it rules out "the transform choice is hiding a real effect" as an
 explanation.
 
-Per-person evidence classification (`evidence.reclassify_family213`) is
+Per-person evidence classification (`evidence.reclassify_cohort_family`) is
 currently `insufficient` for all 216 participants, same reason as GPS
 (§3.5/5.4): no per-person `slope_se` has been fed in from
 `backend.statistics.bootstrap` for this feature yet.
@@ -1001,7 +1001,7 @@ construction — this is the existing, already-documented scope gap, not a new
 one introduced by bootstrapping.
 
 Parametric-only and cluster-only classifications remain available as
-standalone sensitivity views (`reclassify_family213`'s own `label_bh`/
+standalone sensitivity views (`reclassify_cohort_family`'s own `label_bh`/
 `label_holm` per method) — the intersection is an addition to the per-person
 table, not a replacement of either single-method view.
 

@@ -15,7 +15,7 @@ from backend.statistics.evidence import (
     _nan_safe_correction,
     extract_person_slopes,
     intersect_bootstrap_evidence,
-    reclassify_family213,
+    reclassify_cohort_family,
     to_user_facing_evidence,
 )
 from backend.statistics.mixed_effects_model import Ar1EffectResult
@@ -90,7 +90,7 @@ def test_nan_safe_correction_excludes_undefined_tests_from_the_family():
     assert out[2] == pytest.approx(expected[1])
 
 
-def test_reclassify_family213_is_insufficient_for_everyone_until_se_gap_closed():
+def test_reclassify_cohort_family_is_insufficient_for_everyone_until_se_gap_closed():
     """Every PersonSlope currently has slope_p=None (see module docstring),
     so every person must classify 'insufficient' -> 'no_claim' — this is
     the deliberate fail-safe default, not a bug."""
@@ -98,16 +98,16 @@ def test_reclassify_family213_is_insufficient_for_everyone_until_se_gap_closed()
         PersonSlope(uid="p1", slope_i=-0.5, n_occasions=20),
         PersonSlope(uid="p2", slope_i=0.3, n_occasions=15),
     ]
-    out = reclassify_family213(person_slopes, outcome_sd=2.0, predictor_sd=1.0)
+    out = reclassify_cohort_family(person_slopes, outcome_sd=2.0, predictor_sd=1.0)
 
     assert set(out["label_bh"]) == {"insufficient"}
     assert set(out["label_holm"]) == {"insufficient"}
-    assert out["bh_q_213"].isna().all()
-    assert out["holm_p_213"].isna().all()
+    assert out["bh_q"].isna().all()
+    assert out["holm_p"].isna().all()
     assert all(to_user_facing_evidence(label) == "no_claim" for label in out["label_bh"])
 
 
-def test_reclassify_family213_uses_bh_when_p_values_are_supplied():
+def test_reclassify_cohort_family_uses_bh_when_p_values_are_supplied():
     """Once slope_p is populated (e.g. by a future SE fix), the
     classification pipeline must actually produce non-insufficient labels
     — confirms the plumbing works end-to-end, not just the fail-safe path."""
@@ -115,13 +115,25 @@ def test_reclassify_family213_uses_bh_when_p_values_are_supplied():
         PersonSlope(uid=f"p{i}", slope_i=-0.5, n_occasions=20, slope_p=0.001)
         for i in range(10)
     ]
-    out = reclassify_family213(person_slopes, outcome_sd=1.0, predictor_sd=1.0)
-    assert not out["bh_q_213"].isna().any()
+    out = reclassify_cohort_family(person_slopes, outcome_sd=1.0, predictor_sd=1.0)
+    assert not out["bh_q"].isna().any()
     assert set(out["label_bh"]) <= {"strong", "moderate", "weak", "insufficient"}
     # std_effect = |slope_i| * predictor_sd / outcome_sd = 0.5 here, and
     # q should survive BH-FDR correction on 10 near-identical p=0.001 tests
     # comfortably under 0.05 -> at least "moderate".
     assert (out["label_bh"] != "insufficient").all()
+
+
+def test_reclassify_cohort_family_warns_on_family_size_mismatch():
+    """A family size other than EXPECTED_FAMILY_SIZE must warn (not raise —
+    a different cohort size can be legitimate) so drift is visibly worth a
+    second look instead of silently accepted."""
+    person_slopes = [
+        PersonSlope(uid=f"p{i}", slope_i=-0.5, n_occasions=20) for i in range(3)
+    ]
+    assert len(person_slopes) != EXPECTED_FAMILY_SIZE
+    with pytest.warns(UserWarning, match="family size"):
+        reclassify_cohort_family(person_slopes, outcome_sd=1.0, predictor_sd=1.0)
 
 
 def test_to_user_facing_evidence_collapses_four_to_two():
@@ -136,15 +148,19 @@ def test_to_user_facing_evidence_rejects_unrecognised_label():
         to_user_facing_evidence("extremely_strong")
 
 
-def test_expected_family_size_constant_matches_claude_md():
-    assert EXPECTED_FAMILY_SIZE == 213
+def test_expected_family_size_constant_reflects_real_gps_cohort():
+    """214, not CLAUDE.md's literal "213" — see EXPECTED_FAMILY_SIZE's
+    comment in evidence.py: 213 was the archived pipeline's lag-1/floor
+    interaction, which does not reproduce under the current, lag-1-free
+    primary spec. 214 is the real current GPS cohort size."""
+    assert EXPECTED_FAMILY_SIZE == 214
 
 
-# --- reclassify_family213 SE passthrough / intersect_bootstrap_evidence ----
+# --- reclassify_cohort_family SE passthrough / intersect_bootstrap_evidence -
 
 
-def test_reclassify_family213_carries_slope_se_and_slope_p_through():
-    """2026-09-13: reclassify_family213's output must expose slope_se/
+def test_reclassify_cohort_family_carries_slope_se_and_slope_p_through():
+    """2026-09-13: reclassify_cohort_family's output must expose slope_se/
     slope_p per person (NaN when the PersonSlope had None) so callers
     combining multiple bootstrap methods (intersect_bootstrap_evidence)
     can see each method's own SE alongside its label."""
@@ -152,7 +168,7 @@ def test_reclassify_family213_carries_slope_se_and_slope_p_through():
         PersonSlope(uid="p1", slope_i=-0.5, n_occasions=20, slope_se=0.1, slope_p=0.001),
         PersonSlope(uid="p2", slope_i=0.3, n_occasions=15),  # slope_se/slope_p default None
     ]
-    out = reclassify_family213(person_slopes, outcome_sd=2.0, predictor_sd=1.0).set_index("uid")
+    out = reclassify_cohort_family(person_slopes, outcome_sd=2.0, predictor_sd=1.0).set_index("uid")
     assert out.loc["p1", "slope_se"] == pytest.approx(0.1)
     assert out.loc["p1", "slope_p"] == pytest.approx(0.001)
     assert np.isnan(out.loc["p2", "slope_se"])
@@ -165,7 +181,7 @@ def _reclassified(specs: dict[str, tuple[float, int, float, float]]) -> pd.DataF
         PersonSlope(uid=uid, slope_i=si, n_occasions=n, slope_se=se, slope_p=sp)
         for uid, (si, n, se, sp) in specs.items()
     ]
-    return reclassify_family213(person_slopes, outcome_sd=1.0, predictor_sd=1.0)
+    return reclassify_cohort_family(person_slopes, outcome_sd=1.0, predictor_sd=1.0)
 
 
 def test_intersect_bootstrap_evidence_requires_both_methods_to_agree():
@@ -221,5 +237,5 @@ def test_intersect_bootstrap_evidence_preserves_per_method_columns_for_sensitivi
     assert combined.loc["p1", "slope_p_cluster"] == pytest.approx(0.002)
     assert "label_holm_parametric" in combined.columns
     assert "label_holm_cluster" in combined.columns
-    assert "bh_q_213_parametric" in combined.columns
-    assert "bh_q_213_cluster" in combined.columns
+    assert "bh_q_parametric" in combined.columns
+    assert "bh_q_cluster" in combined.columns
