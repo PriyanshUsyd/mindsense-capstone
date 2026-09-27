@@ -199,6 +199,8 @@ The lag-1 term is not implemented — `mixed_effects_model.py`'s docstring recor
 
 ## 8. BH-FDR family size: labelling vs. what is computed
 
+**Status: Resolved (2026-09-27).** See "Resolution" below.
+
 **Observed.**
 1. **Labelling vs. reality.** `reclassify_family213`, `bh_q_213`, `holm_p_213` are hard-coded string literals (`evidence.py`). The family actually corrected is the number of non-NaN p-values (`_nan_safe_correction`), which is 214 in B=500 (no participant excluded, every participant has a defined p-value). `preregistration.md` §2.2 defines the family as "the participants who have a per-person slope for this feature" and calls the number data-dependent, so 214 conforms to the definition; only the label "213" is stale. "23/214" matches what was computed.
 2. **`EXPECTED_FAMILY_SIZE = 213` (`evidence.py:123`) is not used in any logic.** The only reference is a test asserting the constant equals 213. It is never compared with the real family size, so drift produces no warning, despite the comment saying it should be "visibly worth a second look".
@@ -210,6 +212,18 @@ The lag-1 term is not implemented — `mixed_effects_model.py`'s docstring recor
 **Consequence.** The numbers are right; the naming is misleading and the guard is inert. One participant's difference in family size does not change the conclusion under the fixed-p-value check. Any change to the family definition (item 5) is a separate question.
 
 **Week 8.** Decisions for the Statistical Analysis Lead: (a) whether to keep "213" in names/columns or make them size-neutral; (b) whether `EXPECTED_FAMILY_SIZE` should be compared with the real family size or removed; (c) whether the 3-occasion floor is to be ported. Cited finalised decisions (family = 213, BH-FDR reported, Holm sensitivity) are not changed by this record.
+
+**Resolution (2026-09-27).**
+
+(a) **Size-neutral.** Renamed throughout `backend/statistics/evidence.py`, `participant_evidence.py`, `tier1_runner.py`, `tests/statistics/test_evidence.py`: `reclassify_family213` → `reclassify_cohort_family`; the DataFrame columns `bh_q_213` / `holm_p_213` → `bh_q` / `holm_p` (their `intersect_bootstrap_evidence`-derived suffixed forms, e.g. `bh_q_213_parametric`, follow automatically from pandas' merge `suffixes` — no separate rename needed there). Not renamed: `evidence.py`'s citation of `analysis/evidence_model.py::reclassify_family213`'s docstring, since that names the archived module's actual, unrenamed function; the archived module itself (`analysis/archive/evidence_model.py`) is frozen and untouched.
+
+(b) **Compared, not removed.** `EXPECTED_FAMILY_SIZE` is updated to **214** (item 1's number, not the archived pipeline's 213) and is now compared against the real per-call family size (`len(person_slopes)`) inside `reclassify_cohort_family`, which calls `warnings.warn` (`UserWarning`, not an exception) on a mismatch. A mismatch is not always wrong — a different feature's eligible cohort, an added participant, or a changed filter can legitimately produce a different family size — so this is a visibility check, not a hard assertion; the warning text names both values, says a mismatch can be legitimate, and says the constant may need updating. `unlock_num_ep_0`'s 216-participant cohort will correctly trigger this warning when run through the same function — that is the intended behaviour, not a false positive to silence.
+
+(c) **Not ported.** `MIN_OCCASIONS_PER_PERSON` is not brought into `backend/`: all 214 current participants already clear 3 occasions, so porting the floor changes no result today, and porting a floor that does nothing needs a statistical justification that isn't on record. Recorded in `reclassify_cohort_family`'s docstring, alongside the 213-vs-214 origin story from item 3 (the archived pipeline's floor only bound because its lag-1 term first dropped each person's earliest occasion; the current lag-1-free primary spec doesn't create that interaction, so 213 doesn't reproduce here).
+
+`tests/statistics/test_evidence.py` updated in lockstep (renamed tests/imports/call sites/column assertions, `EXPECTED_FAMILY_SIZE` assertion now 214) plus a new test asserting the mismatch warning fires. Full suite green (`tests/statistics`: 90 passed, 17 skipped [unrelated R-bridge], 0 failed).
+
+No in-repo CSV carried the old column names (checked: none exist under `analysis/output`). The external, already-frozen B=500 archive (`mindsense-bootstrap-archive`, outside the repo) does carry them — its README now notes the discrepancy rather than being edited to match.
 
 ---
 

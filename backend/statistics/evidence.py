@@ -42,7 +42,7 @@ cannot actually derive yet — which in a safety-relevant, mental-health-
 adjacent system means confidently labelling someone's data as
 `evidence_available` on an invented number — `extract_person_slopes`
 below leaves `slope_se` / `slope_p` as `None` by default, and
-`reclassify_family213` therefore classifies every person "insufficient"
+`reclassify_cohort_family` therefore classifies every person "insufficient"
 (-> "no_claim") unless a caller explicitly opts into a method that
 populates them.
 
@@ -62,7 +62,7 @@ used alone**: comparing both on the real dataset found they disagree not
 just in scale but in what they are even sensitive to (see
 `intersect_bootstrap_evidence`'s docstring for the full mechanism and
 numbers) — so `intersect_bootstrap_evidence` combines
-`reclassify_family213`'s output for each method, and only their
+`reclassify_cohort_family`'s output for each method, and only their
 intersection (`label_intersection`) is used as the actual user-facing
 value. This is a post-hoc decision, in the same register as the
 cohort-level family size (213) and the binary user-facing collapse
@@ -105,6 +105,7 @@ the deletion) for anyone who wants to re-examine it.
 
 from __future__ import annotations
 
+import warnings
 from dataclasses import dataclass
 
 import numpy as np
@@ -116,11 +117,25 @@ from backend.statistics.mixed_effects_model import Ar1EffectResult, classify_evi
 X_WITHIN_TERM = "x_within"
 
 # CLAUDE.md "Finalised decisions": "Cohort-level family = 213, BH-FDR is
-# the reported value, Holm is the sensitivity analysis." Not enforced as a
-# hard assertion here (a given run's actual eligible cohort size is real
-# data, not a constant) — recorded so a run whose family size drifts far
-# from 213 is visibly worth a second look, not silently accepted.
-EXPECTED_FAMILY_SIZE = 213
+# the reported value, Holm is the sensitivity analysis." Compared against
+# the real per-call family size in `reclassify_cohort_family`, which warns
+# (does not raise) on a mismatch: a different family size can be
+# legitimate (a different feature's eligible cohort, an added participant,
+# a changed filter), so this is a visibility check, not a hard assertion.
+#
+# Value is 214, not 213. 213 was the archived
+# `analysis/archive/evidence_model.py` pipeline's cohort size for this
+# feature, produced by an interaction between that pipeline's
+# `MIN_OCCASIONS_PER_PERSON = 3` floor and its lag-1 term:
+# `x_within_lag1_it` is undefined on each person's first occasion, so that
+# pipeline's `dropna` over that column drops that occasion before the
+# >=3-occasion floor is even applied — anyone whose remaining count then
+# falls below 3 loses the participant entirely. The current primary spec
+# has no lag-1 term (CLAUDE.md's window/transform decisions) and does not
+# port `MIN_OCCASIONS_PER_PERSON` (see `reclassify_cohort_family`
+# docstring), so that path doesn't exist here and 213 does not reproduce —
+# the real GPS cohort is 214.
+EXPECTED_FAMILY_SIZE = 214
 
 
 @dataclass
@@ -209,7 +224,7 @@ def _nan_safe_correction(pvalues: np.ndarray, method: str) -> np.ndarray:
     return out
 
 
-def reclassify_family213(
+def reclassify_cohort_family(
     person_slopes: list[PersonSlope],
     outcome_sd: float,
     predictor_sd: float,
@@ -221,9 +236,27 @@ def reclassify_family213(
     reaches production). BH-FDR (`label_bh`) is the reported/production
     value; Holm (`label_holm`) is the sensitivity analysis (CLAUDE.md).
 
+    Warns (via `warnings.warn`, does not raise) when `len(person_slopes)`
+    does not match `EXPECTED_FAMILY_SIZE` — see that constant's comment.
+    A mismatch can be legitimate (a different feature's eligible cohort,
+    an added participant, a changed filter); the warning exists so a
+    drift is visibly worth a second look, not silently accepted or
+    silently blocked.
+
+    **`MIN_OCCASIONS_PER_PERSON` (archived `analysis/archive/evidence_model
+    .py`, = 3) is deliberately NOT ported here.** All 214 current
+    participants already have >= 3 occasions, so porting the floor would
+    not change any result today; a floor that changes nothing needs its
+    own statistical justification (a floor exists to protect against
+    something), and none is recorded for this one. The archived
+    pipeline's 213 (vs. this module's 214) is not evidence such a
+    justification exists either — see `EXPECTED_FAMILY_SIZE`'s comment for
+    why that number came from an interaction with the archived pipeline's
+    lag-1 term, not from the floor doing real work on its own.
+
     If every person's `slope_p` is `None` (i.e. `person_slopes` came
     straight from `extract_person_slopes`, before any SE estimate exists —
-    see module docstring's flagged SE gap), `bh_q_213` / `holm_p_213` are
+    see module docstring's flagged SE gap), `bh_q` / `holm_p` are
     NaN for everyone and `classify_evidence_strength` returns
     "insufficient" for the whole cohort — which maps through
     `to_user_facing_evidence` to "no_claim" for everyone. This is the
@@ -237,6 +270,18 @@ def reclassify_family213(
     which calls this function once per bootstrap method and needs each
     method's own SE alongside its label to build a combined table.
     """
+    if len(person_slopes) != EXPECTED_FAMILY_SIZE:
+        warnings.warn(
+            f"reclassify_cohort_family: family size ({len(person_slopes)}) "
+            f"does not match EXPECTED_FAMILY_SIZE ({EXPECTED_FAMILY_SIZE}). "
+            "This can be legitimate (a different feature's eligible "
+            "cohort, an added participant, a changed filter) and is not "
+            "treated as an error, but if this run's cohort is meant to "
+            "match the calibrated one, EXPECTED_FAMILY_SIZE may need "
+            "updating.",
+            stacklevel=2,
+        )
+
     uids = [p.uid for p in person_slopes]
     slope_i = np.array([p.slope_i for p in person_slopes], dtype=float)
     n_occasions = np.array([p.n_occasions for p in person_slopes], dtype=int)
@@ -269,8 +314,8 @@ def reclassify_family213(
             "std_effect": std_effect,
             "slope_se": slope_se,
             "slope_p": raw_p,
-            "bh_q_213": bh_q,
-            "holm_p_213": holm_p,
+            "bh_q": bh_q,
+            "holm_p": holm_p,
             "label_bh": _labels(bh_q),
             "label_holm": _labels(holm_p),
         }
@@ -301,7 +346,7 @@ def intersect_bootstrap_evidence(
     cluster: pd.DataFrame,
 ) -> pd.DataFrame:
     """[POST-HOC, 2026-09-13] Combines two independent
-    `reclassify_family213` outputs — one per bootstrap SE estimator from
+    `reclassify_cohort_family` outputs — one per bootstrap SE estimator from
     `backend.statistics.bootstrap` (parametric: resimulate `y` from the
     fitted model's own generative parameters; cluster: case-resample
     participants with replacement) — into one per-person table, adding
@@ -344,7 +389,7 @@ def intersect_bootstrap_evidence(
     different quantity from "how uncertain is this person's estimated
     slope." Requiring both to independently agree is the safe combination
     given that neither survives scrutiny alone — the same
-    fail-toward-under-claiming stance `reclassify_family213` already
+    fail-toward-under-claiming stance `reclassify_cohort_family` already
     takes when `slope_p` is entirely unknown, applied here to "SE is
     known but from two mutually-inconsistent estimators" instead.
 
@@ -371,13 +416,13 @@ def intersect_bootstrap_evidence(
     parent set alone.
 
     Parametric-only and cluster-only classifications (`label_bh` /
-    `label_holm` per method, from `reclassify_family213` directly) are
+    `label_holm` per method, from `reclassify_cohort_family` directly) are
     NOT superseded by this function — keep both DataFrames passed in here
     as standalone sensitivity analyses; nothing about adding an
     intersection view retires the single-method view.
     """
     shared_cols = ["uid", "slope_i", "n_occasions", "std_effect"]
-    per_method_cols = ["slope_se", "slope_p", "bh_q_213", "holm_p_213", "label_bh", "label_holm"]
+    per_method_cols = ["slope_se", "slope_p", "bh_q", "holm_p", "label_bh", "label_holm"]
 
     combined = parametric[shared_cols + per_method_cols].merge(
         cluster[["uid", *per_method_cols]],

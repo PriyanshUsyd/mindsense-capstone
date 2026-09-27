@@ -121,13 +121,13 @@ def run_one_feature(
     # Per-person evidence (Section 7) -- only reachable with real BLUPs,
     # i.e. only when the R engine actually ran. slope_se/slope_p are None
     # (no bootstrap has been run here -- see module docstring), so
-    # reclassify_family213's fail-safe applies: every label is
+    # reclassify_cohort_family's fail-safe applies: every label is
     # "insufficient" until a real SE is supplied separately.
     if ar1.blups is not None:
         person_slopes = evidence.extract_person_slopes(ar1, frame)
         outcome_sd = float(frame["phq4_score"].std())
         predictor_sd = float(frame["x_within"].std())
-        evidence_table = evidence.reclassify_family213(person_slopes, outcome_sd, predictor_sd)
+        evidence_table = evidence.reclassify_cohort_family(person_slopes, outcome_sd, predictor_sd)
         evidence_summary = {
             "family_size": len(evidence_table),
             "label_bh_counts": evidence_table["label_bh"].value_counts().to_dict(),

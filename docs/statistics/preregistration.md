@@ -502,7 +502,7 @@ is also `evidence_available` under cluster (zero counter-examples); cluster
 additionally calls 28 more participants `evidence_available` that parametric
 does not. Intersection yields **23 of 214** participants — this session's
 `label_intersection`. Parametric-only and cluster-only labels
-(`reclassify_family213`'s own `label_bh`/`label_holm` per method) remain
+(`reclassify_cohort_family`'s own `label_bh`/`label_holm` per method) remain
 available as standalone sensitivity views; the intersection does not replace
 either.
 
