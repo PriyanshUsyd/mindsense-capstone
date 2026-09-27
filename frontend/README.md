@@ -35,24 +35,43 @@ src/
 
 ## Getting started
 
-```
-npm install
-npm run dev
+Create the project-local Python environment from the repository root first.
+Do not start the backend from Anaconda `base` or another global environment:
+
+```bash
+./scripts/setup_local_python_env.sh
+source .venv/bin/activate
 ```
 
-In another terminal, start the local backend from the repository root. For a
-frontend-only demo:
+The setup script installs `requirements.txt` using
+`constraints-python312.txt`, then verifies that NumPy, SciPy, and statsmodels
+can be imported together. In the activated environment, start the backend. For
+a frontend-only demo:
 
-```
-uvicorn backend.api.app:app --reload
+```bash
+python -m uvicorn backend.api.app:app --reload
 ```
 
 For the real local model:
 
-```
+```bash
 ollama pull phi4-mini:3.8b
 MINDSENSE_SLM_RUNTIME=ollama python -m uvicorn backend.api.app:app --reload
 ```
+
+Then start the frontend in another terminal:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+The backend's bounded local-model deadline defaults to 180 seconds. During a
+slow first request, the UI remains in its loading state and changes its status
+to **Local model warming up** after 12 seconds so the cold start is not mistaken
+for a broken page. Pre-warming the model before a client demo is still
+recommended.
 
 The frontend posts `{ participant_id, question }` to
 `http://127.0.0.1:8000/respond`. `feature_id` is an optional override; when it is

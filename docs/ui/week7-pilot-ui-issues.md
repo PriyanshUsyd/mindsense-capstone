@@ -139,6 +139,35 @@ Run this checklist on the frozen build without using held-out prompts.
 | W7-UI-005 | High | Local setup | The documented backend command can use an incompatible global Python stack. On Sheng's Anaconda `base`, NumPy 2.2.6 loaded SciPy/statsmodels extensions compiled for NumPy 1.x, so the API could not start. | Full import traceback reproduced on macOS 14.4.1. A project-local `.venv` with NumPy 2.5.3, SciPy 1.18.1, and statsmodels 0.15.0 started cleanly. | Document `.venv` setup as required and introduce a reproducible compatible dependency lock or constraints policy. | Workaround verified; permanent setup fix open |
 | W7-UI-006 | Blocker | End-to-end / generic fallback | The real participant path requires gitignored dataset files that were not provisioned on the pilot machine. `/respond` raised `FileNotFoundError` for `dataset/Sensing/sensing.csv`; the UI misleadingly reported `Local API: Failed to fetch` even though the API received the request and returned 500. | `/health` passed; FastAPI logged `POST /respond` 500; traceback identified the missing file. | Priyansh/Honghao must provide an approved local-only data provisioning process or an approved sanitised demo dataset. The API should fail closed with a handled response, and the UI should distinguish server/data failure from an unreachable service. Sheng retests after provisioning. | Open; blocks current-build E2E on Sheng's Mac |
 
+## Week 8 follow-up — 2026-09-27
+
+- **W7-UI-001 (cold start): fix implemented; final Mac timing pending.**
+  Richard's merged SLM fix raises the bounded default deadline from 120 to 180
+  seconds and exposes `MINDSENSE_OLLAMA_TIMEOUT_SECONDS` with a 1–300 second
+  validation range. Sheng's follow-up keeps the browser request active and,
+  after 12 seconds, changes the visible state to `Local model warming up` with
+  a three-minute expectation. Automated frontend coverage confirms that this
+  notice does not submit a second request or re-enable the composer. A real
+  cold Ollama timing on Sheng's latest commit is still required before closure.
+- **W7-UI-005 (NumPy/SciPy environment): fix implemented; clean-install rerun
+  pending.** `constraints-python312.txt` pins the NumPy 2.5.3, SciPy 1.18.1,
+  and statsmodels 0.15.0 combination that previously imported successfully on
+  Sheng's Mac. `scripts/setup_local_python_env.sh` creates the repository
+  `.venv`, installs through that constraint set, runs `pip check`, and imports
+  all three packages. The README no longer recommends an unqualified global
+  `uvicorn` command.
+- **W7-UI-006 (fetch/root cause): partial by ownership.** The backend now fails
+  closed with HTTP 200, `generic_fallback`, and
+  `evidence_source_unavailable`; the frontend separately labels unreachable
+  transport and handled server failures. The remaining missing approved local
+  dataset/provisioning path belongs to Data Pipeline/Integration and is not
+  claimed as a UI fix.
+- **Frontend machine evidence:** Sheng's 2026-09-22 run at `bc47185` loaded the
+  Vite application, connected to FastAPI, recorded repeated `/respond` 200
+  responses, and displayed the handled evidence fallback and off-topic
+  refusal. The latest follow-up commit still needs the short Mac rerun listed
+  in `docs/ui/week8-ui-hardening.md`.
+
 ## Visual-state verification note
 
 The current CSS now gives the three previously similar states different icons:
