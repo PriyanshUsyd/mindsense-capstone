@@ -2,7 +2,7 @@
 
 Owner: Yuktha Naveen, Privacy and Security Lead  
 Coverage: Week 4 onward  
-Last updated: 20 September 2026
+Last updated: 26 September 2026
 Status: authoritative index of executed project checks; update this file every week
 
 ## Purpose
@@ -58,6 +58,13 @@ is not approval for clinical use or participant deployment.
 | 7 | Post-main feature-routing integration | 469 passed initially; five sandbox-blocked loopback cases passed on permitted rerun; frontend 23/23 plus lint/build | Main's GPS/unlock inference now coexists with the safe local participant alias and crisis-policy remediation. |
 | 7 | Optional-feature/local-demo regression | 65/65 focused tests passed; 470 other Python tests passed and all 7 transport tests passed on a permitted rerun | A missing `feature_id` is inferred from the question before the local participant alias is resolved; neither downstream function receives `None`. |
 | 7 | FastAPI/R worker-thread regression | 78/78 affected and 476/476 complete tests passed; real local-data request returned HTTP 200 | Every serialized R call now establishes its own `rpy2` conversion context, preventing the unlock evidence path from failing in a FastAPI worker thread. |
+| 8 | Merged-build baseline | 537 passed, 5 sandbox binding failures; all 7 transport cases passed on permitted rerun | The existing unsealed tests passed once temporary loopback binding was permitted. |
+| 8 | New HTTP/browser privacy regressions | 21 new Python cases and 2 new frontend cases pass after remediation | API errors no longer echo submitted values; responses carry no-store; tested chat paths do not persist through Web Storage or create remote markup. |
+| 8 | Complete local unsealed suite | 563/563 Python tests; 45 statistical warnings; 27/27 frontend tests; lint/build passed | Current branch changes pass with real R and local CES present. Held-out integrity/content checks were deliberately excluded. |
+| 8 | Exact Stage 4 preflight and dependencies | 43/43 privacy tests; pip check passed; both Python manifests and npm audit clear | The added API module is explicitly included in the privacy CI stage; this is a local preflight, not a GitHub Actions run. |
+| 8 | Live application verification | 10 API cases checked; browser response, refusal, crisis, reset, outage and recovery verified | Actual local integration works; native runner CORS, missing user authentication, and offline validation still block final participant-use approval. |
+| 8 | Phi-4 Mini latency | 5/5 completed; mean 1.46 s; sample p95 2.17 s | Warm synthetic direct-model timing only; the real integrated GPS/unlock requests took 16.25 s and 22.80 s respectively. |
+| 8 | Local-demo follow-up verification | Complete for the user-confirmed demo scope: 563 Python/R and 27 frontend tests passed under OS process egress restrictions | Runner origin hardened, safe exception logging checked, dataset directory restricted, live inference and model unloading verified. Not real-user deployment or whole-device offline approval. |
 
 The Week 5 latency sample was about 15.7% slower on mean latency than Week 4.
 Five prompts are too small a sample to establish a performance regression or a
@@ -1017,6 +1024,265 @@ transport file, and all 7/7 transport tests passed with temporary loopback
 binding permitted, for 476/476 total. The running development server must be
 restarted to load the corrected bridge code.
 
+## Week 8 Final Verification Attempt - 26 September 2026
+
+### Scope and Assumptions
+
+Owner: Yuktha Naveen, Privacy and Security Lead. Checks were executed on
+Yuktha's Mac against `yuktha/privacy-week8`, created from fetched `origin/main`
+at `be40e3c00d9a14b268a9088f42c6ed896074be95`. The post-fix results apply to
+that base **plus the uncommitted working-tree changes**, not to unchanged main.
+No commit, push, PR or GitHub Actions dispatch was performed.
+
+Environment: Apple M3/arm64, macOS 27.0, Python 3.14.0, R 4.6.1 with
+`RPY2_CFFI_MODE=ABI`, Node 22.19.0, Ollama 0.33.2 and installed
+`phi4-mini:3.8b`. Existing local dependencies and CES data were reused; no
+packages or models were installed. Dependency manifests and the frontend
+lockfile are unchanged relative to Week 7 commit `33cead3`.
+
+Before running, the following scope assumptions were made:
+
+- Repository fixtures and the listed smoke questions are public/synthetic;
+  real CES stays in the gitignored local dataset directory. Live alias requests
+  use local CES-derived summaries, not newly collected participant information.
+- `MINDSENSE_CI_SCOPE=sealed-excluded` and explicit pytest exclusions protect
+  the held-out set. It was not opened, collected, or evaluated. A scoped pass
+  is not final held-out acceptance and does not reproduce full push/PR scope.
+- Real R must work, rather than accepting skipped R checks. Test socket
+  restrictions remain enabled; permission is granted only for temporary local
+  test-server bindings when needed.
+- Advisory scans require external registry/database access with dependency
+  metadata, not participant data. They are separate from app-runtime traffic.
+- HTTP privacy regression tests use synthetic markers and mocked evidence
+  access. They do not establish authentication, clinical safety, or secure
+  deletion. Browser remount tests cover Web Storage writes, not every storage API.
+
+### Runs, Findings and Remediation
+
+| Run/check | Outcome | What it establishes / limit |
+| --- | --- | --- |
+| Initial unsealed suite | 537 passed, 5 failed, 45 warnings in 106.05 s | All five failures were `PermissionError` binding the transport test server, not product failures. |
+| Permitted transport rerun | 7/7 passed in 2.61 s | Redirect statuses 301/302/303/307/308 were rejected with loopback binding available. |
+| Initial frontend | 25/25 passed; Oxlint and production build passed | Existing UI regression/build baseline. |
+| New API privacy regression before fix | 20/20 failed | Missing no-store affected every new case; validation and lookup errors additionally exposed synthetic private values. These are related failures, not twenty independent vulnerabilities. |
+| First affected API/privacy rerun | 54/54 passed | Twenty new cases plus 34 existing API cases passed after error redaction and no-store. |
+| Final complete unsealed suite | 563 passed, 0 failed, 0 skipped; 45 warnings; 94.76 s | Includes the final 21 new API/privacy cases, real R, dataset checks, context replay/grounding tests, and transport. |
+| Final frontend | 27/27 passed; lint passed; frontend build integration included in full pytest | Adds Web Storage/remount and escaped-model-markup checks. |
+| Exact updated Stage 4 test list | 43/43 passed in 3.93 s | Explicitly exercises the new module in the CI privacy stage. GitHub execution remains pending publication approval. |
+| Dependency checks | `pip check`: no broken requirements; strict audits of both Python manifests and npm: no known vulnerabilities | Advisory results are time-bound; not a new audit of every unrelated installed package or native Ollama dependency. |
+
+Approved local fixes in `backend/api/app.py`:
+
+- Validation responses use a generic 422 detail instead of echoing submitted
+  values, arbitrary extra-field names, or the entire malformed request.
+- Unknown participant/feature and rejected model responses retain their status
+  codes but no longer include arbitrary submitted values or exception text.
+- Responses carry `Cache-Control: no-store`, including an explicit generic 500
+  handler for unexpected errors that bypass normal middleware processing.
+  This controls HTTP storage instructions; it is not memory erasure or proof
+  that the server's unexpected-exception traceback logs are redacted.
+
+`tests/privacy/test_api_response_privacy.py` contains 21 cases: validation and
+malformed JSON, rejected model selection, lookup-error redaction, both
+missing/unreadable data-access stages, crisis/diagnosis/injection before data
+access, allowed/rejected CORS preflights, generated response identity
+minimisation, and noncacheable unexpected errors. Stage 4 explicitly names this
+module because Stage 1 excludes `tests/privacy` and Stage 4 previously used a
+fixed file list. The two browser regression tests remain in Stage 3. No new
+dependencies, statistical-method changes or model/prompt changes were made.
+
+### Actual Application and Local Model
+
+FastAPI, Vite and Ollama were started on `127.0.0.1:8000`, `:5173` and `:11434`.
+API mode was confirmed as `ollama`. Cloud capability was initially enabled in
+the installed daemon's startup configuration; it was stopped and restarted
+with `OLLAMA_NO_CLOUD=1` **before sending app/model requests**. Startup confirmed
+cloud disabled. This is a process-scoped setting, not a persistent device change.
+Live R initialization emitted worker-thread and empty optional-library warnings;
+both real-data request paths still completed. No R implementation was changed.
+
+Ten real HTTP cases were inspected without saving response text or dataset IDs:
+
+| Case | HTTP / response | Model behaviour |
+| --- | --- | --- |
+| GPS | 200 / uncertainty, 16.25 s | Phi-4 Mini invoked; no fallback |
+| Phone unlock | 200 / uncertainty, 22.80 s | Phi-4 Mini invoked; no fallback |
+| Diagnosis request | 200 / refusal | Not invoked |
+| Public synthetic crisis phrase | 200 / crisis-aware fallback | Not invoked |
+| Raw GPS coordinate request | 200 / refusal | Not invoked |
+| Ambiguous feature | 200 / generic fallback | Not invoked |
+| Unsupported time window | 200 / generic fallback | Not invoked |
+| Extra request field | 422 / generic validation error | No data load required |
+| Unknown synthetic participant | 404 / generic lookup error | No generation |
+| Manifest-listed but uninstalled Qwen | 200 / model-unavailable fallback | Attempt made, no successful generation or model download |
+
+All ten responses had no-store, permitted the expected frontend origin, and
+did not echo the synthetic private marker. The actual browser was exercised
+with keyboard submission: unlock response, diagnosis refusal, crisis template,
+reload clearing prior turns, controlled API shutdown showing local-service
+unavailable, retry after restart producing a GPS response, and New conversation
+clearing visible history. Browser persistence evidence is reload behaviour plus
+source and Web Storage regression tests, not a forensic disk-storage audit.
+DOM/source assets were local or embedded; the source fetch destination remains
+fixed loopback with redirects rejected. No claim of complete browser packet
+capture is made. A synthetic-only outage screenshot is local at
+`/tmp/mindsense-week8-local-service-unavailable.png`, not committed evidence.
+
+The direct-model latency benchmark completed 5/5: minimum 783.15 ms, mean
+1463.17 ms, median 1335.48 ms, sample p95 2171.97 ms, maximum 2248.52 ms.
+The model was already warm from the app run. These short synthetic prompts
+bypass the application's evidence-building and safety wrapper, so their timing
+and text are not full-app performance or safety acceptance results. Do not infer
+a reliable speed improvement from five samples and a changed native runtime.
+
+### Privacy Review and Remaining Work
+
+**Decision: verification executed; final participant-use privacy approval is on
+hold.** Automated regression checks pass, but these boundaries remain open:
+
+1. **Native runtime isolation:** process snapshots of FastAPI, Vite, Ollama and
+   its runner showed loopback listeners/connections only. However, the Ollama
+   runner warned of unrestricted CORS/no API key; a read-only health request
+   with `Origin: https://untrusted.example` returned 200 and reflected that
+   origin. This proves permissive health-endpoint CORS, not disclosure of cached
+   prompts. Review/contain the runner before participant use; cloud-off alone
+   does not solve it. Native prompt-cache diagnostics were visible, so retention
+   and teardown also need an explicit policy.
+2. **User access:** `local-demo` is a demonstration alias, not an authenticated
+   user. Assigned app ID -> authentication/PIN -> verified session -> server-side
+   data ownership remains required before per-user use. CORS is not authorization.
+3. **Offline and logging:** an OS-level public-network-blocked integrated run
+   has not been performed. Test-process TCP snapshots do not cover all traffic,
+   UDP, other processes, or all time. API access logging was disabled for this
+   run, but unexpected exception/native traceback handling, retention/deletion,
+   and free-text minimisation still need review before real participant data.
+4. **Richard's context review:** the 27 existing context tests passed, including
+   packet-bound approvals, cross-participant replay rejection, and identifier
+   minimisation. The `/respond` route does not enable this retrieval layer.
+   Synthetic bounded context may continue in development; no approval is given
+   to enable real personal summaries until source fields, ownership, retention,
+   access and deletion are documented and checked with Data/Stats/Privacy.
+5. **Moe's cache review:** `docs/statistics/week7-calibration-concerns.md` asks
+   Yuktha to review tables containing participant `uid` and person-level
+   estimates. These are still participant-level data, even if called aggregated.
+   Do not commit real rows or approve a tracked location. A proposed location
+   is under the already ignored `outputs/` tree with restricted local access;
+   this is a privacy recommendation, not an implemented cache or statistical
+   approval. Track schema and synthetic fixtures only. When integrated, add
+   missing/stale-cache, identifier, file-permission and ownership tests before
+   enabling it. Existing no-claim output does not justify exposing the cache.
+
+### Reproduction and Evidence
+
+Start each server in a separate terminal from the repo root (ports must be free):
+
+```bash
+OLLAMA_NO_CLOUD=1 ollama serve
+MINDSENSE_SLM_RUNTIME=ollama RPY2_CFFI_MODE=ABI PYTHONPATH=. \
+  .venv/bin/python -m uvicorn backend.api.app:app \
+  --host 127.0.0.1 --port 8000 --no-access-log
+npm --prefix frontend run dev -- --host 127.0.0.1 --port 5173 --strictPort
+```
+
+Unsealed suite and focused privacy command:
+
+```bash
+MINDSENSE_CI_SCOPE=sealed-excluded RPY2_CFFI_MODE=ABI PYTHONPATH=. \
+  .venv/bin/python -m pytest -ra \
+  --ignore=tests/evaluation/held_out \
+  --ignore=tests/evaluation/test_held_out_integrity.py
+MINDSENSE_CI_SCOPE=sealed-excluded RPY2_CFFI_MODE=ABI PYTHONPATH=. \
+  .venv/bin/python -m pytest -q \
+  tests/privacy/test_analysis_output_privacy.py \
+  tests/privacy/test_api_response_privacy.py \
+  tests/privacy/test_no_network_egress.py \
+  tests/data_pipeline/test_ces_eligibility_privacy.py \
+  tests/slm/test_transport_privacy.py
+```
+
+The existing frontend, dependency and latency commands below were used, with
+`--strict` for both Python manifest audits and `--audit-level=high` for npm.
+Runtime observations used `lsof -nP` on the app processes and a read-only runner
+health request with a synthetic untrusted Origin. No participant values were
+written to this register or the new verification summary.
+
+Evidence: `benchmarks/history/privacy_security/2026-09-26T200200+1000_week8.json`
+is a tool-output-derived summary, not raw test output. The final full-suite
+JUnit is local at `/tmp/mindsense-week8-20260926-python.xml`; the latency output
+is preserved at `benchmarks/history/slm_latency/2026-09-26T200234.935018+1000.json`.
+All previous weekly evidence remains unchanged.
+The temporary verification browser tab and the FastAPI, Vite and Ollama
+processes started for this check were stopped afterwards.
+
+## Week 8 Local-Demo Completion - 26 September 2026
+
+### Scope Clarification
+
+After the initial review, Yuktha explicitly confirmed **local demo only**,
+not real users accessing their own accounts. The earlier record remains an
+accurate account of the initial findings and participant-use hold. This
+follow-up closes the verification task for the single-machine, trusted-operator
+demo when launched with the documented hardened configuration. It does not
+waive authentication for future participant deployment or certify the entire
+computer/browser as offline.
+
+### Additional Controls and Executed Checks
+
+**Assumptions:** the same installed model/dependency versions and base commit
+are used; all services in this run were newly started by this verification;
+existing unrelated processes are outside scope; process sandbox inheritance is
+verified instead of assumed; the browser remains outside that sandbox; test
+prompts are synthetic and local CES remains research/demo data; no real
+personal-summary or bootstrap cache is enabled.
+
+| Check | Why needed | Result / meaning |
+| --- | --- | --- |
+| OS process egress policy | Python socket mocks cannot constrain native R/Ollama processes | External IPv4/IPv6 TCP and UDP probes all failed with `PermissionError`/errno 1; a child process inherited the restriction. Loopback was not denied and real app calls completed. |
+| Native runner CORS | Initial runner reflected arbitrary origins | With `LLAMA_ARG_CORS_ORIGINS=http://127.0.0.1:8000`, health and generation preflight responses to an untrusted Origin advertised only the configured local origin. They returned HTTP 200, but no matching/wildcard browser-read permission. Originless local health access remained 200. This is not authentication against local programs. |
+| Safe exception handling | A generic HTTP error alone does not prevent Uvicorn traceback leakage | Middleware now catches unexpected exceptions, returns generic noncacheable 500, and logs only a constant event. The strengthened regression uses normal exception propagation and asserts the private marker and traceback are absent from captured logs. |
+| Affected API/privacy regression | Ensure logging change preserves existing API contracts | 55/55 passed in 1.41 s. |
+| Complete unsealed Python/R suite under macOS sandbox | Verify the actual process-level restriction with native subprocesses | 563 passed, 0 failed/skipped; 45 existing statistical warnings; 95.31 s. Frontend build integration also passed. |
+| Frontend suite under macOS sandbox | Verify local UI tests do not require external services | 27/27 passed. |
+| Sandboxed live backend/model | Demonstrate functional inference without public egress from app services | GPS returned HTTP 200, uncertainty, real Phi model invoked, no-store, in 14.30 s. Diagnosis/raw-coordinate requests returned deterministic refusals without model invocation. |
+| Actual browser flow | Confirm the served frontend still reaches the isolated backend and model | Unlock question displayed the expected uncertainty response. New conversation cleared it; a synthetic diagnosis request displayed refusal. Browser itself was not sandboxed. |
+| Local dataset access | Gitignore does not stop other OS accounts traversing files | Changed only the local dataset directory from 755 to 700 using `chmod go-rwx dataset`. The owner still has full access; no dataset contents changed. No tracked `dataset/` or `outputs/` files were found. |
+| Runtime retention teardown | Native model contexts persist beyond a single request | Explicit unload returned `done_reason=unload`; `/api/ps` returned an empty model list and the runner no longer listened. This verifies lifecycle teardown, not forensic RAM/swap erasure. |
+
+The tested network profile is now `privacy/macos-loopback.sb`. It denies
+external outbound connections to the processes launched with it and their
+children. It deliberately leaves ordinary file access unchanged. FastAPI,
+embedded R, Vite, Ollama and the native model runner were run inside it. The
+Mac's Wi-Fi, system firewall and unrelated applications were not changed.
+
+### Local Demo Decision and Operational Limits
+
+**Week 8 local-demo privacy verification: complete, with a scoped pass for the
+documented configuration.** Use `docs/privacy/local-demo-privacy-check.md` for
+the exact start/stop commands and logging/storage/retention rules. Ordinary
+`ollama serve` does not automatically apply the tested restrictions; runtime
+upgrades must be rechecked. The code changes and documents are still uncommitted
+on `yuktha/privacy-week8`; no GitHub Actions run or push was performed.
+
+Future work, not blockers for the agreed trusted-operator demo:
+
+- Authenticated user sessions and backend data ownership before real-user use.
+- Browser-wide/whole-device offline verification before making that broader
+  claim; this run proved OS-level isolation of app services and test processes.
+- Review of any newly enabled real personal-summary retrieval or per-person
+  bootstrap cache. Current decision: synthetic fixtures/schema only in Git;
+  real participant rows remain local, ignored, access-restricted and unapproved
+  for publication. Neither feature was silently enabled to clear this review.
+- Continued log/privacy review when dependencies or native runtimes change.
+  The constant-event handler does not sanitise unrelated library log output.
+
+Evidence: new immutable summary
+`benchmarks/history/privacy_security/2026-09-26T202228+1000_week8-demo.json`;
+local raw JUnit `/tmp/mindsense-week8-isolated-python.xml`; synthetic-only
+browser screenshot `/tmp/mindsense-week8-isolated-demo.png`. The initial
+Week 8 history record is preserved unchanged, and no new latency benchmark was
+needed for this follow-up. All services started for this verification are
+stopped at completion.
+
 ## SLM Latency Run History
 
 `benchmarks/slm_latency_results.json` remains the stable latest-result file.
@@ -1033,6 +1299,7 @@ automatically.
 | 12 Sep 2026, exact time unavailable | Week 6 initial | Passed 5/5 | 743.83 ms | 1919.76 ms | 1988.51 ms | 3031.99 ms | 3268.65 ms | `2026-09-12_week6-initial-summary-only.json` |
 | 12 Sep 2026 21:17:08 AEST | Week 6 post-merge | Passed 5/5 | 927.70 ms | 2224.58 ms | 2395.99 ms | 3802.87 ms | 4084.96 ms | `2026-09-12T211708+1000_week6-post-merge.json` |
 | 20 Sep 2026 09:34:58 AEST | Week 7 frozen-build confirmation | Passed 5/5 | 1489.87 ms | 2225.15 ms | 1811.37 ms | 3829.60 ms | 4278.42 ms | `2026-09-20T093458.955295+1000.json` |
+| 26 Sep 2026 20:02:34 AEST | Week 8 warm confirmation | Passed 5/5 | 783.15 ms | 1463.17 ms | 1335.48 ms | 2171.97 ms | 2248.52 ms | `2026-09-26T200234.935018+1000.json` |
 
 The Week 6 initial raw result was overwritten before commit. Its history entry
 contains only the verified metrics previously recorded here and explicitly
@@ -1084,13 +1351,15 @@ Run from the repository root with `.venv` already created and dependencies
 installed:
 
 ```bash
-PYTHONPATH=. RPY2_CFFI_MODE=ABI .venv/bin/pytest -q
+MINDSENSE_CI_SCOPE=sealed-excluded PYTHONPATH=. RPY2_CFFI_MODE=ABI \
+  .venv/bin/pytest -q --ignore=tests/evaluation/held_out \
+  --ignore=tests/evaluation/test_held_out_integrity.py
 ```
 
 Focused privacy/statistics/transport suite:
 
 ```bash
-PYTHONPATH=. RPY2_CFFI_MODE=ABI .venv/bin/pytest -q \
+MINDSENSE_CI_SCOPE=sealed-excluded PYTHONPATH=. RPY2_CFFI_MODE=ABI .venv/bin/pytest -q \
   tests/privacy \
   tests/slm/test_transport_privacy.py \
   tests/statistics/test_r_bridge.py \
@@ -1153,12 +1422,14 @@ this register even when machine-readable result files are updated.
 - `tests/privacy/test_no_network_egress.py`
 - `tests/privacy/test_r_bridge_privacy.py`
 - `tests/privacy/test_analysis_output_privacy.py`
+- `tests/privacy/test_api_response_privacy.py`
 - `tests/slm/test_transport_privacy.py`
 - `frontend/src/api/client.test.ts`
 - `benchmarks/slm_latency_benchmark.py`
 - `benchmarks/slm_latency_results.json`
 - `benchmarks/history/README.md`
 - `benchmarks/history/slm_latency/`
+- `benchmarks/history/privacy_security/`
 - `benchmarks/history/slm_grounding_prompt048/`
 - `benchmarks/slm_prohibited_request_baseline_results.json`
 - `benchmarks/slm_shadow_smoke_results.json`

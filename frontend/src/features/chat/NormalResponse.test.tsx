@@ -203,6 +203,35 @@ describe('NormalResponse', () => {
     )
   })
 
+  it('does not write chat turns to Web Storage or restore them after remount', async () => {
+    const user = userEvent.setup()
+    const storageWrite = vi.spyOn(Storage.prototype, 'setItem')
+    const privateText = 'Synthetic private response for storage regression'
+    mockedRespond.mockResolvedValueOnce(responseFor('uncertainty', privateText))
+    try {
+      const view = render(<NormalResponse />)
+      await user.click(screen.getByRole('button', { name: /ask about my recent movement/i }))
+      expect(await screen.findByText(privateText)).toBeInTheDocument()
+      expect(storageWrite).not.toHaveBeenCalled()
+      view.unmount()
+      render(<NormalResponse />)
+      expect(screen.queryByText(privateText)).not.toBeInTheDocument()
+      expect(storageWrite).not.toHaveBeenCalled()
+    } finally {
+      storageWrite.mockRestore()
+    }
+  })
+
+  it('renders model text as text rather than executable remote markup', async () => {
+    const user = userEvent.setup()
+    const markup = '<img src="https://untrusted.example/track" onerror="alert(1)">'
+    mockedRespond.mockResolvedValueOnce(responseFor('uncertainty', markup))
+    render(<NormalResponse />)
+    await user.click(screen.getByRole('button', { name: /ask about my recent movement/i }))
+    expect(await screen.findByText(markup)).toBeInTheDocument()
+    expect(document.querySelector('img[src="https://untrusted.example/track"]')).toBeNull()
+  })
+
   it.each([
     'insufficient_data',
     'uncertainty',
