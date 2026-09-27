@@ -604,6 +604,68 @@ strong/moderate distinction is allowed to be used for. Measured comparison:
 not present in this repository checkout — see the equivalent flag in section
 1.5)*.
 
+### 5.2 User-facing numeric precision (rounding rule) `[POST-HOC, 2026-09-27]`
+
+**Decision.** Both Tier-1 features' user-facing values (`FeatureWindow.value`
+and `PersonalBaseline.value` — the 14-day window average and the 28-day
+baseline average) are rounded to the nearest whole unit before they reach the
+`EvidencePacket`: whole km/day for `loc_dist_ep_0`, whole unlocks/day for
+`unlock_num_ep_0`. Rounding uses ordinary "round half up"
+(`Decimal`/`ROUND_HALF_UP`), not Python's built-in `round` (round-half-to-even
+— it would silently send a `0.5` tie to `0`, not the ordinary half-up rule a
+participant-facing "nearest whole number" is understood to mean).
+
+This responds to three independent records of the same excessive-precision
+problem, all citing the same concrete case
+(`120.71428571428571` unlocks/day):
+`docs/ui/demo-machine-verification-2026-09-21.md` (lines 66-70),
+`docs/evaluation/week8-fallback-e2e.md` (line 110), and
+`docs/slm/week8-safety-context-integration.md` (line 43).
+
+**Basis: the digit shown must not exceed the day-to-day measurement
+precision.** For each participant, the standard deviation and coefficient of
+variation (SD / |mean|) of the daily feature values inside their own 14-day
+comparison window were computed on the real dataset:
+
+| Feature | Median within-person CV | Reading |
+|---|---|---|
+| `loc_dist_ep_0` | **1.28** | day-to-day SD *exceeds* the mean — the window average is already a rough summary of a highly variable quantity |
+| `unlock_num_ep_0` | **0.30** | day-to-day SD is ~30% of the mean |
+
+A coefficient of variation this large means any digit past the whole unit is
+precision the measurement does not have. Displaying it is not displaying a
+more accurate number — it is displaying a falsely precise one. This applies
+to both features; `loc_dist_ep_0`'s case is the more extreme of the two.
+
+**Alternative considered and rejected: express the uncertainty in the
+granularity itself** (e.g. round GPS to the nearest 5 km, to make the
+imprecision visible in the number's shape). Rejected because it reads worse
+than a plain integer and duplicates a job this system already does elsewhere:
+the response template's hedging/uncertainty sentence is the place uncertainty
+is disclosed, not the number's step size.
+
+**Implementation.** `backend/statistics/participant_evidence.py`'s
+`_round_user_facing` helper, called from `build_evidence_packet` at the point
+`feature_value` and `baseline_value` are computed — not in
+`backend/slm/output_grounding.py` at render time. The `EvidencePacket` is the
+canonical value; `output_grounding.validate_output_grounding` checks rendered
+text against the packet's stored values under exact `Decimal` equality, so
+the displayed value must already be what the packet stores, not rounded a
+second time on the way out.
+
+**Known limitation (recorded, not special-cased).** A participant whose
+14-day GPS average is under 1 km/day is shown "0 km per day". They did move;
+whole-number rounding removes it from view. Keeping one decimal place only
+below that threshold was considered and rejected — a rule that changes shape
+below a cutoff is a second rule, not the same rule applied more carefully.
+
+**Out of scope for this decision.** Percentage/ratio framing ("X% less than
+your baseline") is not implemented anywhere in the current system and is not
+addressed here — `backend/slm/prompts/evidence_explainer.yaml` explicitly
+forbids the model from computing a percentage. `current` and `baseline`
+remain the only two values ever surfaced, shown side by side, each rounded
+independently by the same rule.
+
 ## 6. Exploratory family (BH-FDR, q=0.05)
 
 Other outcomes (PHQ-4 subscales, PAM, stress, sse3), lag 1 as a standalone
@@ -640,6 +702,11 @@ Resolved Week 4 open items (decisions, not post-hoc changes):
    itself was not foreseen as needing a bootstrap. `label_intersection`
    (parametric AND cluster both `evidence_available`) is now the reported
    value; 23 of 214 participants qualify.
+7. **User-facing numeric precision: round to the nearest whole unit**
+   (section 5.2) — km/day for `loc_dist_ep_0`, unlocks/day for
+   `unlock_num_ep_0`, via `Decimal`/`ROUND_HALF_UP`. Not a Week 4 open item;
+   raised by three independent Week 7/8 records of the same excessive-
+   precision output.
 
 ## 8. Reference implementation
 

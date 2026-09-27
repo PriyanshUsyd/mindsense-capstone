@@ -61,6 +61,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
+from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 
 import pandas as pd
@@ -105,6 +106,54 @@ LOCAL_DEMO_PARTICIPANT_ALIAS = "local-demo"
 COMPARISON_WINDOW_DAYS = 14
 BASELINE_WINDOW_DAYS = 28
 BASELINE_GAP_DAYS = 15  # baseline window ends this many days before as_of
+
+
+def _round_user_facing(value: float) -> float:
+    """Round a user-facing feature/baseline value to the nearest whole unit
+    (km/day for `gps_distance`, unlocks/day for `unlock_count`).
+
+    Decided 2026-09-27 (Week 8), on the strength of each feature's per-
+    participant day-to-day variability inside the same 14-day window this
+    value is computed from — see "User-facing numeric precision" in
+    `docs/statistics/preregistration.md` for the full analysis. In short:
+    the median within-person coefficient of variation is ~1.28 for
+    `loc_dist_ep_0` (day-to-day SD exceeds the mean) and ~0.30 for
+    `unlock_num_ep_0`. Any decimal digit on either feature is precision the
+    measurement does not have; showing one is not showing a more accurate
+    number, it is showing a falsely precise one (the concrete case that
+    triggered this: `120.71428571428571` unlocks/day, reported independently
+    in `docs/ui/demo-machine-verification-2026-09-21.md` lines 66-70,
+    `docs/evaluation/week8-fallback-e2e.md` line 110, and
+    `docs/slm/week8-safety-context-integration.md` line 43 — this function
+    is the answer to all three).
+
+    A coarser step (e.g. rounding GPS to the nearest 5 km) was considered
+    and rejected: it reads worse than a plain integer, and this system
+    expresses uncertainty through the response template's hedging sentence,
+    not through the granularity of the number itself.
+
+    Uses `Decimal` with `ROUND_HALF_UP` rather than Python's built-in
+    `round`, which is round-half-to-even ("banker's rounding") and would
+    silently round e.g. `0.5 -> 0`, not the ordinary half-up rounding a
+    participant-facing "nearest whole number" rule implies.
+
+    Known limitation, recorded rather than special-cased: a participant
+    whose 14-day GPS average is under 1 km/day is shown "0 km per day".
+    They did move; whole-number rounding removes it from view. Keeping one
+    decimal place only below that threshold was considered and rejected —
+    a rule that changes shape below a cutoff is a second rule, not the same
+    rule applied more carefully.
+
+    Called from `build_evidence_packet` at the point `FeatureWindow.value`
+    / `PersonalBaseline.value` are computed — not from
+    `backend/slm/output_grounding.py` at render time. The `EvidencePacket`
+    is the canonical value; `output_grounding.validate_output_grounding`
+    checks rendered text against the packet's stored values with exact
+    `Decimal` equality, so the value shown to a participant must already be
+    what is stored on the packet, not rounded a second time on the way out.
+    """
+    return float(Decimal(str(value)).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+
 
 # Never invented: the same salt-per-process pseudonymisation rule
 # ces_eligibility.py already uses (participant_ref must never be the raw
@@ -377,7 +426,11 @@ def build_evidence_packet(
     comparison_values = comparison_rows[clean_col].dropna()
     observed_days = len(comparison_values)
     value_scale = meta.value_scale
-    feature_value = float(comparison_values.mean()) * value_scale if observed_days > 0 else 0.0
+    feature_value = (
+        _round_user_facing(float(comparison_values.mean()) * value_scale)
+        if observed_days > 0
+        else 0.0
+    )
 
     feature_window = FeatureWindow(
         feature_id=feature_id,
@@ -476,7 +529,7 @@ def build_evidence_packet(
             # participants (see PR description) — `response_health.py`
             # enforces this pairing as a hard invariant, stricter than the
             # Pydantic contract's own field-level comment suggests.
-            baseline_value = float(baseline_values.mean()) * value_scale
+            baseline_value = _round_user_facing(float(baseline_values.mean()) * value_scale)
             baseline = PersonalBaseline(
                 method="trailing person-mean, 28-day window",
                 value=baseline_value,
