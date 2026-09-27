@@ -19,6 +19,7 @@ from backend.contracts.evidence import EligibilityStatus, ResponseMode
 from backend.statistics.participant_evidence import (
     UnknownFeature,
     UnknownParticipant,
+    _round_user_facing,
     build_evidence_packet,
     select_local_demo_participant,
 )
@@ -48,6 +49,55 @@ LONG_HISTORY_UID = (
     else "dataset-not-present"
 )
 SHORT_HISTORY_UID = _short_history_uid()
+
+
+def test_round_user_facing_matches_pilot_flagged_value():
+    """The exact excessive-precision case the Week 7 pilot report flagged
+    (docs/evaluation/week7-rostered-pair-pilot-main.md, Q1)."""
+    assert _round_user_facing(120.71428571428571) == 121
+
+
+def test_round_user_facing_matches_reported_example():
+    assert _round_user_facing(61.27214285714285) == 61
+
+
+def test_round_user_facing_uses_half_up_not_bankers_rounding():
+    """Week 8 rounding-rule decision (docs/statistics/preregistration.md
+    section 5.2): ordinary half-up rounding, not Python's built-in `round`,
+    which is round-half-to-even and would send 0.5 -> 0 and 2.5 -> 2."""
+    assert _round_user_facing(0.5) == 1
+    assert _round_user_facing(1.5) == 2
+    assert _round_user_facing(2.5) == 3
+    # Confirm this genuinely differs from Python's built-in round on ties.
+    assert round(0.5) == 0
+    assert round(2.5) == 2
+
+
+def test_round_user_facing_returns_a_whole_number():
+    result = _round_user_facing(83.191429)
+    assert result == 83
+    assert result == int(result)
+
+
+def test_round_user_facing_handles_zero():
+    assert _round_user_facing(0.0) == 0
+
+
+@requires_dataset
+def test_built_gps_packet_values_are_whole_numbers():
+    packet = build_evidence_packet(LONG_HISTORY_UID, feature_id="gps_distance")
+    assert packet.feature_window.value == int(packet.feature_window.value)
+    if packet.baseline.value is not None:
+        assert packet.baseline.value == int(packet.baseline.value)
+
+
+@requires_dataset
+def test_built_unlock_packet_values_are_whole_numbers():
+    unlock_uid = select_local_demo_participant("unlock_count")
+    packet = build_evidence_packet(unlock_uid, feature_id="unlock_count")
+    assert packet.feature_window.value == int(packet.feature_window.value)
+    if packet.baseline.value is not None:
+        assert packet.baseline.value == int(packet.baseline.value)
 
 
 @requires_dataset

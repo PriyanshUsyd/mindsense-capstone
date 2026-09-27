@@ -129,14 +129,54 @@ Linear mixed-effects, Gaussian, person-level random intercept + random slope on
 the within-person predictor; person-mean-centred predictor with the person mean
 re-entered as a between-person term (Mundlak).
 
-Fixed-effects specification as implemented:
+Fixed-effects specification as implemented `[POST-HOC, 2026-09-27 —
+corrected from the four-term formula this section stated until now]`:
+
+    phq4_score ~ x_within_it + x_between_i
+    + person-level random intercept and random slope on x_within
+    + AR(1) residual structure (see section 1.4.1)
+
+**Correction record.** Until this entry, this section read:
 
     phq4_score ~ x_within_it + x_within_lag1_it + x_between_i + week_in_study_it
 
-- `week_in_study_it` (weeks since the person's first in-frame occasion) is a
-  time-trend covariate. It is in the implementation but was **not** written down
-  in any prior spec document; recorded here so the confirmatory model formula is
-  frozen exactly as fitted.
+"frozen exactly as fitted." That four-term formula is the retired `analysis/`
+pipeline's model (27,530 occasions, 213 participants —
+`Week5_Statistical_Analysis_Deliverable.md` sections 2.5, 3.2), not what
+`backend/statistics/` fits or what produced the numbers this document and the
+Week 5 deliverable report as primary:
+
+- **The lag-1 term (`x_within_lag1_it`) was never ported.**
+  `backend/statistics/mixed_effects_model.py`'s module docstring lists β2
+  (the 1-occasion lag) under "NOT IMPLEMENTED ... out of scope for this
+  task" — a scope limitation on the port, not a statistical decision to
+  drop the term. It is also why `classify_evidence_strength`'s `strong`
+  tier is structurally unreachable without a caller-supplied lag
+  comparison (section 4 above).
+- **`week_in_study` became optional (`extra_fixed_effects`) and is not used
+  in the primary fit.** `fit_mixed_effects_model`'s `extra_fixed_effects`
+  parameter can add `week_in_study` to the formula, but no caller supplies
+  it for the primary/reported fit. There is no record of a reason it is
+  excluded from primary beyond the fact that it isn't used — this document
+  does not invent one.
+
+Only the text above was stale; the analysis was not affected by it. The
+primary β_W = −0.184, the B=500 bootstrap (section 4.1), and every number
+`Week5_Statistical_Analysis_Deliverable.md` section 3.3 reports as primary
+were all obtained from the two-term formula now stated above, not the
+four-term one this section used to state. This correction brings the text in
+line with what was actually run; it changes no analysis, re-fits nothing,
+and moves no reported number.
+
+**Alternative considered and rejected: add the two missing terms to the
+implementation instead of correcting this section.** Rejected because the
+lag-1 term is an implementation scope gap, not a statistical choice reached
+for a reason — adding it now to match a document would be changing the
+statistics to fit the paperwork, backwards from why a term belongs in a
+model. Doing so would also move the primary point estimate and require
+re-running the B=500 bootstrap (section 4.1), a materially larger change
+than correcting a stale document.
+
 - **Minimum occasions to enter the fit at all: 3** per person
   (`evidence_model.MIN_OCCASIONS_PER_PERSON` in the archived `analysis/`
   pipeline) *(2026-09-13 migration note, flagged rather than silently carried
@@ -160,12 +200,14 @@ Fixed-effects specification as implemented:
 #### 1.4.1 AR(1) is primary, not a robustness check *(confirmed 2026-09-15)*
 
 **This is a confirmation of what Week 4 §1.2 already specified, not a new
-decision.** The formula above (`e_it ~ N(0, σ²), AR(1) on e within person`)
-writes an AR(1) residual structure directly into the confirmatory model —
-Week 4 does not offer it as an optional check the way it explicitly labels
-Kenward-Roger (vs. Satterthwaite), the 7-day alignment window, and the
-lag-1 term as such. Week 4 §1.2 calls the β resulting from *this* model
-"the reportable, causally-conservative quantity."
+decision.** Week 4 §1.2's own model specification (`e_it ~ N(0, σ²), AR(1)
+on e within person`) writes an AR(1) residual structure directly into the
+confirmatory model — this is what section 1.4's "AR(1) residual structure"
+line above stands for. Week 4 does not offer it as an optional check the
+way it explicitly labels Kenward-Roger (vs. Satterthwaite), the 7-day
+alignment window, and the lag-1 term as such. Week 4 §1.2 calls the β
+resulting from *this* model "the reportable, causally-conservative
+quantity."
 
 **Software constraint (not addressed by Week 4's idealised spec):** R
 `lme4`/`lmerTest` gives Satterthwaite/Kenward-Roger denominator df but has
@@ -277,9 +319,12 @@ occasions missing a lag-1 value.
 
 #### 1.6.4 Model
 
-Same specification as section 1.4:
+Same specification as section 1.4 `[POST-HOC, 2026-09-27 — corrected
+alongside section 1.4]`:
 
-    phq4_score ~ x_within_it + x_within_lag1_it + x_between_i + week_in_study_it
+    phq4_score ~ x_within_it + x_between_i
+    + person-level random intercept and random slope on x_within
+    + AR(1) residual structure (see section 1.4.1)
 
 with `x_it` built from `unlock_num_ep_0` per 1.6.1-1.6.2 instead of
 `loc_dist_ep_0`. Fit as its own separate model (one Tier-1 feature per
@@ -412,6 +457,87 @@ implies the other's model frame includes them too.
   LMM. An occasion can pass one and fail the other in either direction.
 - **"Meaningful change" threshold:** `|z| >= 1.0`, where
   `z = (recency_mean - baseline_mean) / baseline_SD`.
+
+### 3.1 Requested time windows outside the pre-registered window `[POST-HOC, 2026-09-27]`
+
+**Decision.** When a participant's question names an explicit time window
+other than the pre-registered one ("the last 3 days", "last week", "this
+month", a specific date/date range, etc.), the system refuses explicitly
+rather than answering. **The fixed-window result is never presented as the
+answer to the requested window.**
+
+**Rationale.** Section 1.1's comparison window (`[-14, -1]`) and section 3's
+baseline windows (`[-42, -15]` / `[-70, -15]`) are the only windows this
+pre-registration defines a statistic for. No other window — a 3-day mean, a
+calendar month, a named date range — has a pre-registered baseline,
+evidence-strength classification, or "meaningful change" threshold. Comparing
+an arbitrary 3-day mean against the 28-day baseline above would not be a
+pre-registered quantity; nothing in this document licenses that comparison.
+Presenting the pre-registered 14-day window's result as if it answered a
+different, requested window is not merely non-responsive — it misrepresents
+what was measured, and risks the participant believing their specific
+question was answered when it was not.
+
+**Implementation (verified against `main`; no statistics code required for
+this decision).** `backend/slm/request_policy.py`'s
+`_EXPLICIT_WINDOW_PATTERNS` detects an explicit period expression in the
+question text; `request_scope_rejection` returns `"unsupported_time_window"`
+when one is found; `backend/slm/prompts/unsupported_window.yaml` supplies the
+refusal wording ("I can't provide the specific time range requested. This
+version can explain only the observed window supplied with the evidence.").
+This was already implemented on `main` before this entry; this entry is the
+missing pre-registration sign-off for that behaviour, not a request to build
+it.
+
+**History.** The 2026-09-20 rostered-pair pilot's Q2 ("What's changed in my
+behavior over the last 3 days?") found the opposite of this decision: the
+system silently returned the fixed 14-day window's result without confirming
+it represented the requested three days —
+`docs/evaluation/week7-rostered-pair-pilot-main.md`, "Fail — time-window
+routing is not implemented." The refusal behaviour above was added on `main`
+afterward, but without a statistics sign-off that it was the intended
+resolution (as opposed to, for example, computing a genuine 3-day statistic).
+This entry supplies that sign-off: explicit refusal, not silent substitution,
+is correct per the rationale above.
+
+**Detector coverage (verified empirically against `_EXPLICIT_WINDOW_PATTERNS`
+on the current `main`).** Caught: numeric windows (`"last 3 days"`, `"past 2
+weeks"`), the ten spelled-out numbers one–ten plus `fourteen`/`thirty`,
+`last`/`past`/`previous`/`next`/`this` + an hours/days/weeks/months/
+years/fortnights unit (`"this month"`, `"next week"`), `today`/`yesterday`/
+`tomorrow`/`tonight`/`weekend(s)`, ISO and slash dates, and
+`since`/`from`/`between`/`until`/`through`/`on`/`in` + a weekday or full
+month name (`"since Monday"`, `"since January"`).
+
+**Known limitation (recorded, not fixed here).** Two different kinds of
+question currently reach the fixed 14-day window silently, and only one of
+them is intended to:
+
+- **Intended pass-through — vague recency with no competing window.**
+  `"recently"`, `"lately"`, `"nowadays"`, `"these days"`, `"of late"`, `"just
+  now"` name no specific alternative period, so answering from the observed
+  window is not a misrepresentation. This is the documented purpose of
+  leaving them unmatched (`request_policy.py`'s own comment: "Keep
+  unspecified 'recent' / 'observed window' questions available").
+- **Detector gap — these read as explicit requests but are not caught,**
+  verified empirically: spelled-out numbers beyond the hardcoded list
+  (`"over twelve days"`, `"eleven days"`, `"twenty days"` — only one–ten,
+  `fourteen`, `thirty` are recognised); season/term references (`"last
+  winter"`, `"this semester"`, `"last spring"` — not hours/days/weeks/
+  months/years/fortnights); and abbreviated month names (`"since Sept 1"`,
+  `"in Sept"` — only full month names are recognised). A question phrased
+  this way is answered from the fixed window with no refusal and no
+  disclosure that the requested period was substituted. This is a gap in the
+  refusal detector's text patterns, not a statistics gap; closing it is an
+  SLM/request-policy fix (widen `_EXPLICIT_WINDOW_PATTERNS`), not a
+  pre-registration change, and is not done as part of this entry.
+
+**What remains open.** Refusal is the correct behaviour for *this*
+pre-registration, not necessarily forever. A future version could compute a
+genuine statistic for a requested window, but that needs its own baseline
+definition, evidence-strength classification, and gating for that window
+size — none of which this document defines. Building that support requires a
+pre-registration revision, not a request-policy change alone.
 
 ## 4. Evidence-strength classification (per person, on BLUP `slope_i`)
 
@@ -604,6 +730,68 @@ strong/moderate distinction is allowed to be used for. Measured comparison:
 not present in this repository checkout — see the equivalent flag in section
 1.5)*.
 
+### 5.2 User-facing numeric precision (rounding rule) `[POST-HOC, 2026-09-27]`
+
+**Decision.** Both Tier-1 features' user-facing values (`FeatureWindow.value`
+and `PersonalBaseline.value` — the 14-day window average and the 28-day
+baseline average) are rounded to the nearest whole unit before they reach the
+`EvidencePacket`: whole km/day for `loc_dist_ep_0`, whole unlocks/day for
+`unlock_num_ep_0`. Rounding uses ordinary "round half up"
+(`Decimal`/`ROUND_HALF_UP`), not Python's built-in `round` (round-half-to-even
+— it would silently send a `0.5` tie to `0`, not the ordinary half-up rule a
+participant-facing "nearest whole number" is understood to mean).
+
+This responds to three independent records of the same excessive-precision
+problem, all citing the same concrete case
+(`120.71428571428571` unlocks/day):
+`docs/ui/demo-machine-verification-2026-09-21.md` (lines 66-70),
+`docs/evaluation/week8-fallback-e2e.md` (line 110), and
+`docs/slm/week8-safety-context-integration.md` (line 43).
+
+**Basis: the digit shown must not exceed the day-to-day measurement
+precision.** For each participant, the standard deviation and coefficient of
+variation (SD / |mean|) of the daily feature values inside their own 14-day
+comparison window were computed on the real dataset:
+
+| Feature | Median within-person CV | Reading |
+|---|---|---|
+| `loc_dist_ep_0` | **1.28** | day-to-day SD *exceeds* the mean — the window average is already a rough summary of a highly variable quantity |
+| `unlock_num_ep_0` | **0.30** | day-to-day SD is ~30% of the mean |
+
+A coefficient of variation this large means any digit past the whole unit is
+precision the measurement does not have. Displaying it is not displaying a
+more accurate number — it is displaying a falsely precise one. This applies
+to both features; `loc_dist_ep_0`'s case is the more extreme of the two.
+
+**Alternative considered and rejected: express the uncertainty in the
+granularity itself** (e.g. round GPS to the nearest 5 km, to make the
+imprecision visible in the number's shape). Rejected because it reads worse
+than a plain integer and duplicates a job this system already does elsewhere:
+the response template's hedging/uncertainty sentence is the place uncertainty
+is disclosed, not the number's step size.
+
+**Implementation.** `backend/statistics/participant_evidence.py`'s
+`_round_user_facing` helper, called from `build_evidence_packet` at the point
+`feature_value` and `baseline_value` are computed — not in
+`backend/slm/output_grounding.py` at render time. The `EvidencePacket` is the
+canonical value; `output_grounding.validate_output_grounding` checks rendered
+text against the packet's stored values under exact `Decimal` equality, so
+the displayed value must already be what the packet stores, not rounded a
+second time on the way out.
+
+**Known limitation (recorded, not special-cased).** A participant whose
+14-day GPS average is under 1 km/day is shown "0 km per day". They did move;
+whole-number rounding removes it from view. Keeping one decimal place only
+below that threshold was considered and rejected — a rule that changes shape
+below a cutoff is a second rule, not the same rule applied more carefully.
+
+**Out of scope for this decision.** Percentage/ratio framing ("X% less than
+your baseline") is not implemented anywhere in the current system and is not
+addressed here — `backend/slm/prompts/evidence_explainer.yaml` explicitly
+forbids the model from computing a percentage. `current` and `baseline`
+remain the only two values ever surfaced, shown side by side, each rounded
+independently by the same rule.
+
 ## 6. Exploratory family (BH-FDR, q=0.05)
 
 Other outcomes (PHQ-4 subscales, PAM, stress, sse3), lag 1 as a standalone
@@ -640,6 +828,25 @@ Resolved Week 4 open items (decisions, not post-hoc changes):
    itself was not foreseen as needing a bootstrap. `label_intersection`
    (parametric AND cluster both `evidence_available`) is now the reported
    value; 23 of 214 participants qualify.
+7. **User-facing numeric precision: round to the nearest whole unit**
+   (section 5.2) — km/day for `loc_dist_ep_0`, unlocks/day for
+   `unlock_num_ep_0`, via `Decimal`/`ROUND_HALF_UP`. Not a Week 4 open item;
+   raised by three independent Week 7/8 records of the same excessive-
+   precision output.
+8. **Requested time windows outside `[-14, -1]` / baseline are refused, not
+   silently answered from the fixed window** (section 3.1). Not a Week 4
+   open item; sign-off for behaviour already implemented on `main`
+   following the 2026-09-20 pilot's Q2 finding.
+9. **Section 1.4's fixed-effects formula corrected from four terms to two**
+   (section 1.4, 1.6.4) — `x_within_it + x_between_i` (+ random intercept,
+   random slope on `x_within`, AR(1) residual), not
+   `x_within_it + x_within_lag1_it + x_between_i + week_in_study_it`. The
+   lag-1 term was never ported to `backend/statistics/` (an implementation
+   scope gap, per `mixed_effects_model.py`'s docstring); `week_in_study` is
+   optional (`extra_fixed_effects`) and unused in the primary fit. A
+   documentation correction to match what was actually run — the primary
+   β_W = −0.184 and the B=500 bootstrap were already computed from the
+   two-term formula; no analysis changed.
 
 ## 8. Reference implementation
 
