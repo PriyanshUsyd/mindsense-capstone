@@ -102,7 +102,11 @@ export function WelcomeState({ disabled, onAsk }: WelcomeStateProps) {
   )
 }
 
-export function LoadingState({ question }: QuestionProps) {
+interface LoadingStateProps extends QuestionProps {
+  showColdStartNotice?: boolean
+}
+
+export function LoadingState({ question, showColdStartNotice = false }: LoadingStateProps) {
   return (
     <section className="chat-thread" aria-live="polite" aria-busy="true">
       <QuestionBubble question={question} />
@@ -110,13 +114,21 @@ export function LoadingState({ question }: QuestionProps) {
         <BrandMark compact />
         <div className="loading-card" role="status">
           <strong>Reviewing your local evidence</strong>
-          <p>Checking data coverage, your personal baseline, and permitted claims.</p>
+          <p>
+            {showColdStartNotice
+              ? 'The local model is warming up. The first response can take up to three minutes on this device.'
+              : 'Checking data coverage, your personal baseline, and permitted claims.'}
+          </p>
           <div className="loading-lines" aria-hidden="true">
             <span />
             <span />
             <span />
           </div>
-          <small>The response is generated locally on this device.</small>
+          <small>
+            {showColdStartNotice
+              ? 'Please keep this page open. Processing remains local and the request is still active.'
+              : 'The response is generated locally on this device.'}
+          </small>
         </div>
       </div>
     </section>
