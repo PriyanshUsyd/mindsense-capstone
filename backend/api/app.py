@@ -51,7 +51,15 @@ from backend.contracts.evidence import (
     EvidencePacket,
     ResponseMode,
 )
-from backend.slm.client import GenerationMetrics, GenerationResult
+
+from backend.data_pipeline.retrieval_source import ApprovedPacketRetriever
+
+from backend.slm.client import GenerationMetrics, GenerationResult, OllamaClient
+from backend.slm.context_responder import (
+    ContextApproval,
+    PacketContextResponder,
+    packet_context_digest,
+)
 from backend.slm.output_grounding import render_grounded_example
 from backend.slm.request_policy import infer_feature_from_question
 from backend.slm.runtime import (
@@ -60,6 +68,8 @@ from backend.slm.runtime import (
     listed_model_tags,
 )
 from backend.slm.service import SafeSLMResponse, SLMService
+from backend.slm.variants import VariantKind, VariantRequest, VariantRunner
+
 from backend.statistics.participant_evidence import (
     LOCAL_DEMO_PARTICIPANT_ALIAS,
     UnknownFeature,
@@ -275,6 +285,66 @@ def create_app(
             return active_service
         return create_runtime_service("ollama", model_tag=model_tag)
 
+    def respond_with_retrieval(
+        request_service: SLMService,
+        packet: EvidencePacket,
+        question: str,
+    ) -> SafeSLMResponse:
+        """Run approved packet-bound retrieval for the live Ollama runtime."""
+
+        client = request_service.client
+
+        # PacketContextResponder is Ollama-specific. Keep demo/injected
+        # services on the existing Base response path.
+        if not isinstance(client, OllamaClient):
+            return request_service.respond(packet, question)
+
+        retriever = ApprovedPacketRetriever()
+
+        context_items = tuple(
+            retriever.retrieve(
+                packet,
+                question,
+                top_k=3,
+                seed_context=(),
+            )
+        )
+
+        digest = packet_context_digest(packet)
+        approvals = tuple(
+            ContextApproval(
+                context_id=item.context_id,
+                provenance_ref=item.provenance_ref,
+                packet_sha256=digest,
+                source=item.source,
+                data_classification=item.data_classification,
+            )
+            for item in context_items
+        )
+
+        responder = PacketContextResponder(
+            client,
+            approvals=approvals,
+            allow_aggregated_summaries=True,
+        )
+
+        runner = VariantRunner(
+            responder,
+            retriever=retriever,
+        )
+
+        request = VariantRequest(
+            variant=VariantKind.RAG,
+            question=question,
+            packet=packet,
+            top_k=3,
+        )
+
+        return runner.respond_safely(
+            request,
+            fallback_service=request_service,
+        )
+
     @app.post("/respond", response_model=SafeSLMResponse)
     def respond(payload: RespondRequest) -> SafeSLMResponse:
         try:
@@ -303,7 +373,11 @@ def create_app(
         except (FileNotFoundError, PermissionError):
             return request_service.evidence_unavailable_response(payload.question)
         try:
-            return request_service.respond(packet, payload.question)
+            return respond_with_retrieval(
+                request_service,
+                packet,
+                payload.question,
+            )
         except Exception as exc:
             raise HTTPException(
                 status_code=500, detail="local generation failed"
