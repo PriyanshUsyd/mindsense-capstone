@@ -50,7 +50,7 @@ respective documents as of 2026-09-13.
 - Comparison window **`[-14, -1]`**, baseline window **`[-42, -15]`** / **`[-70, -15]`**
 - Transform order: **`log(mean)`**. **`mean(log)` is prohibited**
 - Recency window unified to **14 days**; `RECENCY_WINDOW_DAYS` is **deprecated**
-- Cohort-level family = **213**, **BH-FDR is the reported value**, Holm is the sensitivity analysis
+- Cohort-level family = **the participants holding a per-person slope for that feature** (data-dependent, not a fixed constant — **214** for `loc_dist_ep_0` as of 2026-09-27). 213 came from the retired `analysis/` pipeline, where the lag-1 term dropped one participant below the 3-occasion floor; the current primary has no lag-1 term, so that figure does not reproduce. `preregistration.md` §2.2 already defines the family this way. **BH-FDR is the reported value**, Holm is the sensitivity analysis
 - User-facing is **binary** (`evidence_available` / `no_claim`)
 - Cold-start applies **per evaluation opportunity**; **State C does not persist**
 
