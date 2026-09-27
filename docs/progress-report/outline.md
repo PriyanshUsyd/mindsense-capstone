@@ -1,133 +1,199 @@
-# MindSense Progress Report — Outline
+# MindSense Project Progress Report Outline
 
-**Document status:** Initial Week 7 outline  
+**Template:** COMP5703 Group-Based Capstone Project Progress Report  
 **Coordinator:** Honglin Lu  
-**Evidence status:** Pilot results pending collection and verification
+**Status:** Week 7 initial outline  
+**Reporting basis:** Group Proposal, frozen build evidence and verified pilot-testing results
 
-## 1. Executive Summary
+## 1. Progress and Achievements
 
-> To be completed after the Week 7 pilot results and component updates have been collected.
+> The final Word version of this section must be at least three pages and must explain progress against the aims, objectives, scope and expected outcomes stated in the Group Proposal.
 
-## 2. Project Background and Objectives
+### 1.1 Progress Against the Project Proposal
 
-Briefly explain the client problem, the non-diagnostic purpose of MindSense, the local-first design and the use of personal historical baselines.
+- Restate the original project aim and objectives briefly.
+- Identify which proposal objectives have been completed, are in progress or remain planned.
+- Explain whether the current frozen build remains within the agreed project scope.
 
-## 3. Progress Since the Group Proposal
+### 1.2 Data Pipeline and Behavioural Features
 
-### 3.1 Data Pipeline and Selected Features
+- Travel-distance feature implementation.
+- Phone-unlock feature implementation.
+- Timestamp correction, missing-data handling and outlier filtering.
+- Evidence supporting the selection of the final two features.
+- Current limitations of the data pipeline.
 
-Summarise the implementation status of travel distance and phone-unlock activity.
+### 1.3 Personal Baseline and Statistical Modelling
 
-### 3.2 Personal Baseline and Statistical Modelling
+- Within-person comparison approach.
+- Personal historical baseline logic.
+- Mixed-effects modelling progress.
+- Missing-data and cold-start handling.
+- Calibration or accuracy concerns identified during pilot testing.
 
-Summarise the within-person comparison logic and statistical modelling progress.
+### 1.4 Local Language Model and Safety Controls
 
-### 3.3 Local SLM and Safety Controls
+- Local model integration status.
+- Evidence-grounded response generation.
+- General fallback response.
+- Crisis-related fallback response.
+- Guardrail and prohibited-question testing.
+- Known limitations and remaining validation work.
 
-Summarise the local model, evidence grounding, general fallback and crisis-response behaviour.
+### 1.5 User Interface and End-to-End Integration
 
-### 3.4 User Interface and End-to-End Integration
+- Chat interface implementation.
+- Connection between frontend, backend and local model.
+- Normal-case and missing-data workflows.
+- Demo-machine preparation.
+- Interface issues identified during the pilot.
 
-Summarise the chat interface and end-to-end system status.
+### 1.6 Privacy and Security
 
-### 3.5 Privacy and Security
+- Local-first architecture.
+- Network-egress controls.
+- Logging and telemetry restrictions.
+- Dependency review.
+- Results of the Week 7 frozen-build privacy and security check.
 
-Summarise the local-first architecture, dependency checks, logging restrictions and network-egress verification.
+### 1.7 Evaluation and Week 7 Pilot Testing
 
-### 3.6 Evaluation Framework
+- Pilot objectives.
+- Pairing and observation process.
+- Runbook and crisis-response procedure.
+- Scenarios tested.
+- Verified preliminary results.
+- Safety, usability, trust, calibration and accuracy observations.
+- Issues assigned for Week 8.
 
-Summarise the evaluation criteria, test suite and held-out test policy.
+### 1.8 RAG and Agent Comparison Work
 
-## 4. Frozen Build Status
+- Base answering method.
+- Retrieval-enhanced method.
+- Agent-directed method.
+- Combined retrieval and agent method.
+- Data-storage and retrieval scoping.
+- Planned comparison criteria and current implementation status.
 
-### 4.1 Build Version and Scope
+### 1.9 Summary of Achievements
 
-> Frozen build commit or tag pending confirmation from Priyansh.
+Summarise the main verified achievements without presenting planned or incomplete work as completed.
 
-### 4.2 Completed Functionality
+## 2. Obstacles
 
-Record only functionality verified against the frozen build.
+> Explain the significant obstacles encountered, their impact, supporting evidence, mitigation and contingency plan.
 
-### 4.3 Known Limitations
+### 2.1 Data and Technical Obstacles
 
-Document incomplete features, unresolved risks and functions planned for later weeks.
+- Dataset alignment and timestamp problems.
+- Missing or inconsistent sensing data.
+- Outlier handling.
+- Local model and hardware limitations.
+- Frontend and backend integration issues.
 
-## 5. Week 7 Pilot Testing
+### 2.2 Statistical and Evaluation Obstacles
 
-### 5.1 Pilot Objectives
+- Limited participant-level data.
+- Cold-start limitations.
+- Calibration and uncertainty.
+- Small pilot sample.
+- Held-out test restrictions.
 
-Evaluate whether the testing process works smoothly and identify usability, safety, calibration and accuracy concerns for Week 8.
+### 2.3 Privacy, Safety and Dependency Risks
 
-### 5.2 Participants and Pairing Process
+- Risk of unintended network communication.
+- Dependency and telemetry risks.
+- Unsupported, causal or diagnostic model outputs.
+- Crisis-response risks.
 
-> Pending pilot roster and session details from Chonghao.
+### 2.4 Client, Scheduling and External Dependencies
 
-### 5.3 Test Procedure and Runbook
+- Client feedback affecting project direction.
+- Unavailable GPU resources and the decision not to fine-tune.
+- Dependencies between team components.
+- Availability of team members for pilot sessions.
 
-> Pending confirmed runbook and crisis-response procedure.
+### 2.5 Mitigation and Contingency Plans
 
-### 5.4 Scenarios Tested
+For every major obstacle, record:
 
-Include normal, missing-data, off-topic, prohibited and crisis-related scenarios where applicable.
+- evidence;
+- impact;
+- mitigation already attempted;
+- current status;
+- responsible team member;
+- contingency if the mitigation fails.
 
-### 5.5 Preliminary Results
+## 3. Deviation to Timeline
 
-> Week 7 evidence pending completion of the pilot sessions.
+> Compare current progress with the timeline in the Group Proposal. Explain why each meaningful change occurred and how it affects delivery.
 
-### 5.6 Issues and Observations
+### 3.1 Comparison With the Original Timeline
 
-> Pending observations from Chonghao, Moe, Richard and Sheng.
+Identify activities that were completed on time, moved, reduced, extended or added.
 
-### 5.7 Changes Planned for Week 8
+### 3.2 Reasons for Deviations
 
-Convert verified pilot issues into clearly assigned Week 8 actions.
+Possible reasons include:
 
-## 6. Safety and Privacy Verification
+- build-freeze requirements;
+- client feedback;
+- technical integration dependencies;
+- data-quality problems;
+- model or hardware constraints;
+- pilot scheduling;
+- the addition of the RAG and agent comparison.
 
-Report the frozen-build safety and privacy results without using held-out questions before the scheduled evaluation.
+### 3.3 Impact on the Project
 
-## 7. RAG and Agent Comparison Work
+Explain the impact on:
 
-### 7.1 Base Method
+- scope;
+- deliverables;
+- evaluation;
+- team workload;
+- final demonstration;
+- final report.
 
-Fixed behavioural evidence supplied directly to the model.
+### 3.4 Recovery Actions
 
-### 7.2 Retrieval-Enhanced Method
+Document revised priorities and the actions planned to prevent further delay.
 
-Relevant historical evidence is retrieved before response generation.
+## 4. Milestones and Reporting
 
-### 7.3 Agent-Directed Method
+> Replace the sample table in the Word template with the team’s real milestone plan. Changes from the original proposal should be clearly identified in the final Word version.
 
-The model selects which permitted data operation or comparison to request.
+| Milestone | Tasks | Reporting or Evidence | Date | Status or Change |
+|---|---|---|---|---|
+| Week 4 | Initial component design and documentation | Repository documentation and client update |  | Completed |
+| Week 5 | Group Proposal preparation | Proposal draft and component review |  | Completed |
+| Week 6 | Integration and Group Proposal submission | Frozen-build evidence and submitted proposal |  | Completed |
+| Week 7 | Pilot testing and Progress Report outline | Pilot log, safety and privacy checks, report outline |  | In progress |
+| Week 8 | Address verified pilot issues | Updated tests and implementation evidence |  | Planned |
+| Week 9 | Progress Report completion | Final Progress Report |  | Planned |
+| Week 10 | Extended evaluation and method comparison | Comparison results |  | Planned |
+| Week 11 | Final validation and documentation | Validation evidence and demonstration material |  | Planned |
+| Week 12 | Final demonstration and reporting | Final presentation, report and demonstration |  | Planned |
 
-### 7.4 Retrieval and Agent Combined
+## Evidence Still Required
 
-The agent selects an information need and retrieval supplies the supporting evidence.
+- Frozen-build commit or tag.
+- Pilot session dates and participant pairs.
+- Test scenarios and pass or fail results.
+- Screenshots, logs or pull-request links.
+- Privacy and security verification results.
+- Guardrail re-test results.
+- Calibration and accuracy observations.
+- User-interface observations.
+- RAG and agent comparison progress.
+- Confirmed timeline changes and their reasons.
 
-### 7.5 Planned Comparison Criteria
+## Writing Rules
 
-Compare evidence grounding, safety, usefulness, latency, privacy and implementation complexity.
+- Report only verified results.
+- Clearly distinguish completed, in-progress and planned work.
+- Do not use held-out test questions before the scheduled evaluation.
+- Do not make clinical-validity claims.
+- Link technical claims to repository evidence where possible.
+- Transfer the final content into the official Word template without changing its required formatting.
 
-## 8. Risks, Limitations and Mitigations
-
-Document remaining technical, evaluation, privacy and scheduling risks.
-
-## 9. Updated Timeline and Next Steps
-
-Summarise Week 8 priorities based on verified Week 7 findings.
-
-## 10. Team Contributions
-
-Record each member’s completed, in-progress and planned work separately.
-
-## 11. AI Acknowledgement
-
-Document any permitted AI assistance used to support report preparation.
-
-## References
-
-Add only sources cited in the Progress Report.
-
-## Appendices
-
-Include supporting test tables, screenshots, runbook extracts and evidence links where appropriate.
