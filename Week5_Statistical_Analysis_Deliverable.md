@@ -266,35 +266,53 @@ cause.
 missing-quality gate, implausibility filter (`> 500 km/day`), and per-person
 1st–99th percentile winsorisation.
 
-### 3.2 Participant and occasion denominators
+### 3.2 Participant and occasion denominators `[Corrected 2026-09-27]`
 
-The three participant counts below are successive stages of one filter chain,
-not inconsistent figures.
+**This section previously described the retired `analysis/` pipeline's
+lag-1-inclusive model frame (213 participants / 27,530 occasions) as the
+current denominator chain, contradicting section 3.3's (updated
+2026-09-15) 214 / 28,337. Left behind at the same time as section 5.2 item
+10 — both were stale for the same reason: neither was revisited when
+section 3.3 was updated to state that the confirmatory model no longer
+carries a lag-1 term.** Verified against the real dataset via
+`backend.statistics.mixed_effects_model.build_model_frame` for this
+correction (not carried forward from either stale prior version):
 
 | Stage | N |
 |---|---|
 | Participants in the dataset | 220 |
 | With at least one EMA occasion (cold-start evaluation set) | 218 |
 | Passing the occasion-validity gate | 214 |
-| Passing `MIN_OCCASIONS_PER_PERSON >= 3` (model frame) | 213 |
+| Model frame | 214 |
 
-The Data Pipeline Lead's figures stop at 214; the minimum-occasions filter is
-specific to the model frame.
+**No participant is lost between the occasion-validity gate and the model
+frame.** `MIN_OCCASIONS_PER_PERSON >= 3` was never ported to
+`backend/statistics/` (preregistration §1.4's per-occasion floor note); even
+if it were, it would drop no one here — every gate-passing participant has
+at least 3 occasions in the model frame (verified: minimum is exactly 3, 0
+participants below it). The Data Pipeline Lead's figures stop at 214; there
+is currently no further stage past it.
 
-The same chain at the occasion level accounts for the 807-occasion gap between
-the gate-passing count and the model frame:
+At the occasion level:
 
-| Stage | Occasions | Lost |
-|---|---|---|
-| Passing the occasion-validity gate | 28,337 | — |
-| With a lag-1 predictor available | 27,532 | 805 |
-| Entering the model frame (`>= 3` occasions per person) | 27,530 | 2 |
+| Stage | Occasions |
+|---|---|
+| Non-null-PHQ-4 EMA rows (all 218 participants) | 35,348 |
+| Passing the occasion-validity gate (model frame) | 28,337 |
 
-The 805 is structural rather than a data-quality loss: every participant's
-first EMA occasion has no preceding occasion to supply a lag-1 predictor, and
-the lag-1 term sits in the same model formula, so those occasions are dropped
-listwise. The remaining 2 occasions belong to the single participant who falls
-below the three-occasion model-entry minimum.
+There is no lag-1 listwise-deletion stage: the confirmatory model has no
+lag-1 term (section 1.4's 2026-09-27 revision; section 3.3 below), so no
+occasion is dropped for lacking a lag-1 predictor.
+
+**Historical figures, retired `analysis/` pipeline only — not the current
+denominator chain.** The 213-participant / 27,530-occasion model frame (and
+the 27,532-occasion "with a lag-1 predictor available" stage, 805 occasions
+lost to lag-1 listwise deletion, 2 more lost to that pipeline's own
+`MIN_OCCASIONS_PER_PERSON >= 3`) is the retired `analysis/` pipeline's
+lag-1-inclusive model, matching section 2.5's cascade table and the −0.248
+row there. It does not describe `backend/statistics/`, is not reproduced by
+the query above, and is kept here only so section 2.5's numbers stay
+traceable to a stated denominator.
 
 **[Updated 2026-09-15] Primary estimate is now the AR(1)-corrected fit, not
 the plain LMM.** Week 4 §1.2's formal model specification writes AR(1) into
@@ -795,14 +813,22 @@ signature of over-truncation, not of a stronger relationship.
    run that produced Section 3's numbers still is not reproducible from a
    committed commit hash — it predates that archiving and was never itself
    committed.
-10. **Two model-entry rules existed only in code.** The `week_in_study_it`
-    time-trend covariate is part of the fitted confirmatory formula, and
+10. **One model-entry rule existed only in code.**
     `MIN_OCCASIONS_PER_PERSON = 3` governs model entry (distinct from the
-    8/12-occasion evidence-strength gates). Neither appeared in the Week 4
-    deliverable or in the pre-registration. Both are now written into
-    `preregistration.md`, but they need explicit sign-off rather than
+    8/12-occasion evidence-strength gates). It did not appear in the Week 4
+    deliverable or in the pre-registration. It is now written into
+    `preregistration.md`, but needs explicit sign-off rather than
     documentation alone — the confirmatory model formula is part of what is
     being frozen.
+
+    **[Corrected 2026-09-27]** This item previously also said the
+    `week_in_study_it` time-trend covariate "is part of the fitted
+    confirmatory formula." That is wrong: `week_in_study` is computed by
+    `compute_time_covariates` and can be supplied via
+    `extra_fixed_effects`, but the primary fit does not use it. Per
+    preregistration §1.4's 2026-09-27 revision, the pre-registered fixed
+    effects are the two-term `x_within + x_between`. (§3.3 was updated on
+    2026-09-15 to state this; this item was left behind at that time.)
 11. **Convergence fallback removes all per-person statements.** If the
     random-slope model fails to converge, the fallback to random-intercept-only
     leaves no per-person slope variance, so `slope_se` and `slope_p` are
