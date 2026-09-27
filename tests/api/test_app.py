@@ -145,6 +145,66 @@ def test_respond_runs_through_the_configured_ollama_client_without_real_network(
     assert endpoint == "http://127.0.0.1:11434/api/chat"
     assert payload["model"] == "phi4-mini:3.8b"
 
+def test_http_respond_uses_approved_packet_retrieval_in_ollama_mode(monkeypatch):
+    packet = _load_packet("week5_gps_eligible.json")
+
+    draft = AssistantDraft(
+        packet_id=packet.identity.packet_id,
+        response_mode=ResponseMode.NORMAL,
+        claim_ids_used=(
+            ApprovedClaimId.OBSERVATION_OF_DEVIATION,
+            ApprovedClaimId.UNCERTAINTY_DISCLOSURE,
+        ),
+        evidence_ids_referenced=(packet.feature_window.feature_id,),
+        text=render_grounded_example(packet, ResponseMode.NORMAL),
+        includes_uncertainty_statement=True,
+    )
+
+    service = create_runtime_service("ollama")
+    assert isinstance(service.client, OllamaClient)
+
+    transport = _FakeOllamaTransport(draft)
+    service.client.transport = transport
+
+    monkeypatch.setattr(
+        "backend.api.app.create_runtime_service",
+        lambda runtime_name, model_tag=None: service,
+    )
+    monkeypatch.setattr(
+        "backend.api.app.build_evidence_packet",
+        lambda participant_id, feature_id="gps_distance": packet,
+    )
+
+    client = TestClient(create_app(runtime_name="ollama"))
+
+    response = client.post(
+        "/respond",
+        json={
+            "participant_id": "u42",
+            "question": "How was my movement different from my recent baseline?",
+            "feature_id": "gps_distance",
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["response_mode"] == "normal"
+    assert body["model_invoked"] is True
+
+    assert len(transport.calls) == 1
+    _, payload, _ = transport.calls[0]
+
+    user_payload = json.loads(payload["messages"][1]["content"])
+
+    assert user_payload["context_policy_version"] == "0.1.0"
+    assert len(user_payload["bounded_context"]) == 2
+
+    context_text = " ".join(
+        item["content"] for item in user_payload["bounded_context"]
+    )
+    assert "Observed feature summary:" in context_text
+    assert "Eligibility state:" in context_text
+    assert packet.identity.participant_ref not in context_text
 
 def test_respond_returns_a_real_normal_response_for_eligible_evidence():
     service = create_runtime_service("demo")
