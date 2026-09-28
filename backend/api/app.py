@@ -43,7 +43,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from backend.contracts.evidence import (
     ApprovedClaimId,
@@ -51,16 +51,10 @@ from backend.contracts.evidence import (
     EvidencePacket,
     ResponseMode,
 )
-
 from backend.data_pipeline.retrieval_source import ApprovedPacketRetriever
-
 from backend.slm.client import GenerationMetrics, GenerationResult, OllamaClient
-from backend.slm.context_responder import (
-    ContextApproval,
-    PacketContextResponder,
-    packet_context_digest,
-)
 from backend.slm.output_grounding import render_grounded_example
+from backend.slm.packet_variants import create_packet_variant_runner
 from backend.slm.request_policy import infer_feature_from_question
 from backend.slm.runtime import (
     create_local_service,
@@ -68,8 +62,7 @@ from backend.slm.runtime import (
     listed_model_tags,
 )
 from backend.slm.service import SafeSLMResponse, SLMService
-from backend.slm.variants import VariantKind, VariantRequest, VariantRunner
-
+from backend.slm.variants import VariantKind, VariantRequest
 from backend.statistics.participant_evidence import (
     LOCAL_DEMO_PARTICIPANT_ALIAS,
     UnknownFeature,
@@ -188,9 +181,17 @@ class RespondRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     participant_id: str
-    question: str
+    question: str = Field(min_length=1, max_length=2_000)
     feature_id: str | None = None
     model_tag: str | None = None
+    variant: VariantKind | None = None
+
+    @field_validator("question")
+    @classmethod
+    def require_nonblank_question(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("question must not be blank")
+        return value
 
 
 class ModelCatalogResponse(BaseModel):
@@ -257,7 +258,7 @@ def create_app(
     async def prevent_response_storage(request: Request, call_next):
         try:
             response = await call_next(request)
-        except Exception:
+        except Exception:  # noqa: BLE001 - privacy boundary must sanitise any failure
             # Do not let an unexpected dataset/model exception leak into server traces.
             logger.error("event=local_api_unexpected_failure")
             response = JSONResponse(
@@ -285,56 +286,29 @@ def create_app(
             return active_service
         return create_runtime_service("ollama", model_tag=model_tag)
 
-    def respond_with_retrieval(
+    def respond_with_variant(
         request_service: SLMService,
         packet: EvidencePacket,
         question: str,
+        variant: VariantKind,
     ) -> SafeSLMResponse:
-        """Run approved packet-bound retrieval for the live Ollama runtime."""
+        """Prepare context only after the runner's deterministic safety gates."""
 
         client = request_service.client
-
-        # PacketContextResponder is Ollama-specific. Keep demo/injected
-        # services on the existing Base response path.
-        if not isinstance(client, OllamaClient):
+        if variant == VariantKind.BASE_LLM:
             return request_service.respond(packet, question)
-
-        retriever = ApprovedPacketRetriever()
-
-        context_items = tuple(
-            retriever.retrieve(
-                packet,
-                question,
-                top_k=3,
-                seed_context=(),
-            )
-        )
-
-        digest = packet_context_digest(packet)
-        approvals = tuple(
-            ContextApproval(
-                context_id=item.context_id,
-                provenance_ref=item.provenance_ref,
-                packet_sha256=digest,
-                source=item.source,
-                data_classification=item.data_classification,
-            )
-            for item in context_items
-        )
-
-        responder = PacketContextResponder(
+        if not isinstance(client, OllamaClient):
+            raise TypeError("context variants require the ollama runtime")
+        runner = create_packet_variant_runner(
             client,
-            approvals=approvals,
+            packet,
+            retriever=ApprovedPacketRetriever(),
+            # Preserve PR #39's packet-summary setting. This is configuration,
+            # not a certificate of personal-data/privacy acceptance.
             allow_aggregated_summaries=True,
         )
-
-        runner = VariantRunner(
-            responder,
-            retriever=retriever,
-        )
-
         request = VariantRequest(
-            variant=VariantKind.RAG,
+            variant=variant,
             question=question,
             packet=packet,
             top_k=3,
@@ -360,6 +334,15 @@ def create_app(
         if preflight is not None:
             return preflight
 
+        has_ollama = isinstance(request_service.client, OllamaClient)
+        variant = payload.variant or (
+            VariantKind.RAG if has_ollama else VariantKind.BASE_LLM
+        )
+        if variant != VariantKind.BASE_LLM and not has_ollama:
+            raise HTTPException(
+                status_code=422, detail="context variants require the ollama runtime"
+            )
+
         feature_id = payload.feature_id or infer_feature_from_question(payload.question)
         try:
             participant_id = payload.participant_id
@@ -367,16 +350,19 @@ def create_app(
                 participant_id = select_local_demo_participant(feature_id)
             packet = build_evidence_packet(participant_id, feature_id=feature_id)
         except UnknownParticipant as exc:
-            raise HTTPException(status_code=404, detail="participant data not found") from exc
+            raise HTTPException(
+                status_code=404, detail="participant data not found"
+            ) from exc
         except UnknownFeature as exc:
             raise HTTPException(status_code=422, detail="unsupported feature") from exc
         except (FileNotFoundError, PermissionError):
             return request_service.evidence_unavailable_response(payload.question)
         try:
-            return respond_with_retrieval(
+            return respond_with_variant(
                 request_service,
                 packet,
                 payload.question,
+                variant,
             )
         except Exception as exc:
             raise HTTPException(
