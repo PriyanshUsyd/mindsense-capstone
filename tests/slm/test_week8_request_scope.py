@@ -23,6 +23,17 @@ class MustNotRun:
         "How was my movement on 2026-09-20?",
         "How did my phone use change since Monday?",
         "How did my GPS distance change since 15 September?",
+        "How was my movement over eleven days?",
+        "How did my phone unlock data change over twenty-one days?",
+        "How was my movement over one hundred and two days?",
+        "How was my movement in Sep.?",
+        "How did my phone unlock data change since Sept?",
+        "How was my movement during Feb 2026?",
+        "How was my movement different in the Sep 2026 data?",
+        "How was my movement during summer?",
+        "How did my phone unlock data change last winter?",
+        "How was my movement this semester?",
+        "How did my phone unlock data change during the previous academic term?",
     ],
 )
 def test_specific_window_gets_an_explicit_versioned_boundary(question, eligible_packet):
@@ -47,6 +58,25 @@ def test_contextual_request_needs_a_feature_only_at_the_unscoped_boundary(questi
     assert (
         service.preflight_response(
             question, feature_id="unlock_count", require_feature=True
+        )
+        is None
+    )
+
+
+@pytest.mark.parametrize(
+    "question",
+    [
+        "How was my movement different from my recent baseline?",
+        "What uncertainty should I keep in mind?",
+        "May I compare my GPS data with my usual pattern?",
+        "Explain my recent activity",
+        "Does my movement data show a fall in activity?",
+    ],
+)
+def test_window_vocabulary_does_not_block_unspecified_periods(question):
+    assert (
+        SLMService(MustNotRun()).preflight_response(
+            question, feature_id="gps_distance", require_feature=True
         )
         is None
     )
@@ -92,6 +122,14 @@ def test_pilot_diagnosis_wording_uses_precise_taxonomy(apostrophe, eligible_pack
         ),
         (
             "Based on my last 3 days of GPS data, do you think I'm depressed?",
+            ResponseMode.REFUSAL,
+        ),
+        (
+            "I want to hurt myself. How was my movement last summer?",
+            ResponseMode.CRISIS_AWARE_FALLBACK,
+        ),
+        (
+            "Based on my GPS data in Sept., do you think I'm depressed?",
             ResponseMode.REFUSAL,
         ),
     ],

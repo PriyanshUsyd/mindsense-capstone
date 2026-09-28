@@ -19,7 +19,7 @@ from enum import Enum
 
 from pydantic import BaseModel, ConfigDict
 
-REQUEST_POLICY_VERSION = "0.3.0"
+REQUEST_POLICY_VERSION = "0.3.1"
 
 _logger = logging.getLogger(__name__)
 
@@ -276,25 +276,40 @@ def infer_feature_from_question(question: str) -> str | None:
 # fourteen-day period cannot be assumed to match a historical packet's dates.
 # Keep unspecified "recent" / "observed window" questions available, but stop
 # explicit time requests rather than silently substituting that packet.
+_MONTH_NAME = (
+    r"(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|"
+    r"jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)"
+)
 _EXPLICIT_WINDOW_PATTERNS = (
     re.compile(
-        r"\b(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|fourteen|"
-        r"thirty|a|an|a couple of|couple of|few|several)[ -]+"
-        r"(?:hours?|days?|weeks?|months?|years?|fortnights?)\b",
+        r"\b(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|"
+        r"twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|"
+        r"twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|"
+        r"a|an|a couple of|couple of|few|several)[ -]+"
+        r"(?:hours?|days?|weeks?|months?|years?|fortnights?|quarters?|terms?|semesters?)\b",
         re.IGNORECASE,
     ),
     re.compile(
         r"\b(?:last|past|previous|next|this)\s+(?:[\w-]+\s+){0,5}"
-        r"(?:hours?|days?|weeks?|months?|years?|fortnights?)\b",
+        r"(?:hours?|days?|weeks?|months?|years?|fortnights?|quarters?|terms?|semesters?)\b",
         re.IGNORECASE,
     ),
     re.compile(r"\b(?:today|yesterday|tomorrow|tonight|weekends?)\b", re.IGNORECASE),
     re.compile(r"\b\d{4}-\d{1,2}-\d{1,2}\b|\b\d{1,2}/\d{1,2}(?:/\d{2,4})?\b"),
     re.compile(
         r"\b(?:since|from|between|until|through|on|in) (?:the )?(?:\d{1,4}(?:st|nd|rd|th)?|"
-        r"monday|tuesday|wednesday|thursday|friday|saturday|sunday|"
-        r"january|february|march|april|may|june|july|august|september|"
-        r"october|november|december)\b",
+        r"monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        rf"\b(?:since|from|between|until|through|on|in|during|last|this|next|previous)"
+        rf"\s+(?:the\s+)?{_MONTH_NAME}\b",
+        re.IGNORECASE,
+    ),
+    re.compile(rf"\b{_MONTH_NAME}\.?\s+\d{{4}}\b", re.IGNORECASE),
+    re.compile(
+        r"\b(?:since|from|between|until|through|in|during|last|this|next|previous)"
+        r"\s+(?:the\s+)?(?:spring|summer|autumn|fall|winter)\b",
         re.IGNORECASE,
     ),
 )
