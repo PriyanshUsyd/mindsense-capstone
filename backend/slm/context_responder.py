@@ -120,7 +120,8 @@ class PacketContextResponder:
 
     The default accepts synthetic data only. Enabling aggregated summaries is
     an explicit integration setting after Data/Statistics/Privacy review, not
-    an approval conferred by this constructor. No HTTP route enables this class.
+    an approval conferred by this constructor. The API composes this boundary
+    with the packet-source adapter for the Ollama variants.
     """
 
     def __init__(

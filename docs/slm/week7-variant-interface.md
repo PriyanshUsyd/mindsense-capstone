@@ -1,8 +1,9 @@
 # Week 7 SLM Variant Interface and Comparison Plan
 
 > Week 8 continuation: [safety and context integration](week8-safety-context-integration.md)
-> adds an opt-in packet-bound responder and synthetic functional verification.
-> Production retrieval/tool sources and owner acceptance remain pending. The
+> now connects AllenLi's merged packet source to bounded API/tool execution.
+> The 28 September local continuation passes all four modes on synthetic
+> packets with real local models; team review and owner acceptance remain. The
 > dated Week 7 implementation and test records below are historical snapshots.
 
 - Owner: Richard Zhao, SLM Integration Lead

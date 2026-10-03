@@ -21,6 +21,10 @@ from benchmarks.slm_prohibited_request_baseline import load_packet
             "unsupported_time_window",
         ),
         ("Based on my data, do you think I'm depressed?", "diagnosis_request_detected"),
+        ("How was my movement over eleven days?", "unsupported_time_window"),
+        ("How was my movement in Sept.?", "unsupported_time_window"),
+        ("How was my movement last summer?", "unsupported_time_window"),
+        ("How was my movement this semester?", "unsupported_time_window"),
     ],
 )
 def test_pilot_boundaries_stop_before_alias_resolution_or_data_load(
