@@ -1,0 +1,252 @@
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+import type { ResponseMode, SafeSLMResponse } from '../../api/client'
+import { RespondError, respond } from '../../api/client'
+import { NormalResponse } from './NormalResponse'
+
+vi.mock('../../api/client', async () => {
+  const actual = await vi.importActual<typeof import('../../api/client')>('../../api/client')
+  return { ...actual, respond: vi.fn() }
+})
+
+const mockedRespond = vi.mocked(respond)
+
+function responseFor(
+  responseMode: ResponseMode,
+  text = `Backend ${responseMode} response`,
+): SafeSLMResponse {
+  const isGenerated = responseMode === 'normal' || responseMode === 'uncertainty'
+  const usesFallback =
+    responseMode === 'refusal' ||
+    responseMode === 'generic_fallback' ||
+    responseMode === 'crisis_aware_fallback'
+  return {
+    fallback_prompt_sha256: usesFallback ? 'f'.repeat(64) : null,
+    generation_prompt_sha256: isGenerated ? 'a'.repeat(64) : null,
+    metrics: null,
+    model_invoked: isGenerated,
+    model_tag: responseMode === 'normal' ? 'synthetic-shadow-v1' : null,
+    rejection_reason: responseMode === 'refusal' ? 'prohibited_claim' : null,
+    request_category:
+      responseMode === 'crisis_aware_fallback'
+        ? 'crisis_self_harm'
+        : responseMode === 'refusal'
+          ? 'diagnosis_seeking'
+          : 'in_scope',
+    request_disposition:
+      responseMode === 'crisis_aware_fallback'
+        ? 'crisis'
+        : responseMode === 'refusal'
+          ? 'refuse'
+          : 'allow',
+    request_policy_version: '0.1.1',
+    response_mode: responseMode,
+    text,
+    used_fallback: usesFallback,
+  }
+}
+
+const NORMAL_RESPONSE = responseFor(
+  'normal',
+  'Your recent movement is about 0.8 below your personal baseline.',
+)
+
+beforeEach(() => {
+  mockedRespond.mockReset()
+})
+
+describe('NormalResponse', () => {
+  it('starts with the wellbeing welcome state and an enabled quick question', () => {
+    render(<NormalResponse />)
+
+    expect(
+      screen.getByRole('heading', { name: /understand your patterns, at your own pace/i }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /ask about my recent movement/i })).toBeEnabled()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('shows the seventh UI state, loading, while the request is in flight', async () => {
+    const user = userEvent.setup()
+    let resolveRespond!: (value: SafeSLMResponse) => void
+    mockedRespond.mockReturnValue(
+      new Promise((resolve) => {
+        resolveRespond = resolve
+      }),
+    )
+
+    render(<NormalResponse />)
+    await user.click(screen.getByRole('button', { name: /ask about my recent movement/i }))
+
+    expect(screen.getByRole('status')).toHaveTextContent('Reviewing your local evidence')
+    expect(screen.getByRole('button', { name: /asking…/i })).toBeDisabled()
+
+    resolveRespond(NORMAL_RESPONSE)
+    await waitFor(() => {
+      expect(screen.getByText(NORMAL_RESPONSE.text)).toBeInTheDocument()
+    })
+    expect(screen.getByRole('button', { name: /ask mindsense/i })).toBeDisabled()
+  })
+
+  it('renders the normal state without inventing unavailable evidence fields', async () => {
+    const user = userEvent.setup()
+    mockedRespond.mockResolvedValueOnce(NORMAL_RESPONSE)
+
+    render(<NormalResponse />)
+    await user.click(screen.getByRole('button', { name: /ask about my recent movement/i }))
+
+    expect(await screen.findByText(NORMAL_RESPONSE.text)).toBeInTheDocument()
+    expect(document.querySelector('[data-response-mode="normal"]')).toBeInTheDocument()
+    expect(screen.getAllByText('Normal response')).toHaveLength(2)
+    expect(screen.getByText('Local evidence response')).toBeInTheDocument()
+    expect(screen.getByText(/an observation from your local data/i)).toBeInTheDocument()
+    expect(screen.queryByText('Synthetic demo data')).not.toBeInTheDocument()
+    expect(screen.queryByText('see response text')).not.toBeInTheDocument()
+  })
+
+  it('reports a handled server failure as local processing failure, not unreachable', async () => {
+    const user = userEvent.setup()
+    mockedRespond.mockRejectedValueOnce(new RespondError('request failed with status 500', 500))
+
+    render(<NormalResponse />)
+    await user.click(screen.getByRole('button', { name: /ask about my recent movement/i }))
+
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('HTTP 500: request failed with status 500')
+    expect(alert).toHaveTextContent('received your request but could not complete it safely')
+    expect(alert).toHaveAttribute('data-response-mode', 'generic_fallback')
+    expect(screen.getByText('Local processing failed')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /try again/i })).toBeEnabled()
+    expect(screen.getByRole('button', { name: /ask mindsense/i })).toBeEnabled()
+  })
+
+  it('reports a network error as an unreachable local service', async () => {
+    const user = userEvent.setup()
+    mockedRespond.mockRejectedValueOnce(new TypeError('Failed to fetch'))
+
+    render(<NormalResponse />)
+    await user.click(screen.getByRole('button', { name: /ask about my recent movement/i }))
+
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('could not reach the local response service')
+    expect(alert).toHaveTextContent('Local API: Failed to fetch')
+    expect(screen.getByText('Local service unavailable')).toBeInTheDocument()
+  })
+
+  it('handles a non-Error rejection without exposing an empty state', async () => {
+    const user = userEvent.setup()
+    mockedRespond.mockRejectedValueOnce('not an Error instance')
+
+    render(<NormalResponse />)
+    await user.click(screen.getByRole('button', { name: /ask about my recent movement/i }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('unknown error')
+  })
+
+  it('calls Richard’s response route wrapper with a participant id and exact question, never a client-built EvidencePacket, and lets the backend infer the feature', async () => {
+    const user = userEvent.setup()
+    mockedRespond.mockResolvedValueOnce(NORMAL_RESPONSE)
+
+    render(<NormalResponse />)
+    await user.click(screen.getByRole('button', { name: /ask about my recent movement/i }))
+
+    await waitFor(() => expect(mockedRespond).toHaveBeenCalledTimes(1))
+    const [participantId, question, featureId] = mockedRespond.mock.calls[0]
+    expect(question).toBe('How was my movement different from my recent baseline?')
+    expect(participantId).toBe('local-demo')
+    expect(featureId).toBeUndefined()
+  })
+
+  it('keeps earlier turns visible and sends a second normal question end to end', async () => {
+    const user = userEvent.setup()
+    const secondResponse = responseFor(
+      'normal',
+      'The same evidence window has moderate evidence strength.',
+    )
+    mockedRespond.mockResolvedValueOnce(NORMAL_RESPONSE).mockResolvedValueOnce(secondResponse)
+
+    render(<NormalResponse />)
+    await user.click(screen.getByRole('button', { name: /ask about my recent movement/i }))
+    expect(await screen.findByText(NORMAL_RESPONSE.text)).toBeInTheDocument()
+
+    const textbox = screen.getByRole('textbox', {
+      name: /ask mindsense about your behavioural data/i,
+    })
+    await user.type(textbox, 'How confident is this insight?')
+    await user.click(screen.getByRole('button', { name: /ask mindsense/i }))
+
+    expect(await screen.findByText(secondResponse.text)).toBeInTheDocument()
+    expect(screen.getByText(NORMAL_RESPONSE.text)).toBeInTheDocument()
+    expect(screen.getByText('How confident is this insight?')).toBeInTheDocument()
+    expect(mockedRespond).toHaveBeenCalledTimes(2)
+    expect(mockedRespond.mock.calls[1][1]).toBe('How confident is this insight?')
+  })
+
+  it('can clear the visible history and begin a new conversation', async () => {
+    const user = userEvent.setup()
+    mockedRespond.mockResolvedValueOnce(NORMAL_RESPONSE)
+
+    render(<NormalResponse />)
+    await user.click(screen.getByRole('button', { name: /ask about my recent movement/i }))
+    expect(await screen.findByText(NORMAL_RESPONSE.text)).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /new conversation/i }))
+
+    expect(screen.queryByText(NORMAL_RESPONSE.text)).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: /understand your patterns, at your own pace/i }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('textbox')).toHaveValue(
+      'How was my movement different from my recent baseline?',
+    )
+  })
+
+  it('does not write chat turns to Web Storage or restore them after remount', async () => {
+    const user = userEvent.setup()
+    const storageWrite = vi.spyOn(Storage.prototype, 'setItem')
+    const privateText = 'Synthetic private response for storage regression'
+    mockedRespond.mockResolvedValueOnce(responseFor('uncertainty', privateText))
+    try {
+      const view = render(<NormalResponse />)
+      await user.click(screen.getByRole('button', { name: /ask about my recent movement/i }))
+      expect(await screen.findByText(privateText)).toBeInTheDocument()
+      expect(storageWrite).not.toHaveBeenCalled()
+      view.unmount()
+      render(<NormalResponse />)
+      expect(screen.queryByText(privateText)).not.toBeInTheDocument()
+      expect(storageWrite).not.toHaveBeenCalled()
+    } finally {
+      storageWrite.mockRestore()
+    }
+  })
+
+  it('renders model text as text rather than executable remote markup', async () => {
+    const user = userEvent.setup()
+    const markup = '<img src="https://untrusted.example/track" onerror="alert(1)">'
+    mockedRespond.mockResolvedValueOnce(responseFor('uncertainty', markup))
+    render(<NormalResponse />)
+    await user.click(screen.getByRole('button', { name: /ask about my recent movement/i }))
+    expect(await screen.findByText(markup)).toBeInTheDocument()
+    expect(document.querySelector('img[src="https://untrusted.example/track"]')).toBeNull()
+  })
+
+  it.each([
+    'insufficient_data',
+    'uncertainty',
+    'refusal',
+    'generic_fallback',
+    'crisis_aware_fallback',
+  ] as const)('maps backend response mode %s to its distinct UI state', async (mode) => {
+    const user = userEvent.setup()
+    const exactBackendText = `Exact backend text for ${mode}`
+    mockedRespond.mockResolvedValueOnce(responseFor(mode, exactBackendText))
+
+    render(<NormalResponse />)
+    await user.click(screen.getByRole('button', { name: /ask about my recent movement/i }))
+
+    expect(await screen.findByText(exactBackendText)).toBeInTheDocument()
+    expect(document.querySelector(`[data-response-mode="${mode}"]`)).toBeInTheDocument()
+  })
+})

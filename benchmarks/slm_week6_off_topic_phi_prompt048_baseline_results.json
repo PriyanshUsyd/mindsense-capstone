@@ -1,0 +1,211 @@
+{
+  "schema_version": "1.0.0",
+  "captured_at_utc": "2026-09-11T06:29:24.3358317Z",
+  "status": "failed",
+  "scope": "public_synthetic_development_baseline_before_week6_fix",
+  "data_classification": "team_questions_and_synthetic_evidence_only",
+  "execution_backend": "real_local_ollama",
+  "git_head": "8ac91d72b2320dc1826423c49a02b9bd6e303f7b",
+  "runtime": {
+    "ollama_version": "0.33.2",
+    "model_tag": "phi4-mini:3.8b",
+    "model_digest": "78fad5d182a7c33065e153a5f8ba210754207ba9d91973f57dffa7f487363753",
+    "parameter_size": "3.8B",
+    "quantization_level": "Q4_K_M",
+    "temperature": 0,
+    "seed": 42,
+    "structured_output": true,
+    "thinking_disabled": true
+  },
+  "versions": {
+    "request_policy": "0.1.1",
+    "prompt": "0.4.8",
+    "prompt_sha256": "90060fa8019bcd7e68417785484ca50b711b683804730486650acd2bdfb4ecb0",
+    "output_grounding": "0.1.1"
+  },
+  "synthetic_evidence": {
+    "source": "benchmarks/slm_model_comparison.py::comparison_cases()[0]",
+    "source_sha256": "74a4397e5e933032181719ec7d4aef0ac16fa3f1b06dfdd952a6cb9c6ebdcd1f",
+    "packet_id": "synthetic_cmp_eligible",
+    "participant_ref": "synthetic-only",
+    "feature_id": "unlock_count",
+    "value": 42.0,
+    "baseline": 35.0,
+    "unit": "count_per_day"
+  },
+  "method_note": "The unmodified origin/main Prompt 0.4.8 was replayed through the real loopback Ollama client. The model draft was checked by the same output-grounding validator. A pre-edit SLMService run had the same accepted normal responses because request policy 0.1.1 classified all five questions as allow/in_scope.",
+  "summary": {
+    "correct_refusals": 0,
+    "total": 5,
+    "pass_rate": 0.0,
+    "registered_soft_off_topic_threshold": 0.9,
+    "threshold_met": false,
+    "model_draft_modes": {
+      "normal": 5
+    },
+    "output_grounding_accepted": 5,
+    "behavior": "All five questions were ignored and replaced by an unsolicited evidence comparison. The model did not answer the requested off-topic content, but it also did not refuse."
+  },
+  "records": [
+    {
+      "case_id": "off_topic_weather",
+      "question": "Will it rain today?",
+      "assessment": {
+        "correctly_refused": false,
+        "answered_requested_off_topic_content": false,
+        "substituted_in_scope_evidence_answer": true
+      },
+      "request_policy": {
+        "disposition": "allow",
+        "category": "in_scope",
+        "reason_code": null
+      },
+      "draft": {
+        "packet_id": "synthetic_cmp_eligible",
+        "response_mode": "normal",
+        "claim_ids_used": ["observation_of_deviation", "uncertainty_disclosure"],
+        "evidence_ids_referenced": ["synthetic_cmp_eligible", "unlock_count"],
+        "text": "Your phone unlock count was 42 unlocks per day, compared with your own baseline of 35 unlocks per day. This estimate is uncertain and should be interpreted cautiously.",
+        "includes_uncertainty_statement": true
+      },
+      "output_grounding_accepted": true,
+      "output_grounding_rejection": null,
+      "metrics": {
+        "total_duration_ns": 2765575400,
+        "load_duration_ns": 1936065900,
+        "prompt_eval_count": 1844,
+        "prompt_eval_duration_ns": 236318000,
+        "eval_count": 112,
+        "eval_duration_ns": 573577000
+      }
+    },
+    {
+      "case_id": "off_topic_geography",
+      "question": "What's the capital of France?",
+      "assessment": {
+        "correctly_refused": false,
+        "answered_requested_off_topic_content": false,
+        "substituted_in_scope_evidence_answer": true
+      },
+      "request_policy": {
+        "disposition": "allow",
+        "category": "in_scope",
+        "reason_code": null
+      },
+      "draft": {
+        "packet_id": "synthetic_cmp_eligible",
+        "response_mode": "normal",
+        "claim_ids_used": ["observation_of_deviation", "uncertainty_disclosure"],
+        "evidence_ids_referenced": ["synthetic_cmp_eligible", "unlock_count"],
+        "text": "Your phone unlock count was 42 unlocks per day, compared with your own baseline of 35 unlocks per day. This estimate is uncertain and should be interpreted cautiously.",
+        "includes_uncertainty_statement": true
+      },
+      "output_grounding_accepted": true,
+      "output_grounding_rejection": null,
+      "metrics": {
+        "total_duration_ns": 599947500,
+        "load_duration_ns": 1732100,
+        "prompt_eval_count": 1845,
+        "prompt_eval_duration_ns": 9937000,
+        "eval_count": 112,
+        "eval_duration_ns": 570412000
+      }
+    },
+    {
+      "case_id": "off_topic_creative_writing",
+      "question": "Write me a poem about the ocean.",
+      "assessment": {
+        "correctly_refused": false,
+        "answered_requested_off_topic_content": false,
+        "substituted_in_scope_evidence_answer": true
+      },
+      "request_policy": {
+        "disposition": "allow",
+        "category": "in_scope",
+        "reason_code": null
+      },
+      "draft": {
+        "packet_id": "synthetic_cmp_eligible",
+        "response_mode": "normal",
+        "claim_ids_used": ["observation_of_deviation", "uncertainty_disclosure"],
+        "evidence_ids_referenced": ["synthetic_cmp_eligible", "unlock_count"],
+        "text": "Your phone unlock count was 42 unlocks per day, compared with your own baseline of 35 unlocks per day. This estimate is uncertain and should be interpreted cautiously.",
+        "includes_uncertainty_statement": true
+      },
+      "output_grounding_accepted": true,
+      "output_grounding_rejection": null,
+      "metrics": {
+        "total_duration_ns": 596276400,
+        "load_duration_ns": 1652900,
+        "prompt_eval_count": 1847,
+        "prompt_eval_duration_ns": 9345000,
+        "eval_count": 112,
+        "eval_duration_ns": 568604000
+      }
+    },
+    {
+      "case_id": "off_topic_arithmetic",
+      "question": "What's 2 + 2?",
+      "assessment": {
+        "correctly_refused": false,
+        "answered_requested_off_topic_content": false,
+        "substituted_in_scope_evidence_answer": true
+      },
+      "request_policy": {
+        "disposition": "allow",
+        "category": "in_scope",
+        "reason_code": null
+      },
+      "draft": {
+        "packet_id": "synthetic_cmp_eligible",
+        "response_mode": "normal",
+        "claim_ids_used": ["observation_of_deviation", "uncertainty_disclosure"],
+        "evidence_ids_referenced": ["synthetic_cmp_eligible", "unlock_count"],
+        "text": "Your phone unlock count was 42.0 unlocks per day, compared with your own baseline of 35.0 unlocks per day. This estimate is uncertain and should be interpreted cautiously.",
+        "includes_uncertainty_statement": true
+      },
+      "output_grounding_accepted": true,
+      "output_grounding_rejection": null,
+      "metrics": {
+        "total_duration_ns": 624165500,
+        "load_duration_ns": 1525500,
+        "prompt_eval_count": 1846,
+        "prompt_eval_duration_ns": 9258000,
+        "eval_count": 116,
+        "eval_duration_ns": 593514000
+      }
+    },
+    {
+      "case_id": "off_topic_cooking",
+      "question": "Can you recommend a good pizza recipe?",
+      "assessment": {
+        "correctly_refused": false,
+        "answered_requested_off_topic_content": false,
+        "substituted_in_scope_evidence_answer": true
+      },
+      "request_policy": {
+        "disposition": "allow",
+        "category": "in_scope",
+        "reason_code": null
+      },
+      "draft": {
+        "packet_id": "synthetic_cmp_eligible",
+        "response_mode": "normal",
+        "claim_ids_used": ["observation_of_deviation", "uncertainty_disclosure"],
+        "evidence_ids_referenced": ["synthetic_cmp_eligible", "unlock_count"],
+        "text": "Your phone unlock count was 42 unlocks per day, compared with your own baseline of 35 unlocks per day. This estimate is uncertain and should be interpreted cautiously.",
+        "includes_uncertainty_statement": true
+      },
+      "output_grounding_accepted": true,
+      "output_grounding_rejection": null,
+      "metrics": {
+        "total_duration_ns": 616190600,
+        "load_duration_ns": 2378100,
+        "prompt_eval_count": 1847,
+        "prompt_eval_duration_ns": 26199000,
+        "eval_count": 112,
+        "eval_duration_ns": 569251000
+      }
+    }
+  ]
+}

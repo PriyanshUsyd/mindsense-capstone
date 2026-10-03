@@ -3,17 +3,43 @@
 Home for the 7 chat-state components described in
 `docs/ui/chat-states-design.md`.
 
-**`NormalResponse.tsx` filled in by Priyansh Khandelwal (Integration/QA) —
-Sheng Wang did not deliver this, per Weekly_Plan.md Week 5: "Integrate the
-UI against the real SLM stub; build the 'normal response' state fully."**
-No commit from Sheng Wang exists anywhere in this repository as of
-2026-09-05. Wired to the real backend at `backend/api/app.py`, which runs
-requests through the actual `SLMService` (safety gate, output grounding,
-request policy) via a deterministic demo client — not a hardcoded string,
-and not the real Ollama model either (see `backend/api/app.py`'s own
-docstring for how to switch to the real local model).
+`NormalResponse.tsx` retains the API wrapper established by Priyansh and the
+Week 5 visual system merged in PR #10. The Week 6 flow keeps successful turns
+visible, accepts subsequent questions, prevents duplicate in-flight requests,
+supports Enter-to-send, and can reset to a new conversation.
 
-The remaining 6 states (insufficient-data/cold-start, uncertainty,
-refusal, generic fallback, crisis-aware fallback, loading) are still
-Week 6 scope per the original plan — rough sketches only, not required to
-work yet.
+Every turn posts a local participant alias and question to
+`backend/api/app.py`. The backend selects the approved local evidence, then
+passes the question through Richard's `SLMService` request policy, local
+generation, output grounding, and fail-closed fallback path. Launching FastAPI
+with `MINDSENSE_SLM_RUNTIME=ollama` selects the real manifest-pinned local
+client without changing frontend code.
+
+Implemented required UI states:
+
+1. loading/processing;
+2. normal response grounded in local evidence;
+3. insufficient data/cold start;
+4. uncertainty;
+5. refusal;
+6. generic fallback;
+7. crisis-aware fallback.
+
+An additional welcome/ready view provides quick questions before the first
+request; it is not counted as one of the seven required states.
+
+`ChatStates.tsx` maps each server `response_mode` directly. The crisis-aware
+message is rendered verbatim from `SafeSLMResponse.text`; client code never
+paraphrases it. A transport failure and a handled backend error both map to a
+recoverable generic fallback, but their status and guidance are intentionally
+different so a received HTTP 500 is not described as an unreachable API.
+
+The normal state is the fully interactive Week 6 flow. Other response states
+remain intentionally simple, but Richard's response modes cannot fall into an
+unstyled or misleading normal state.
+
+The HTTP request contains one question and a local participant alias, not prior
+turns or a browser-built EvidencePacket. The interface therefore preserves
+conversation history visually while each follow-up is independently grounded
+by the backend. Contextual memory would require an approved shared-contract
+change and is not claimed here.

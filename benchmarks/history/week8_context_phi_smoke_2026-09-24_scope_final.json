@@ -1,0 +1,135 @@
+{
+  "generated_at_utc": "2026-09-24T09:27:22.994760+00:00",
+  "scope": "synthetic_context_functional_smoke_not_method_comparison",
+  "production_retrieval_ready": false,
+  "provenance": {
+    "git_head": "822214ca75e84279c21c9c04cda0a718976c00e9",
+    "working_tree_dirty": true,
+    "sha256_raw_bytes": {
+      "benchmarks/slm_evaluation_alignment.py": "c223e0ff20e6e2618824d67c51cb6a3362b4441955a135e701ffe3ea6cac2fbf",
+      "benchmarks/fixtures/week5_evaluation_alignment.json": "d24617e1b2472d0880bb2d69a7f4b698fed983d251f48c17e17c267a7724f5d9",
+      "benchmarks/fixtures/week5_prohibited_requests.json": "8605babeab053cb24bfa2870af239956baf5f8d55241b997fc13e75fc48d7274",
+      "benchmarks/slm_prohibited_request_baseline.py": "2039ef1241db69c04fb804ac8a7262827dec982f65a22a9326fc97c3e2b1b943",
+      "benchmarks/slm_model_comparison.py": "0389516832f79db422e76b7a5f253f1e6835bd3e4cd29640dc42090146672a08",
+      "backend/evaluation/evaluation_plan_v0.1.md": "214f7232c7aba8ecdd691b76005f161a7c848515055090f422fad0034a6cd8dd",
+      "docs/evaluation/pass-threshold.md": "17c0845af1ad30d8387e582f5e20147c3d5fa2cabae53f64b574ae8af86ea554",
+      "backend/contracts/evidence.py": "cbcffab2df3bd1fc2b98307441a286d36afe66c43eea30d032960dbfe82bee10",
+      "backend/slm/request_policy.py": "e52b5fb0b78b9261548bbce43dbcb5aa14aa07f79d32d195786731eef30a4e7f",
+      "backend/slm/service.py": "4255e18bc0e25b85ca6c5c890ac375c7f5a9643d8a5faf2c06fdb17624f1042c",
+      "backend/slm/safety_gate.py": "605453a3a2144f37fc27b6d98989f69904368a7051308e89b9790c2606160580",
+      "backend/slm/output_grounding.py": "72c9e59ff33c018f24c38409d18312fb32fe12cc0977c995c04734cfb57197ed",
+      "backend/slm/client.py": "ea2af2f2a38839be4c1ed819e859061567381f27b059f8b94361557b3ce5379b",
+      "backend/slm/prompt_loader.py": "d4931ea7f0319fb5a9ee4945bf44fec3aab26a54b165de1ae5e666eea2dde027",
+      "backend/slm/runtime.py": "60082f9e23531cd1e0f3ac9e4e0f18f12181a598b6549edc518aba7ae2863d79",
+      "backend/slm/model_manifest.yaml": "edcaae9eeb1de9c922006df2390ab8a6dad82513b6d2a6a2aaa8075f5fb17331",
+      "backend/slm/prompts/evidence_explainer.yaml": "52e183a75aa20dfe4bbf375e167b232e699037adf43b4a8de5db7ba9441aa741",
+      "backend/slm/prompts/generic_fallback.yaml": "cbb7155e494c316dd457201e2a1d01ca757f1faf197a9f135d598a60e2b7532e",
+      "backend/slm/prompts/crisis_aware.yaml": "9fa939eb0a07383d13b600004ce308cf764387edaf8bbbe47e58a24e26f8d16d",
+      "backend/slm/prompts/insufficient_data.yaml": "484379c190654e8e89a5ee951ce6cf07c3dab81c890d049d75bd7208e22948a8",
+      "tests/slm/fixtures/week5_gps_eligible.json": "292dfa835ba8f590e260c1c587fba6e3072953dbef4b8325ab0ffe16d3578198",
+      "tests/slm/fixtures/week5_gps_missing.json": "5ccfa37812b2c38499f896dd8d6c981ce9c2c5ff615a4d58eca905a9d17e8b17",
+      "backend/slm/context_responder.py": "66661567bebb08115642b40b60b1c1a8f21615f5d2b870a7e270be0f8e95b803",
+      "backend/slm/variants.py": "207bd5bfa51747a33bc0df758251f9c6b940da7730a47b354f74e35c038ca6ed",
+      "backend/slm/prompts/request_scope.yaml": "0d12cfd1162191cf1488447c0f0bf57533706a980a8cf5fcf78c9cdafb2bd88e",
+      "backend/slm/prompts/unsupported_window.yaml": "904903877dc61d157d1ecc0547adcf0a5253a66c24758276507faeccf13a0394",
+      "benchmarks/slm_context_smoke.py": "1e7cbf4711af6240e3b9adfe32671b269bfb303958e61de4c8d518e3e8b4e582"
+    },
+    "request_policy_version": "0.3.0",
+    "output_grounding_version": "0.1.1",
+    "prompt_version": "0.4.13",
+    "prompt_sha256": "52e183a75aa20dfe4bbf375e167b232e699037adf43b4a8de5db7ba9441aa741",
+    "model_digest_note": "Tag and manifest hash recorded; verify installed digest separately before joint runs."
+  },
+  "context_policy_version": "0.1.0",
+  "model_tag": "phi4-mini:3.8b",
+  "prompt_version": "0.4.13",
+  "passed": 3,
+  "total": 3,
+  "records": [
+    {
+      "variant": "rag",
+      "passed": true,
+      "context_count": 1,
+      "tool_names": [],
+      "response": {
+        "response_mode": "normal",
+        "text": "Your GPS distance was 3.8 kilometres per day, compared with your own baseline of 4.6 kilometres per day. This estimate is uncertain and should be interpreted cautiously.",
+        "used_fallback": false,
+        "rejection_reason": null,
+        "model_tag": "phi4-mini:3.8b",
+        "generation_prompt_sha256": "52e183a75aa20dfe4bbf375e167b232e699037adf43b4a8de5db7ba9441aa741",
+        "fallback_prompt_sha256": null,
+        "metrics": {
+          "total_duration_ns": 3042804200,
+          "load_duration_ns": 2184654300,
+          "prompt_eval_count": 2564,
+          "prompt_eval_duration_ns": 281227000,
+          "eval_count": 109,
+          "eval_duration_ns": 553528000
+        },
+        "request_disposition": "allow",
+        "request_category": "in_scope",
+        "request_policy_version": "0.3.0",
+        "model_invoked": true
+      }
+    },
+    {
+      "variant": "agent",
+      "passed": true,
+      "context_count": 1,
+      "tool_names": [
+        "get_evidence_state"
+      ],
+      "response": {
+        "response_mode": "normal",
+        "text": "Your GPS distance was 3.8 kilometres per day, compared with your own baseline of 4.6 kilometres per day. This estimate is uncertain and should be interpreted cautiously.",
+        "used_fallback": false,
+        "rejection_reason": null,
+        "model_tag": "phi4-mini:3.8b",
+        "generation_prompt_sha256": "52e183a75aa20dfe4bbf375e167b232e699037adf43b4a8de5db7ba9441aa741",
+        "fallback_prompt_sha256": null,
+        "metrics": {
+          "total_duration_ns": 614288700,
+          "load_duration_ns": 1697000,
+          "prompt_eval_count": 2529,
+          "prompt_eval_duration_ns": 44164000,
+          "eval_count": 109,
+          "eval_duration_ns": 547451000
+        },
+        "request_disposition": "allow",
+        "request_category": "in_scope",
+        "request_policy_version": "0.3.0",
+        "model_invoked": true
+      }
+    },
+    {
+      "variant": "rag_agent",
+      "passed": true,
+      "context_count": 2,
+      "tool_names": [
+        "get_evidence_state"
+      ],
+      "response": {
+        "response_mode": "normal",
+        "text": "Your GPS distance was 3.8 kilometres per day, compared with your own baseline of 4.6 kilometres per day. This estimate is uncertain and should be interpreted cautiously.",
+        "used_fallback": false,
+        "rejection_reason": null,
+        "model_tag": "phi4-mini:3.8b",
+        "generation_prompt_sha256": "52e183a75aa20dfe4bbf375e167b232e699037adf43b4a8de5db7ba9441aa741",
+        "fallback_prompt_sha256": null,
+        "metrics": {
+          "total_duration_ns": 621573100,
+          "load_duration_ns": 1149200,
+          "prompt_eval_count": 2586,
+          "prompt_eval_duration_ns": 48156000,
+          "eval_count": 109,
+          "eval_duration_ns": 549838000
+        },
+        "request_disposition": "allow",
+        "request_category": "in_scope",
+        "request_policy_version": "0.3.0",
+        "model_invoked": true
+      }
+    }
+  ]
+}

@@ -1,8 +1,10 @@
 {
-  "timestamp_local": "2026-09-05 12:56:40 AEST",
+  "timestamp_local": "2026-09-26 20:02:34 AEST",
+  "timestamp_utc": "2026-09-26T10:02:34.935018Z",
+  "history_file": "benchmarks/history/slm_latency/2026-09-26T200234.935018+1000.json",
   "environment": {
     "python": "3.14.0",
-    "platform": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+    "platform": "macOS-27.0-arm64-arm-64bit-Mach-O",
     "machine": "arm64",
     "processor": "arm",
     "ollama_path": "/usr/local/bin/ollama",
@@ -16,41 +18,41 @@
     "cmd": null,
     "runs": 5,
     "latency_ms": {
-      "min": 1261.09,
-      "mean": 2568.9,
-      "median": 2988.77,
-      "p95": 3878.2,
-      "max": 4061.79
+      "min": 783.15,
+      "mean": 1463.17,
+      "median": 1335.48,
+      "p95": 2171.97,
+      "max": 2248.52
     },
     "outputs": [
       {
         "prompt_index": 1,
-        "latency_ms": 4061.79,
-        "output_chars": 154,
-        "output_preview": "The user's sleep duration has decreased from their baseline, with no change in physical activity levels and moderate confidence in their wellbeing status."
+        "latency_ms": 1865.76,
+        "output_chars": 143,
+        "output_preview": "The user's sleep duration has decreased from their baseline, with no change in activity levels and moderate confidence in the observed changes."
       },
       {
         "prompt_index": 2,
-        "latency_ms": 1261.09,
-        "output_chars": 131,
-        "output_preview": "Certainly! If you could provide some background information or context about your situation, I would be happy to assist you better."
+        "latency_ms": 1335.48,
+        "output_chars": 216,
+        "output_preview": "To provide a comprehensive response, it's helpful to have some background information. Could you please share more details about your situation or the context y"
       },
       {
         "prompt_index": 3,
-        "latency_ms": 1389.04,
-        "output_chars": 182,
-        "output_preview": "I'm sorry, but I can't assist with diagnosing based on sensor data. It's important to consult a qualified healthcare professional for an accurate diagnosis and "
+        "latency_ms": 783.15,
+        "output_chars": 105,
+        "output_preview": "I'm sorry, but I can't assist with that. Please consult a healthcare professional for a proper diagnosis."
       },
       {
         "prompt_index": 4,
-        "latency_ms": 2988.77,
-        "output_chars": 309,
-        "output_preview": "Hey there! I wanted to share some insights about your sleep patterns. While we don't have all the details we hoped for, like your activity levels, we've noticed"
+        "latency_ms": 1082.94,
+        "output_chars": 167,
+        "output_preview": "\"While we're still gathering more information to confidently track your activity levels, we can definitely look at your sleep patterns to see how you've been re"
       },
       {
         "prompt_index": 5,
-        "latency_ms": 3143.83,
-        "output_chars": 398,
+        "latency_ms": 2248.52,
+        "output_chars": 361,
         "output_preview": "In the event of a local model failure, please be assured that our team is actively working to resolve the issue. We apologize for any inconvenience this may cau"
       }
     ]

@@ -1,10 +1,10 @@
 """Deterministic request routing before any local-model generation.
 
-The Week 5 shadow build must refuse high-severity requests even when the UI
-is not available.  This module deliberately uses a small, reviewable rule
-set: crisis language is routed to the versioned crisis template and other
-prohibited requests are routed to the generic refusal template.  Allowed
-questions continue to the schema-constrained local model.
+The local SLM service must refuse high-severity requests even when the UI is
+not available.  This module deliberately uses a small, reviewable rule
+set: crisis language is routed to the versioned crisis template, prohibited
+and off-topic requests are routed to the generic refusal template, and only
+recognised MindSense evidence questions continue to the local model.
 
 This is a development guardrail, not a clinical risk assessment.  The rule
 set and participant-facing wording still require Evaluation/client review
@@ -13,12 +13,15 @@ before any human pilot.
 
 from __future__ import annotations
 
+import logging
 import re
 from enum import Enum
 
 from pydantic import BaseModel, ConfigDict
 
-REQUEST_POLICY_VERSION = "0.1.1"
+REQUEST_POLICY_VERSION = "0.3.1"
+
+_logger = logging.getLogger(__name__)
 
 
 class RequestDisposition(str, Enum):
@@ -29,6 +32,7 @@ class RequestDisposition(str, Enum):
 
 class RequestCategory(str, Enum):
     IN_SCOPE = "in_scope"
+    OFF_TOPIC = "off_topic"
     CRISIS_SELF_HARM = "crisis_self_harm"
     DIAGNOSIS_SEEKING = "diagnosis_seeking"
     CAUSAL_INFERENCE_SEEKING = "causal_inference_seeking"
@@ -48,7 +52,7 @@ class RequestPolicyDecision(BaseModel):
 
 
 _CRISIS_PATTERNS = (
-    re.compile(r"\b(?:kill|hurt|harm) myself\b", re.IGNORECASE),
+    re.compile(r"\b(?:kill|hurt|harm)(?:ing)? myself\b", re.IGNORECASE),
     re.compile(r"\b(?:suicide|suicidal|self[- ]harm)\b", re.IGNORECASE),
     re.compile(r"\b(?:end|take) my (?:own )?life\b", re.IGNORECASE),
     re.compile(r"\b(?:do not|don't|dont) want to (?:live|be alive)\b", re.IGNORECASE),
@@ -85,6 +89,10 @@ _PROHIBITED_PATTERNS: tuple[
                 re.IGNORECASE,
             ),
             re.compile(r"\bam i (?:depressed|anxious|mentally ill)\b", re.IGNORECASE),
+            re.compile(
+                r"\bdo you think i(?: am|['’]m) (?:depressed|anxious|mentally ill)\b",
+                re.IGNORECASE,
+            ),
             re.compile(
                 r"\b(?:can|could) you (?:tell|determine|assess) (?:if|whether) "
                 r"i(?: am|'m) (?:becoming |getting )?(?:depressed|anxious|mentally ill)\b",
@@ -154,6 +162,197 @@ _PROHIBITED_PATTERNS: tuple[
     ),
 )
 
+# The two-part rule is intentionally conservative: ordinary questions need a
+# MindSense feature plus evidence-analysis intent. Short contextual questions
+# that are meaningful in an evidence view are listed separately. Unmatched or
+# ambiguous requests fail closed without invoking the model.
+_DOMAIN_PATTERNS = (
+    re.compile(
+        r"\b(?:gps|movement|mobility|unlock(?:s|ed|ing)?|phq[- ]?4|"
+        r"well[- ]?being|behavio(?:u)?r)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\bphone (?:use|usage|activity|unlock(?:s|ed|ing)?)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\b(?:tracked|location) (?:data|pattern|history)\b|\bscreen time\b",
+        re.IGNORECASE,
+    ),
+)
+_EVIDENCE_INTENT_PATTERNS = (
+    re.compile(
+        r"\b(?:baseline|pattern|history|evidence|data|score|trend|uncertainty|"
+        r"relationship|association|correlation|chang(?:e|ed|ing)|different|"
+        r"compare|comparison|higher|lower|usual|normal|unusual|frequent|"
+        r"conclude|enough|observed|window)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(r"\bhow (?:was|is|has) my\b", re.IGNORECASE),
+)
+_CONTEXTUAL_IN_SCOPE_PATTERNS = (
+    re.compile(r"\bwhat changed\b", re.IGNORECASE),
+    re.compile(r"\bhow am i doing\b", re.IGNORECASE),
+    re.compile(
+        r"\b(?:describe|explain|compare) my (?:recent |tracked )?activity\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\bis this (?:higher|lower|different) (?:or (?:higher|lower) )?"
+        r"than (?:normal|usual) for me\b",
+        re.IGNORECASE,
+    ),
+    re.compile(r"\bwhat uncertainty should i keep in mind\b", re.IGNORECASE),
+    re.compile(r"\bis there enough (?:data|history)\b", re.IGNORECASE),
+    re.compile(
+        r"\bwhat does the word (?:depressed|anxious|depression|anxiety) mean\b",
+        re.IGNORECASE,
+    ),
+)
+
+
+# Which statistics-side feature (backend.statistics.participant_evidence's
+# `_FEATURES` dict keys) a question is actually about. Kept separate from
+# the in/out-of-scope patterns above: those decide WHETHER to answer, this
+# decides WHICH feature's evidence packet to answer from. Before this
+# existed, `/respond` always answered from `gps_distance` regardless of
+# what was asked (see backend/api/app.py's `RespondRequest.feature_id`
+# default) — an unlock-related question silently got a GPS answer.
+DEFAULT_FEATURE_ID = "gps_distance"
+
+_UNLOCK_FEATURE_PATTERNS = (
+    re.compile(r"\bunlock(?:s|ed|ing)?\b", re.IGNORECASE),
+    re.compile(r"\bphone (?:use|usage|activity)\b", re.IGNORECASE),
+    re.compile(r"\bscreen time\b", re.IGNORECASE),
+    re.compile(r"\bpick(?:s|ed|ing)?[- ]?up(?:s)?\b", re.IGNORECASE),
+)
+
+_GPS_FEATURE_PATTERNS = (
+    re.compile(r"\bgps\b", re.IGNORECASE),
+    re.compile(r"\btravel(?:l?ed|ling|s)?\b", re.IGNORECASE),
+    re.compile(r"\bdistance\b", re.IGNORECASE),
+    re.compile(r"\bmovement\b", re.IGNORECASE),
+    re.compile(r"\bmobility\b", re.IGNORECASE),
+    re.compile(r"\blocation\b", re.IGNORECASE),
+)
+
+
+def infer_feature_from_question(question: str) -> str | None:
+    """Deterministic keyword match from question text to a `feature_id`.
+
+    Matches only one of the two Tier-1 features
+    (`backend.statistics.participant_evidence._FEATURES`: `gps_distance`,
+    `unlock_count`) — never inspects participant data, mirrors
+    `classify_request`'s text-only contract. A question that matches
+    neither feature's keywords, or matches both (genuinely ambiguous), is
+    not guessed: return None so the SLM preflight can request a supported
+    feature before loading participant data. DEFAULT_FEATURE_ID is retained
+    only for older callers that explicitly choose their own default.
+    """
+
+    clean_question = question.strip()
+    matches_unlock = any(
+        pattern.search(clean_question) for pattern in _UNLOCK_FEATURE_PATTERNS
+    )
+    matches_gps = any(
+        pattern.search(clean_question) for pattern in _GPS_FEATURE_PATTERNS
+    )
+
+    if matches_unlock and not matches_gps:
+        return "unlock_count"
+    if matches_gps and not matches_unlock:
+        return "gps_distance"
+
+    _logger.warning(
+        "feature_inference_ambiguous: question matched %s feature keywords; "
+        "no feature selected",
+        "both" if (matches_unlock and matches_gps) else "no",
+    )
+    return None
+
+
+# There is no user-selected calendar-window contract yet. Even a requested
+# fourteen-day period cannot be assumed to match a historical packet's dates.
+# Keep unspecified "recent" / "observed window" questions available, but stop
+# explicit time requests rather than silently substituting that packet.
+_MONTH_NAME = (
+    r"(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|"
+    r"jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)"
+)
+_EXPLICIT_WINDOW_PATTERNS = (
+    re.compile(
+        r"\b(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|"
+        r"twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|"
+        r"twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|"
+        r"a|an|a couple of|couple of|few|several)[ -]+"
+        r"(?:hours?|days?|weeks?|months?|years?|fortnights?|quarters?|terms?|semesters?)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\b(?:last|past|previous|next|this)\s+(?:[\w-]+\s+){0,5}"
+        r"(?:hours?|days?|weeks?|months?|years?|fortnights?|quarters?|terms?|semesters?)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(r"\b(?:today|yesterday|tomorrow|tonight|weekends?)\b", re.IGNORECASE),
+    re.compile(r"\b\d{4}-\d{1,2}-\d{1,2}\b|\b\d{1,2}/\d{1,2}(?:/\d{2,4})?\b"),
+    re.compile(
+        r"\b(?:since|from|between|until|through|on|in) (?:the )?(?:\d{1,4}(?:st|nd|rd|th)?|"
+        r"monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        rf"\b(?:since|from|between|until|through|on|in|during|last|this|next|previous)"
+        rf"\s+(?:the\s+)?{_MONTH_NAME}\b",
+        re.IGNORECASE,
+    ),
+    re.compile(rf"\b{_MONTH_NAME}\.?\s+\d{{4}}\b", re.IGNORECASE),
+    re.compile(
+        r"\b(?:since|from|between|until|through|in|during|last|this|next|previous)"
+        r"\s+(?:the\s+)?(?:spring|summer|autumn|fall|winter)\b",
+        re.IGNORECASE,
+    ),
+)
+
+
+def request_scope_rejection(
+    question: str, *, feature_id: str | None = None, require_feature: bool = False
+) -> str | None:
+    """Check answer scope after crisis/prohibited routing, without data access.
+
+    A supplied packet or explicit feature can scope a contextual question.
+    It cannot override conflicting feature words or an explicit time request.
+    Unknown feature IDs remain the API/Statistics owner's validation concern.
+    """
+
+    if any(pattern.search(question) for pattern in _EXPLICIT_WINDOW_PATTERNS):
+        return "unsupported_time_window"
+    matches_unlock = any(
+        pattern.search(question) for pattern in _UNLOCK_FEATURE_PATTERNS
+    )
+    matches_gps = any(pattern.search(question) for pattern in _GPS_FEATURE_PATTERNS)
+    if matches_unlock and matches_gps:
+        return "ambiguous_feature_request"
+    inferred = (
+        "unlock_count" if matches_unlock else "gps_distance" if matches_gps else None
+    )
+    if feature_id in {"gps_distance", "unlock_count"} and inferred not in {
+        None,
+        feature_id,
+    }:
+        return "feature_request_mismatch"
+    if require_feature and not feature_id and inferred is None:
+        return "ambiguous_feature_request"
+    return None
+
+
+def _is_in_scope(question: str) -> bool:
+    if any(pattern.search(question) for pattern in _CONTEXTUAL_IN_SCOPE_PATTERNS):
+        return True
+    return any(pattern.search(question) for pattern in _DOMAIN_PATTERNS) and any(
+        pattern.search(question) for pattern in _EVIDENCE_INTENT_PATTERNS
+    )
+
 
 def classify_request(question: str) -> RequestPolicyDecision:
     """Classify one untrusted question without inspecting participant data."""
@@ -173,6 +372,13 @@ def classify_request(question: str) -> RequestPolicyDecision:
                 category=category,
                 reason_code=reason_code,
             )
+
+    if not clean_question or not _is_in_scope(clean_question):
+        return RequestPolicyDecision(
+            disposition=RequestDisposition.REFUSE,
+            category=RequestCategory.OFF_TOPIC,
+            reason_code="off_topic_request_detected",
+        )
 
     return RequestPolicyDecision(
         disposition=RequestDisposition.ALLOW,

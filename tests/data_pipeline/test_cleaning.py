@@ -25,7 +25,11 @@ def _frame(rows: list[dict]) -> pd.DataFrame:
 
 
 def test_locked_thresholds_match_the_spec():
-    assert QUALITY_LOC_MIN_HOURS == 8
+    # Finalised 2026-09-12: raised from 8h to 12h (cost: 1.63% of valid
+    # days — see backend/data_pipeline/cleaning.py's module docstring and
+    # CLAUDE.md's "Finalised decisions"). This module had drifted from
+    # analysis/cleaning.py's already-correct 12h; now reconciled.
+    assert QUALITY_LOC_MIN_HOURS == 12
     assert GPS_IMPLAUSIBILITY_THRESHOLD_M == 500_000
     assert GPS_LOG_OFFSET_M == 1000
 
@@ -33,8 +37,8 @@ def test_locked_thresholds_match_the_spec():
 def test_quality_gate_drops_low_quality_days_to_na():
     df = _frame(
         [
-            {"uid": "a", "quality_loc": 7, "loc_dist_ep_0": 5000.0},  # below 8h -> NA
-            {"uid": "a", "quality_loc": 8, "loc_dist_ep_0": 5000.0},  # exactly 8h -> kept
+            {"uid": "a", "quality_loc": 11, "loc_dist_ep_0": 5000.0},  # below 12h -> NA
+            {"uid": "a", "quality_loc": 12, "loc_dist_ep_0": 5000.0},  # exactly 12h -> kept
         ]
     )
     out = clean_gps_distance(df)

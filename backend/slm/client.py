@@ -14,8 +14,15 @@ from urllib.parse import urlsplit
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
-from backend.contracts.evidence import AssistantDraft, EvidencePacket
+from backend.contracts.evidence import (
+    AssistantDraft,
+    EligibilityStatus,
+    EvidencePacket,
+)
+from backend.slm.output_grounding import render_grounded_response_option
 from backend.slm.prompt_loader import LoadedEvidencePrompt, load_evidence_prompt
+
+DEFAULT_OLLAMA_TIMEOUT_SECONDS = 180.0
 
 
 class SLMClientError(RuntimeError):
@@ -24,6 +31,10 @@ class SLMClientError(RuntimeError):
 
 class SLMUnavailableError(SLMClientError):
     """The local model runtime could not be reached."""
+
+
+class SLMTimeoutError(SLMUnavailableError):
+    """The local model runtime exceeded the configured response deadline."""
 
 
 class SLMResponseError(SLMClientError):
@@ -37,7 +48,9 @@ class OllamaClientConfig(BaseModel):
 
     model_tag: str = Field(min_length=3)
     endpoint: str = "http://127.0.0.1:11434/api/chat"
-    timeout_seconds: float = Field(default=120.0, gt=0.0, le=300.0)
+    timeout_seconds: float = Field(
+        default=DEFAULT_OLLAMA_TIMEOUT_SECONDS, gt=0.0, le=300.0
+    )
     keep_alive: str = "5m"
     seed: int = Field(default=42, ge=0)
 
@@ -121,7 +134,13 @@ class UrllibLoopbackTransport:
         try:
             with opener.open(req, timeout=timeout_seconds) as response:
                 raw = response.read(self._MAX_RESPONSE_BYTES + 1)
-        except (error.URLError, TimeoutError, OSError) as exc:
+        except TimeoutError as exc:
+            raise SLMTimeoutError("local Ollama request timed out") from exc
+        except error.URLError as exc:
+            if isinstance(exc.reason, TimeoutError):
+                raise SLMTimeoutError("local Ollama request timed out") from exc
+            raise SLMUnavailableError("local Ollama request failed") from exc
+        except OSError as exc:
             raise SLMUnavailableError("local Ollama request failed") from exc
 
         if len(raw) > self._MAX_RESPONSE_BYTES:
@@ -156,9 +175,13 @@ class OllamaClient:
         if len(clean_question) > 2_000:
             raise ValueError("question exceeds the 2000-character limit")
 
+        runtime_state, state_directive, response_options = (
+            self._runtime_state_and_response_options(packet)
+        )
         schema = AssistantDraft.model_json_schema()
         system_content = (
             f"{self.prompt.manifest.system_text}\n\n"
+            f"{state_directive}\n\n"
             "AssistantDraft JSON schema:\n"
             f"{json.dumps(schema, ensure_ascii=False, sort_keys=True)}"
         )
@@ -169,6 +192,8 @@ class OllamaClient:
         user_content = json.dumps(
             {
                 "question": clean_question,
+                "runtime_evidence_state": runtime_state,
+                "allowed_response_options": response_options,
                 "allowed_evidence_ids": [
                     packet.identity.packet_id,
                     packet.feature_window.feature_id,
@@ -190,6 +215,39 @@ class OllamaClient:
             "keep_alive": self.config.keep_alive,
             "options": {"temperature": 0, "seed": self.config.seed},
         }
+
+    def _runtime_state_and_response_options(
+        self, packet: EvidencePacket
+    ) -> tuple[str, str, list[dict[str, object]]]:
+        eligibility = packet.baseline.eligibility_status
+        directives = self.prompt.manifest.runtime_state_directives
+        if eligibility == EligibilityStatus.ELIGIBLE:
+            runtime_state = "state_c_eligible"
+            directive = directives.eligible
+        elif eligibility == EligibilityStatus.PARTIAL_DESCRIPTIVE_ONLY:
+            runtime_state = "state_b_partial_descriptive_only"
+            directive = directives.partial_descriptive_only
+        else:
+            raise ValueError("model generation is not permitted for State A")
+
+        options: list[dict[str, object]] = []
+        for mode in packet.claim_policy.permitted_response_modes:
+            try:
+                option = render_grounded_response_option(packet, mode)
+            except ValueError:
+                continue
+            options.append(option)
+        if not options:
+            raise ValueError("packet has no grounded model response option")
+        allowed_modes = ", ".join(str(option["response_mode"]) for option in options)
+        final_directive = (
+            f"{directive.strip()}\n\n"
+            "FINAL RUNTIME CONSTRAINT: the only permitted response_mode value(s) "
+            f"for this request are: {allowed_modes}. Copy the response_mode from "
+            "the selected allowed_response_options entry exactly; do not infer a "
+            "different mode from the state name or sentence wording."
+        )
+        return runtime_state, final_directive, options
 
     def generate_draft(self, packet: EvidencePacket, question: str) -> GenerationResult:
         payload = self.build_payload(packet, question)

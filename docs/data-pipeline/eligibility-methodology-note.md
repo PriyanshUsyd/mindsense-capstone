@@ -28,10 +28,10 @@ Once the "gated" definition uses that real threshold instead of an
 arbitrary "any data at all" check, **the number matches Honghao's reported
 97.3% exactly** (214/220 = 97.2727...%, which rounds to 97.3%).
 
-The 4 participants who have a PHQ-4 entry and *some* data but fall below
-the 20-valid-day gate on at least one locked feature:
-`1badfae62cc1b76787d4f8beb68737bf`, `1e85c892d8f047ff621ad9134c4e6d8d`,
-`ad15fc229da933fbf1fc0f92fc9b55a3`, `c7d47e96f38254e31508ca2c19b24d29`.
+Four participants have a PHQ-4 entry and *some* data but fall below the
+20-valid-day gate on at least one locked feature. Their raw CES identifiers
+are intentionally omitted from this shared document; the local verification
+script derives the count reproducibly from the gitignored dataset.
 
 ## Official number for now
 

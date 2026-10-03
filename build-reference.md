@@ -55,7 +55,7 @@ CES sensing data is hourly/daily; PHQ-4 is weekly. These must not be joined naiv
 | ASGI server | Uvicorn | Standard FastAPI companion |
 | Data validation / contract | Pydantic v2 (strict mode: extra="forbid", frozen=True) | Single source of truth for the Stats-to-SLM evidence contract, API schemas, and validated SLM output |
 | Data handling | pandas + NumPy | CES's wide daily/hourly CSVs; direct, transparent aggregation, no ML pipeline needed |
-| Statistical engine | statsmodels (MixedLM) | Fixed random-intercept mixed-effects model, see Section 4 |
+| Statistical engine | R (via rpy2: `lme4`/`lmerTest` for Satterthwaite/Kenward-Roger denominator df, `nlme` for a real AR(1) fit via `corAR1`) as primary; statsmodels (`MixedLM`) as an automatic fallback when R is unavailable in the running process | Fixed random-intercept mixed-effects model, see Section 4; see `docs/statistics/r-bridge-setup.md` and `backend/statistics/mixed_effects_model.py` for the two-engine setup and fallback behavior |
 | scikit-learn | Explicitly excluded | No model training, no train/test split, no cross-validation happens anywhere in this pipeline. Do not add it to the production environment. |
 | Local SLM | Ollama + pinned Phi-4 Mini / Qwen3 candidates; final selection pending | Both `phi4-mini:3.8b` and `qwen3:4b` run locally and support the comparison workflow. The final model must be chosen from expanded, fixed safety and quality evaluation rather than treated as decided by the earlier Phi default. |
 | Frontend | React + TypeScript (Vite) | One UI lead works against generated types from the OpenAPI contract while 6 others build backend in parallel; keeps all 7 chat screen-states visually consistent as reusable components |
@@ -128,9 +128,111 @@ Example of a prohibited statement: "Your phone use caused your anxiety." / "You 
 - Deterministic safety gate: every draft response is validated a second time before becoming a response. It is rejected/rewritten to the safe fallback unless every evidence ID in the draft exists in the input packet, every claim ID is approved by its referenced evidence item, no prohibited claim or phrase is present, and every "ready" explanation includes an uncertainty statement
 - Crisis wording is never a model inference. A rule-based detector triggers the pre-approved deterministic crisis-support message — this is safer and auditable, consistent with the project's non-diagnostic scope
 
+**Week 7+ architectural direction — RAG / agentic exploration (client-confirmed):**
+Per client (Tianyi Zhang) feedback, with fine-tuning now settled as declined (see
+Section 10), the confirmed next step is exploring retrieval-augmented and/or
+agentic architectures rather than a fine-tuned model. The client asked for a
+comparison of up to four variants ahead of the evaluation procedure:
+
+1. Base LLM with a fixed data summary in the prompt (the current, already-built approach)
+2. RAG-enhanced LLM, retrieving historical sensing patterns and/or scientific knowledge
+3. Agentic system, where an agent decides which data sources/tools to query
+4. RAG + agent combined
+
+The client also sketched an example pipeline (raw sensing → feature
+extraction/aggregation → behavioural summaries/events → searchable personal
+data store → retrieval → LLM context → personalised response). Per her own
+framing, this is **illustrative only, not a locked architecture spec** — it
+does not obligate the team to implement each named stage exactly as drawn.
+
+This direction (comparing the four variants) is confirmed as the Week 7+
+architectural direction, adopted per client mandate and confirmed by the
+group lead. The specific technical implementation — embedding model, storage/
+index format for the searchable personal data store, retrieval method, and
+which concrete "tools"/data sources an agentic variant queries — is a genuine
+open engineering question the client did not specify and the team has not
+yet decided. These remain **to be scoped in Week 7**, not confirmed choices.
+
+**Week 7 interface status (independent review branch, updated 2026-09-18):**
+`Rz-week7` is based on frozen `origin/main@470fe8c`; the first three Week 7
+commits are published at `origin/Rz-week7@68fbcc5`, while the real-data
+readiness and model-selector continuation described below is local pending a
+fresh push review. The branch adds a common outer interface
+and public synthetic comparison harness for Base LLM, RAG, Agent and RAG+Agent.
+The frozen `EvidencePacket` and `SafeSLMResponse` are unchanged. Retrieval is
+bounded by `top_k`, agent execution is restricted to a local tool whitelist,
+and refused/crisis/invalid requests stop before either dependency runs. The
+current Base responder deliberately rejects non-empty supplemental context;
+production RAG/agent runs therefore remain pending owner-approved sources,
+tool schemas, context-aware grounding, privacy review and evaluation alignment.
+See `docs/slm/week7-variant-interface.md` for the interface and comparison
+controls.
+
+The public harness now has an executable CLI. With either manifest-listed
+model, the real Base variant completes all three public synthetic cases while
+the context-bearing RAG, Agent and RAG+Agent cases report stable
+`configuration_required` reasons. This is the honest current build status:
+the SLM orchestration boundary is executable, but the non-Base variants are not
+production implementations until their owner-approved retriever, statistical
+fields, tools, privacy review and evaluation rule are supplied. Rebased-build
+verification recorded 232 focused SLM/API/integration tests passing, plus
+16/16 prohibited and 5/5 off-topic checks with zero unexpected model calls.
+
+Prompt `0.4.11` on the published branch corrected the observed Qwen State B/
+State C template mixing without weakening the existing output gate. The backend
+derives the authoritative runtime state from the validated `EvidencePacket` and
+offers only deterministic grounded response options for that state; State A
+still stops before generation. Public synthetic checks now pass for both local
+models: Phi and Qwen each passed 9/9 three-repetition comparison records, while
+the prohibited-request baseline remained 16/16 and the off-topic replay 5/5
+with zero model calls. This makes both models usable SLM candidates, not a final
+model decision.
+
+The local continuation provisions the audited Sensing, EMA and Demographics
+CSVs into the gitignored `dataset/` path, uses the existing R 4.6.0 installation, and
+installs the version-locked `rpy2` 3.6.7 plus the documented R packages. The R
+bridge/mixed-model checks pass 39/39 and the real participant packet tests pass
+7/7. A real long-history packet currently reaches the SLM as
+`partial_descriptive_only` with no `StatisticalEvidence`; this preserves the
+known shared `State C + no_claim` representation gap rather than inventing a
+relationship claim or an online bootstrap result.
+
+Prompt `0.4.13` and the request payload now bind response mode, text, claim IDs,
+evidence references and the uncertainty flag into one deterministic option.
+This fixes the real-packet State B uncertainty metadata/mode ambiguity without
+relaxing the output gate. A fresh three-repetition public comparison records
+9/9 safety acceptance and 9/9 quality checks for each model. The loopback API
+now exposes `GET /models` and accepts an optional manifest-allow-listed
+`model_tag` on `POST /respond` only in Ollama mode; omitted tags use the
+manifest default and unknown tags fail with HTTP 422 before participant data is
+loaded. Real API calls selected and returned both exact tags with HTTP 200 and
+no fallback. The frontend selector remains Sheng's work and formal model
+selection remains Chonghao/client-governed.
+
+**Week 6 branch status (merged to `main` via PR #15, 2026-09-12):** `Rz-week6` addresses the
+off-topic limitation previously documented on `main`. Request policy `0.2.0` adds an
+explicit `off_topic` category and routes unmatched or ambiguous requests to
+the versioned generic refusal before model generation. Crisis and existing
+prohibited-request rules keep priority. Prompt `0.4.10` adds a second fail-closed
+instruction if an unrelated request unexpectedly reaches the model. The five
+fixed public development questions were run against the real local
+`phi4-mini:3.8b`: Prompt `0.4.8` produced 0/5 correct refusals by substituting a
+grounded evidence answer, while the updated service produced 5/5 deterministic
+pre-model refusals. This is development evidence, not held-out or joint
+acceptance; see `docs/slm/week6-integration-report.md`.
+
 ---
 
 ## 7. Privacy Architecture
+
+**Week 8 local SLM continuation:** request policy `0.3.0` adds deterministic
+feature/time-scope clarification and the paired-pilot diagnosis wording.
+An opt-in packet-bound context responder now consumes approved descriptive
+ContextItems; production source adapters and promotion remain owner-reviewed
+dependencies. Generation Prompt `0.4.13`, contract `1.0.0` and the model-selection
+status remain unchanged. See [implementation and verification](docs/slm/week8-safety-context-integration.md)
+and the [documentation-only prompting methodology](docs/slm/week8-prompting-methodology.md),
+including its separate planned multi-turn method and empty results tables.
 
 "No data leaves the local environment" is defined precisely, not left implicit:
 
@@ -186,14 +288,66 @@ The client's spec (Section 4) names 10 exact dimensions the human evaluation mus
 9. Usability
 10. Privacy perceptions
 
+### 9.1 Metric justification (added 2026-09-11)
+
+This subsection is the standing methodological reference for how each client
+metric is evaluated and, where one exists, which citation from our own
+literature review (the submitted Proposal's References section) backs it.
+It reflects the Task 1 team-only evaluation structure (Weeks 7-10: rostered
+pairs from the 8 team members, no external participants) — the rubric,
+criteria, and pass thresholds themselves are unchanged from the client-spec
+mapping above.
+
+**What we've done so far (factual, repo-grounded):**
+
+Evaluation today is a synthetic, development-stage Pass/Fail regime, not yet
+a human-participant study:
+
+- **Source plan**: `backend/evaluation/evaluation_plan_v0.1.md` — 5
+  categories (data faithfulness, personal-baseline interpretation, wellbeing
+  interpretation, association-vs-causation, uncertainty/insufficient-evidence),
+  8-10 synthetic dev questions, provisional ≥90% pass rate / 0 causal claims /
+  0 diagnoses.
+- **Guardrail suite**: `benchmarks/` — 14 high-severity + 2 privacy-extension
+  guardrail cases passing (`docs/evaluation/week5-proposal-contribution.md`);
+  deterministic safety-gate checks in `backend/slm/safety_gate.py` and
+  `backend/slm/output_grounding.py`.
+- **Rubric mapped to the client's 10 criteria**: `docs/evaluation/response-quality-rubric-v0.1.md`,
+  tied to Section 9 above — drafted and internally tested, not yet run with
+  human (or team-only) participants.
+- **Held-out set**: 20-30 prompts frozen, untouched until Week 11.
+- **Not yet covered**: longitudinal PHQ-4 change and behavioural-PHQ-4
+  association interpretation (the evidence contract can't represent those
+  inputs yet); joint inter-rater comparison between Chonghao and Richard is
+  still outstanding; no pilot or main evaluation session has run yet.
+
+**How we'll do it from today to the end — metric by metric:**
+
+| Client metric | Approach today → end | Existing citation used | Gap |
+|---|---|---|---|
+| Accuracy / faithfulness | Deterministic evidence-grounding checks (`output_grounding.py`) verify every claim traces to an approved evidence ID in the packet; extended through team rostered-pair sessions Weeks 7-10, held-out set Week 11 | Maynez et al. (2020) — fluent generated text can still be unfaithful to its source, motivating a grounding check separate from fluency | — |
+| Usefulness | Rated by rostered-pair team members using the rubric's usefulness dimension | **None exists in our literature review.** Balcombe (2023) ("AI chatbots in digital mental health") is in the Proposal's references but is cited there only for responsible-AI-communication framing, not usefulness — worth checking directly before citing it this way | State this gap explicitly in the report rather than inventing a source |
+| Trust | Same rubric, trust dimension, rostered-pair sessions | **None exists.** Same Balcombe (2023) caveat as above | State explicitly, as above |
+| Interpretability / uncertainty communication | Enforced structurally — every normal/uncertainty-mode response must contain an explicit uncertainty sentence (`backend/slm/prompts/evidence_explainer.yaml`), checked deterministically, then rated by rostered-pair sessions | World Health Organization (2024) — general AI-health risk-management rationale for bounded, uncertainty-qualified explanations; Balcombe (2023) — AI chatbots in digital mental health, cited alongside WHO for this same responsible-communication framing | Neither source validates a specific interpretability *measurement*, only the rationale for requiring it |
+| Correlation vs. causation | Deterministic claim-policy enforcement (prohibited `causal_explanation` claim ID) plus rubric rating | Curran & Bauer (2011) — within/between-person disaggregation is exactly why a within-person deviation is not itself a causal claim | Supports the statistical design choice, not a measurement of whether users correctly read association-not-causation |
+| Privacy | Deterministic no-network-egress tests (`tests/privacy/test_no_network_egress.py`), dependency spot-checks, loopback-only Ollama client, rubric's privacy-perceptions dimension rated by rostered-pair sessions | None from the academic literature review; the OWASP Logging Cheat Sheet (informal engineering reference, not an academic source) informs what to redact/not log | Treat as engineering best practice, not a research citation, in the write-up |
+
+**Structural point to carry into the Progress Report:** two of the client's
+10 criteria — usefulness and trust — currently have no supporting citation
+anywhere in our own literature review. Comprehensibility, usability, and
+inappropriate-inference likewise aren't citation-backed; they're addressed
+through the deterministic evidence contract and rubric design, not through
+literature. State this plainly rather than manufacturing a citation to fill
+the gap.
+
 ---
 
 ## 10. Key Decisions Log
 
 | Decision | Chosen | Rejected | Why |
 |---|---|---|---|
-| Statistical library | statsmodels only | scikit-learn | No trainable ML pipeline exists in this project - a fixed mixed-effects model needs no estimator selection, splitting, or cross-validation |
+| Statistical library | R (via rpy2: `lme4`/`lmerTest`, `nlme`) as primary engine, statsmodels as automatic fallback when R is unavailable — **updated from the original statsmodels-only decision** once R was installed and wired in as `mixed_effects_model.py`'s primary path (see `docs/statistics/r-bridge-setup.md`): R gives real Satterthwaite/Kenward-Roger denominator df and a true AR(1) fit with per-person BLUPs, which statsmodels cannot produce on its own | scikit-learn | No trainable ML pipeline exists in this project - a fixed mixed-effects model needs no estimator selection, splitting, or cross-validation. (This reasoning is why scikit-learn stays excluded; it does not bear on the statsmodels-vs-R choice above, which is about denominator-df/AR(1) fidelity, not model training.) |
 | Database | Raw sqlite3 + one wrapper module | SQLAlchemy ORM | Small, stable 3-4 table schema; Pydantic already validates at the API boundary; ORM overhead isn't worth it for a time-boxed student team |
 | Frontend | React + TypeScript | Vanilla HTML/JS | 7 mutually-exclusive chat states benefit from reusable typed components staying visually consistent over a 9-week build with constant backend changes |
 | Charts | Apache ECharts | Chart.js | Native calendar-heatmap support, exact fit for daily/weekly personal trend data |
-| Fine-tuning | Conditional stretch goal only, mid-Week 11 at the earliest | Default cloud fine-tuning | Real, unresolved privacy conflict - the client's spec (GPU requirements section) names Kaggle (30 free GPU-hours/week) and Google Colab as the intended fine-tuning platforms, but training on cloud GPU contradicts the "nothing leaves local" claim unless training data is purely synthetic. Raised with Tianyi; default is prompt-only + few-shot until resolved. |
+| Fine-tuning | **Declined/settled (client-confirmed, Week 7)** — prompt-only + few-shot remains the approach for the rest of the project | Default cloud fine-tuning | Previously a conditional stretch goal pending resolution of a privacy conflict (client's GPU-requirements section named Kaggle/Colab as intended platforms, in tension with the "nothing leaves local" claim). The client (Tianyi Zhang) has since confirmed GPU access is unavailable, so fine-tuning is off the table — this settles the question raised earlier rather than reopening it; no new reasoning beyond the client's stated GPU-availability constraint. |
