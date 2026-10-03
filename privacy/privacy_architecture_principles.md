@@ -1,8 +1,9 @@
 # MindSense Privacy and Architecture Principles
 
 Owner: Yuktha Naveen, Privacy and Security Lead  
-Status: Week 4 draft  
-Last verified: 2026-08-29
+Status: Living project standard (updated Week 7)
+
+Last verified: 2026-09-20
 
 ## Scope
 
@@ -142,6 +143,27 @@ Privacy principle:
 
 - The SLM layer should not receive raw sensor streams when a minimal evidence contract is enough.
 - The UI should not display or persist hidden diagnostic fields that identify a participant.
+
+## Recommended Per-User Access Control
+
+Client recommendation for participant-facing use:
+
+`Assigned opaque app user ID -> authentication/PIN -> verified session -> backend resolves the authorised user's data`
+
+This is a proposed architecture and is not yet implemented. A user ID identifies
+an account but is not, by itself, proof that the person is allowed to access that
+account. The final design should therefore:
+
+- Assign each person a random app-specific user ID that is different from the raw CES dataset UID.
+- Require an agreed authentication mechanism, such as a PIN/password or signed local session.
+- Derive the current user from the verified session instead of trusting a participant ID supplied by the browser.
+- Keep the app-user-ID-to-CES-UID mapping only in protected backend or local storage.
+- Prevent raw CES UIDs from entering frontend code, URLs, HTTP access logs, application logs, or shared repository files.
+- Enforce authorisation so one authenticated user cannot request another user's records.
+- Add negative access-control tests that attempt cross-user access and must be denied.
+
+The current `local-demo` alias is only a non-sensitive development mechanism.
+It must not be treated as participant authentication or participant-facing access control.
 
 ## Crisis and Safety Content
 

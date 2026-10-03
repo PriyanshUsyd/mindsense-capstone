@@ -1,0 +1,97 @@
+{
+  "week": 8,
+  "record_type": "summary_from_executed_tool_outputs_not_raw_log",
+  "full_suite_started_at": "2026-09-26T20:02:00.072260+10:00",
+  "branch": "yuktha/privacy-week8",
+  "base_commit": "be40e3c00d9a14b268a9088f42c6ed896074be95",
+  "tested_working_tree_includes_uncommitted_fixes": true,
+  "scope": "sealed-excluded",
+  "held_out_accessed": false,
+  "environment": {
+    "platform": "macOS 27.0 arm64, Apple M3",
+    "python": "3.14.0",
+    "r": "4.6.1",
+    "node": "22.19.0",
+    "ollama": "0.33.2",
+    "model": "phi4-mini:3.8b",
+    "rpy2_cffi_mode": "ABI",
+    "ollama_cloud_disabled_for_test_process": true
+  },
+  "runs": [
+    {"check": "initial_python", "passed": 537, "failed": 5, "warnings": 45,
+     "duration_seconds": 106.05, "failure_cause": "sandbox_denied_loopback_server_bind"},
+    {"check": "transport_permitted_rerun", "passed": 7, "failed": 0, "duration_seconds": 2.61},
+    {"check": "initial_frontend", "passed": 25, "failed": 0},
+    {"check": "new_api_privacy_before_fix", "passed": 0, "failed": 20,
+     "failure_cause": "missing_no_store_and_reflected_private_input"},
+    {"check": "first_api_privacy_after_fix", "passed": 54, "failed": 0},
+    {"check": "final_python", "passed": 563, "failed": 0, "skipped": 0,
+     "warnings": 45, "duration_seconds": 94.756},
+    {"check": "final_frontend", "passed": 27, "failed": 0},
+    {"check": "updated_ci_stage4_test_command_local", "passed": 43, "failed": 0,
+     "duration_seconds": 3.93}
+  ],
+  "new_regressions": {"python_api_privacy": 21, "frontend": 2},
+  "quality_checks": {
+    "frontend_lint": "passed",
+    "frontend_build": "passed",
+    "pip_check": "no_broken_requirements",
+    "pip_audit_requirements_strict": "no_known_vulnerabilities",
+    "pip_audit_requirements_r_strict": "no_known_vulnerabilities",
+    "npm_audit_high": "zero_vulnerabilities",
+    "dependency_manifests_changed_since_33cead3": false
+  },
+  "live_http_cases": [
+    {"case": "gps", "status": 200, "mode": "uncertainty", "model_invoked": true, "elapsed_seconds": 16.25},
+    {"case": "unlock", "status": 200, "mode": "uncertainty", "model_invoked": true, "elapsed_seconds": 22.80},
+    {"case": "diagnosis", "status": 200, "mode": "refusal", "model_invoked": false},
+    {"case": "crisis", "status": 200, "mode": "crisis_aware_fallback", "model_invoked": false},
+    {"case": "raw_data", "status": 200, "mode": "refusal", "model_invoked": false},
+    {"case": "ambiguous", "status": 200, "mode": "generic_fallback", "model_invoked": false},
+    {"case": "window", "status": 200, "mode": "generic_fallback", "model_invoked": false},
+    {"case": "invalid_extra", "status": 422},
+    {"case": "unknown_participant", "status": 404},
+    {"case": "missing_model", "status": 200, "mode": "generic_fallback",
+     "reason": "model_unavailable", "model_invoked": true, "successful_generation": false}
+  ],
+  "all_live_http_cases_no_store": true,
+  "all_live_http_cases_private_marker_absent": true,
+  "all_live_http_cases_expected_frontend_origin_allowed": true,
+  "browser_observations": [
+    "keyboard_submission_returns_unlock_uncertainty",
+    "diagnosis_refused",
+    "public_synthetic_crisis_phrase_routes_to_reviewed_template",
+    "reload_removes_visible_chat_history",
+    "backend_stopped_shows_local_service_unavailable",
+    "keyboard_retry_after_restart_returns_gps_uncertainty",
+    "new_conversation_clears_visible_history"
+  ],
+  "native_boundary_observation": {
+    "app_process_tcp_snapshot": "loopback_only_at_observed_instants",
+    "runner_health_untrusted_origin_status": 200,
+    "runner_health_reflected_untrusted_origin": true,
+    "data_disclosure_demonstrated": false,
+    "whole_device_offline_test_performed": false,
+    "browser_disk_forensics_performed": false
+  },
+  "latency": {
+    "history_file": "benchmarks/history/slm_latency/2026-09-26T200234.935018+1000.json",
+    "completed": 5,
+    "mean_ms": 1463.17,
+    "p95_ms": 2171.97,
+    "scope": "warm_direct_model_synthetic_prompts_not_full_application"
+  },
+  "decision": "hold_final_participant_use_approval",
+  "remaining_reviews": [
+    "native_runner_cross_origin_isolation_and_cache_retention",
+    "authenticated_per_user_data_ownership",
+    "os_level_offline_integrated_run",
+    "unexpected_exception_logs_retention_and_free_text_minimisation",
+    "real_personal_summary_sources_not_approved",
+    "participant_level_bootstrap_cache_must_remain_untracked"
+  ],
+  "github_actions_run_dispatched": false,
+  "commit_or_push_performed": false,
+  "master_register": "docs/privacy/master-test-register.md",
+  "local_junit": "/tmp/mindsense-week8-20260926-python.xml"
+}

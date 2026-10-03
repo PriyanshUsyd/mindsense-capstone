@@ -166,6 +166,7 @@ def phq4_repeat_density(ema):
             "\n[FAIL] PHQ-4 is not repeatedly measured."
         )
 
+    return repeat_counts
 
 def observation_days_check(sensing):
     # Report longitudinal sensing coverage per participant.
@@ -195,6 +196,7 @@ def observation_days_check(sensing):
             f"{count} / {len(observation_days)}"
         )
 
+    return observation_days
 
 def inspect_feature_columns():
     # Inspect the real CES sensing schema and identify candidate behavioural feature families.
@@ -242,8 +244,7 @@ def inspect_feature_columns():
             print("  [FAIL] No matching columns found")
 
 def show_candidate_features():
-    # Group the relevant CES fields into key feature families.
-    # And evaluate and identify the daily features that are suitable for the Tier-1 feature set.
+
 
     print("\n=== 7. CANDIDATE TIER-1 FEATURES ===")
 
@@ -254,11 +255,8 @@ def show_candidate_features():
 
     keywords = [
         "loc_dist",
-        "loc_entropy",
-        "walking",
-        "still",
+        "loc_home",
         "unlock_num",
-        "unlock_duration",
     ]
 
     for keyword in keywords:
@@ -281,9 +279,8 @@ def feature_completeness_check():
 
     candidate_features = {
         "Mobility (distance travelled)": "loc_dist_ep_0",
-        "Physical inactivity (still duration)": "act_still_ep_0",
+        "Home duration": "loc_home_dur",
         "Unlock frequency": "unlock_num_ep_0",
-        "Device engagement (unlock duration)": "unlock_duration_ep_0",
     }
 
     required_cols = [
@@ -376,7 +373,7 @@ def feature_completeness_check():
         else:
             print("  [FAIL] No valid observations found")
 
-def eligible_participant_check(ema, sensing):
+def eligible_participant_check(ema, sensing, tier1_df=None):
     # Check how many participants are eligible for inclusion in the downstream statistical pipeline.
 
     """
@@ -393,7 +390,7 @@ def eligible_participant_check(ema, sensing):
 
     tier1_features = [
         "loc_dist_ep_0",
-        "unlock_duration_ep_0",
+        "loc_home_dur",
         "unlock_num_ep_0",
     ]
 
@@ -433,14 +430,15 @@ def eligible_participant_check(ema, sensing):
     MIN_TIER1_VALID_DAYS = 30
 
     # 3. Load Tier-1 features
-    tier1_df = pd.read_csv(
-        SENSING_FILE,
-        usecols=[
-            PARTICIPANT_COL,
-            TIME_COL,
-            *tier1_features,
-        ],
-    )
+    if tier1_df is None:
+        tier1_df = pd.read_csv(
+            SENSING_FILE,
+            usecols=[
+                PARTICIPANT_COL,
+                TIME_COL,
+                *tier1_features,
+            ],
+        )
 
     # Start with all sensing participants
     tier1_eligible = set(
@@ -540,9 +538,6 @@ def main():
         sensing,
     )
 
-    observation_days_check(
-        sensing,
-    )
 
     inspect_feature_columns()
 

@@ -17,6 +17,7 @@ import statistics
 import subprocess
 import sys
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 from urllib import request
@@ -155,13 +156,26 @@ def main() -> int:
     parser.add_argument("--cmd", default="")
     parser.add_argument("--timeout", type=int, default=120)
     parser.add_argument("--out", default="benchmarks/slm_latency_results.json")
+    parser.add_argument(
+        "--history-dir",
+        default="benchmarks/history/slm_latency",
+        help="Directory for an immutable timestamped copy of every run",
+    )
     args = parser.parse_args()
 
     if args.provider == "cli" and not args.cmd:
         parser.error("--cmd is required when --provider cli is used")
 
+    started_at = datetime.now().astimezone()
+    history_path = Path(args.history_dir) / started_at.strftime(
+        "%Y-%m-%dT%H%M%S.%f%z.json"
+    )
     result: dict[str, Any] = {
-        "timestamp_local": time.strftime("%Y-%m-%d %H:%M:%S %Z"),
+        "timestamp_local": started_at.strftime("%Y-%m-%d %H:%M:%S %Z"),
+        "timestamp_utc": started_at.astimezone(timezone.utc)
+        .isoformat()
+        .replace("+00:00", "Z"),
+        "history_file": history_path.as_posix(),
         "environment": environment(),
         "status": "ok",
     }
@@ -185,9 +199,15 @@ def main() -> int:
             "cmd": args.cmd if args.provider == "cli" else None,
         }
 
+    serialized = json.dumps(result, indent=2) + "\n"
+
     out_path = Path(args.out)
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+    out_path.write_text(serialized, encoding="utf-8")
+
+    history_path.parent.mkdir(parents=True, exist_ok=True)
+    history_path.write_text(serialized, encoding="utf-8")
+
     print(json.dumps(result, indent=2))
     return 0 if result["status"] == "ok" else 2
 

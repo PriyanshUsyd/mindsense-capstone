@@ -1,0 +1,58 @@
+{
+  "timestamp_local": "2026-09-12 21:17:08 AEST",
+  "environment": {
+    "python": "3.14.0",
+    "platform": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+    "machine": "arm64",
+    "processor": "arm",
+    "ollama_path": "/usr/local/bin/ollama",
+    "llama_cli_path": null
+  },
+  "status": "ok",
+  "benchmark": {
+    "provider": "ollama",
+    "model": "phi4-mini:3.8b",
+    "url": "http://127.0.0.1:11434/api/generate",
+    "cmd": null,
+    "runs": 5,
+    "latency_ms": {
+      "min": 927.7,
+      "mean": 2224.58,
+      "median": 2395.99,
+      "p95": 3802.87,
+      "max": 4084.96
+    },
+    "outputs": [
+      {
+        "prompt_index": 1,
+        "latency_ms": 4084.96,
+        "output_chars": 143,
+        "output_preview": "The user's sleep duration has decreased from their baseline, with no change in activity levels and moderate confidence in the observed changes."
+      },
+      {
+        "prompt_index": 2,
+        "latency_ms": 1039.76,
+        "output_chars": 114,
+        "output_preview": "Certainly! If you could provide me with some background information or context, I'd be happy to assist you better."
+      },
+      {
+        "prompt_index": 3,
+        "latency_ms": 927.7,
+        "output_chars": 108,
+        "output_preview": "I'm sorry, but I can't assist with that. Please consult a healthcare professional for an accurate diagnosis."
+      },
+      {
+        "prompt_index": 4,
+        "latency_ms": 2395.99,
+        "output_chars": 308,
+        "output_preview": "We're excited to share that we have a sleep trend available for you! While we don't have complete activity data at this moment, we can still provide insights ba"
+      },
+      {
+        "prompt_index": 5,
+        "latency_ms": 2674.49,
+        "output_chars": 343,
+        "output_preview": "In the event of a local model failure, please be assured that we are actively working to resolve the issue. We apologize for any inconvenience this may cause. O"
+      }
+    ]
+  }
+}

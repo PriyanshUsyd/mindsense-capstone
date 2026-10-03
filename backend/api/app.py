@@ -13,55 +13,100 @@ endpoint there was nothing for a frontend to call.
 
 Deliberately minimal: one endpoint, loopback-only by default (matches the
 project's local-first privacy stance — see privacy/privacy_architecture_principles.md),
-no auth/session/multi-turn state. It is a thin pass-through to
-SLMService.respond() — every safety/grounding/fallback rule already
-enforced there applies unchanged; this file adds no new logic of its own
-beyond request/response shaping.
+no auth/session/multi-turn state.
 
-By default, uses a deterministic stub client (same pattern as
-benchmarks/slm_prohibited_request_baseline.py's ObservableSafeStub and
-backend/slm/shadow_cli.py), NOT a live Ollama call — so `npm run dev` +
-this API can demonstrate the real "normal response" flow end-to-end
-without requiring Ollama installed. Pass a real client
-(backend.slm.runtime.create_local_service()) via create_app(service=...)
-to use the real local model instead; nothing about the HTTP contract
-changes either way.
+FIXED 2026-09-16: `/respond` now takes a `participant_id`, builds the real
+`EvidencePacket` server-side via
+`backend.statistics.participant_evidence.build_evidence_packet` (which
+calls Moe Tanaka's tested `classify_state` / `evidence.py` classification
+logic against the real CES pipeline output), and only then hands that
+packet to `SLMService.respond()` — every safety/grounding/fallback rule
+already enforced there still applies unchanged. Previously this endpoint
+accepted a client-supplied `evidence_packet` dict, schema-validated it, and
+passed it straight through — meaning a caller could assert any
+`eligibility_status` / `evidence_strength` and the backend would believe
+it; see git history for the prior contract.
+
+The default `MINDSENSE_SLM_RUNTIME=demo` uses a deterministic client so tests
+and UI setup do not require Ollama. Set `MINDSENSE_SLM_RUNTIME=ollama` when
+starting Uvicorn to enable Richard's manifest-bounded local model selector.
+The optional `model_tag` request field can select only a pinned comparison
+candidate; `/models` exposes the bounded catalog for frontend integration.
 """
 
 from __future__ import annotations
 
-import json
+import logging
+import os
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, ConfigDict, ValidationError
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from backend.contracts.evidence import EvidencePacket
-from backend.slm.client import GenerationMetrics, GenerationResult
+from backend.contracts.evidence import (
+    ApprovedClaimId,
+    AssistantDraft,
+    EvidencePacket,
+    ResponseMode,
+)
+from backend.data_pipeline.retrieval_source import ApprovedPacketRetriever
+from backend.slm.client import GenerationMetrics, GenerationResult, OllamaClient
 from backend.slm.output_grounding import render_grounded_example
-from backend.contracts.evidence import ApprovedClaimId, AssistantDraft, ResponseMode
+from backend.slm.packet_variants import create_packet_variant_runner
+from backend.slm.request_policy import infer_feature_from_question
+from backend.slm.runtime import (
+    create_local_service,
+    default_model_tag,
+    listed_model_tags,
+)
 from backend.slm.service import SafeSLMResponse, SLMService
+from backend.slm.variants import VariantKind, VariantRequest
+from backend.statistics.participant_evidence import (
+    LOCAL_DEMO_PARTICIPANT_ALIAS,
+    UnknownFeature,
+    UnknownParticipant,
+    build_evidence_packet,
+    select_local_demo_participant,
+)
+
+SLM_RUNTIME_ENV = "MINDSENSE_SLM_RUNTIME"
+logger = logging.getLogger(__name__)
 
 
 class DeterministicDemoClient:
     """Stub SLM client for local demo/dev use — never talks to any network
     or model daemon. Mirrors benchmarks/slm_prohibited_request_baseline.py's
-    ObservableSafeStub: returns a grounded NORMAL draft built directly from
-    the real EvidencePacket's own values, so the response text genuinely
-    reflects the request rather than being hardcoded copy."""
+    ObservableSafeStub: returns a grounded draft built directly from the
+    real EvidencePacket's own values, so the response text genuinely
+    reflects the request rather than being hardcoded copy.
+
+    FIXED 2026-09-16: this used to hardcode `response_mode=NORMAL` and
+    `claim_ids_used=(OBSERVATION_OF_DEVIATION, UNCERTAINTY_DISCLOSURE)`
+    unconditionally — invisible while `/respond` only ever received the one
+    ELIGIBLE-with-evidence fixture packet. Once `/respond` started building
+    real packets (`backend.statistics.participant_evidence`), a real
+    PARTIAL_DESCRIPTIVE_ONLY packet (State B, or State C with no defensible
+    per-person evidence — see `participant_evidence.py`) hit this and
+    always failed closed to `generic_fallback`
+    (`grounding_claim_mismatch`/`model_generation_failed`), because NORMAL
+    mode and OBSERVATION_OF_DEVIATION are neither permitted nor approved
+    for that packet. This now picks the mode/claims `output_grounding.py`'s
+    grammar actually supports for the packet's real eligibility status,
+    restricted to what its own `claim_policy` permits."""
 
     def generate_draft(self, packet: EvidencePacket, question: str) -> GenerationResult:
         del question
+        mode, claim_ids = self._select_mode_and_claims(packet)
         draft = AssistantDraft(
             packet_id=packet.identity.packet_id,
-            response_mode=ResponseMode.NORMAL,
-            claim_ids_used=(
-                ApprovedClaimId.OBSERVATION_OF_DEVIATION,
-                ApprovedClaimId.UNCERTAINTY_DISCLOSURE,
-            ),
+            response_mode=mode,
+            claim_ids_used=claim_ids,
             evidence_ids_referenced=(packet.feature_window.feature_id,),
-            text=render_grounded_example(packet, ResponseMode.NORMAL),
-            includes_uncertainty_statement=True,
+            text=render_grounded_example(packet, mode),
+            includes_uncertainty_statement=ApprovedClaimId.UNCERTAINTY_DISCLOSURE
+            in claim_ids,
         )
         return GenerationResult(
             draft=draft,
@@ -72,24 +117,132 @@ class DeterministicDemoClient:
             metrics=GenerationMetrics(),
         )
 
+    @staticmethod
+    def _select_mode_and_claims(
+        packet: EvidencePacket,
+    ) -> tuple[ResponseMode, tuple[ApprovedClaimId, ...]]:
+        from backend.contracts.evidence import EligibilityStatus
+
+        permitted = set(packet.claim_policy.permitted_response_modes)
+        status = packet.baseline.eligibility_status
+
+        if status == EligibilityStatus.ELIGIBLE:
+            if ResponseMode.NORMAL in permitted:
+                return ResponseMode.NORMAL, (
+                    ApprovedClaimId.OBSERVATION_OF_DEVIATION,
+                    ApprovedClaimId.UNCERTAINTY_DISCLOSURE,
+                )
+            if ResponseMode.UNCERTAINTY in permitted:
+                return ResponseMode.UNCERTAINTY, (
+                    ApprovedClaimId.OBSERVATION_OF_DEVIATION,
+                    ApprovedClaimId.UNCERTAINTY_DISCLOSURE,
+                )
+        elif status == EligibilityStatus.PARTIAL_DESCRIPTIVE_ONLY:
+            if ResponseMode.UNCERTAINTY in permitted:
+                return ResponseMode.UNCERTAINTY, (
+                    ApprovedClaimId.TREND_DESCRIPTION,
+                    ApprovedClaimId.NOT_ENOUGH_DATA,
+                    ApprovedClaimId.UNCERTAINTY_DISCLOSURE,
+                )
+            if ResponseMode.INSUFFICIENT_DATA in permitted:
+                return ResponseMode.INSUFFICIENT_DATA, (
+                    ApprovedClaimId.TREND_DESCRIPTION,
+                    ApprovedClaimId.NOT_ENOUGH_DATA,
+                )
+        raise ValueError(
+            f"demo stub cannot ground a response for eligibility_status={status!r} "
+            f"with permitted_response_modes={packet.claim_policy.permitted_response_modes!r}"
+        )
+
 
 class RespondRequest(BaseModel):
-    """`evidence_packet` is deliberately a plain dict here, not a typed
-    `EvidencePacket` field. `EvidencePacket` is a strict=True model
-    (backend/contracts/evidence.py) - Pydantic v2's strict mode only
-    permits ISO date/datetime strings and string enum values in its JSON
-    validation path (`model_validate_json`), not when FastAPI hands it an
-    already-parsed Python dict for a nested field. Validating the nested
-    packet explicitly via model_validate_json below (not model_validate)
-    keeps the same strict contract without silently loosening it here."""
+    """FIXED 2026-09-16 — this request used to carry a client-supplied
+    `evidence_packet: dict`, validated (schema only) and passed straight to
+    `SLMService.respond()` without ever calling this codebase's own
+    classification logic (`backend.statistics.eligibility.classify_state`,
+    `backend.statistics.evidence`) — meaning the client could assert any
+    `eligibility_status` / `evidence_strength` it wanted and the backend
+    would believe it. The request now carries only a `participant_id` (and
+    optional `feature_id` and manifest-bounded `model_tag`); the packet is always built server-side by
+    `backend.statistics.participant_evidence.build_evidence_packet` from
+    the real CES pipeline output, never accepted from the caller.
+
+    FIXED 2026-09-20: `feature_id` used to default to `"gps_distance"`, and
+    the frontend sent that literal on every request — so a question about
+    phone unlocks was still answered from GPS evidence, because nothing in
+    the request path ever read the question text to pick a feature.
+    `feature_id` is now optional; when a caller omits it, `/respond` infers
+    the feature from the question via
+    `backend.slm.request_policy.infer_feature_from_question`. A caller that
+    sends an explicit `feature_id` can scope a contextual question. Week 8
+    preflight rejects ambiguous or conflicting feature requests and explicit
+    time ranges before loading participant data; no GPS default is guessed."""
 
     model_config = ConfigDict(extra="forbid")
 
-    evidence_packet: dict
-    question: str
+    participant_id: str
+    question: str = Field(min_length=1, max_length=2_000)
+    feature_id: str | None = None
+    model_tag: str | None = None
+    variant: VariantKind | None = None
+
+    @field_validator("question")
+    @classmethod
+    def require_nonblank_question(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("question must not be blank")
+        return value
 
 
-def create_app(service: SLMService | None = None) -> FastAPI:
+class ModelCatalogResponse(BaseModel):
+    """Read-only catalog used by the frontend to render a bounded selector."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    runtime: str
+    selection_enabled: bool
+    default_model_tag: str
+    available_model_tags: tuple[str, ...]
+
+
+def _selected_runtime_name(runtime_name: str | None = None) -> str:
+    selected = (
+        (
+            runtime_name
+            if runtime_name is not None
+            else os.environ.get(SLM_RUNTIME_ENV, "demo")
+        )
+        .strip()
+        .lower()
+    )
+    if selected not in {"demo", "ollama"}:
+        raise ValueError(f"{SLM_RUNTIME_ENV} must be 'demo' or 'ollama'")
+    return selected
+
+
+def create_runtime_service(
+    runtime_name: str | None = None, *, model_tag: str | None = None
+) -> SLMService:
+    """Select an explicit local runtime without changing the HTTP contract.
+
+    ``demo`` remains the safe default for tests and contributor setup.
+    ``ollama`` uses Richard's manifest-pinned local model client and still
+    fails closed through ``SLMService`` if the daemon is unavailable.
+    """
+
+    selected = _selected_runtime_name(runtime_name)
+    if selected == "demo":
+        if model_tag is not None:
+            raise ValueError("model_tag selection requires the ollama runtime")
+        return SLMService(DeterministicDemoClient())
+    if selected == "ollama":
+        return create_local_service(model_tag=model_tag)
+    raise AssertionError("validated runtime name was not handled")
+
+
+def create_app(
+    service: SLMService | None = None, *, runtime_name: str | None = None
+) -> FastAPI:
     app = FastAPI(title="MindSense local SLM API", version="0.1.0")
 
     # Loopback-only local dev server per the project's privacy stance —
@@ -97,26 +250,137 @@ def create_app(service: SLMService | None = None) -> FastAPI:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["http://127.0.0.1:5173", "http://localhost:5173"],
-        allow_methods=["POST"],
+        allow_methods=["GET", "POST"],
         allow_headers=["*"],
     )
 
-    active_service = service or SLMService(DeterministicDemoClient())
+    @app.middleware("http")
+    async def prevent_response_storage(request: Request, call_next):
+        try:
+            response = await call_next(request)
+        except Exception:  # noqa: BLE001 - privacy boundary must sanitise any failure
+            # Do not let an unexpected dataset/model exception leak into server traces.
+            logger.error("event=local_api_unexpected_failure")
+            response = JSONResponse(
+                status_code=500, content={"detail": "local processing failed"}
+            )
+        response.headers["Cache-Control"] = "no-store"
+        return response
+
+    @app.exception_handler(RequestValidationError)
+    async def private_validation_error(request: Request, exc: RequestValidationError):
+        # Framework validation details include submitted values and extra field names.
+        return JSONResponse(status_code=422, content={"detail": "invalid request body"})
+
+    selected_runtime = (
+        "injected" if service is not None else _selected_runtime_name(runtime_name)
+    )
+    active_service = service or (
+        create_runtime_service("demo") if selected_runtime == "demo" else None
+    )
+
+    def service_for(model_tag: str | None) -> SLMService:
+        if active_service is not None:
+            if model_tag is not None:
+                raise ValueError("model_tag selection requires the ollama runtime")
+            return active_service
+        return create_runtime_service("ollama", model_tag=model_tag)
+
+    def respond_with_variant(
+        request_service: SLMService,
+        packet: EvidencePacket,
+        question: str,
+        variant: VariantKind,
+    ) -> SafeSLMResponse:
+        """Prepare context only after the runner's deterministic safety gates."""
+
+        client = request_service.client
+        if variant == VariantKind.BASE_LLM:
+            return request_service.respond(packet, question)
+        if not isinstance(client, OllamaClient):
+            raise TypeError("context variants require the ollama runtime")
+        runner = create_packet_variant_runner(
+            client,
+            packet,
+            retriever=ApprovedPacketRetriever(),
+            # Preserve PR #39's packet-summary setting. This is configuration,
+            # not a certificate of personal-data/privacy acceptance.
+            allow_aggregated_summaries=True,
+        )
+        request = VariantRequest(
+            variant=variant,
+            question=question,
+            packet=packet,
+            top_k=3,
+        )
+
+        return runner.respond_safely(
+            request,
+            fallback_service=request_service,
+        )
 
     @app.post("/respond", response_model=SafeSLMResponse)
     def respond(payload: RespondRequest) -> SafeSLMResponse:
         try:
-            packet = EvidencePacket.model_validate_json(json.dumps(payload.evidence_packet))
-        except ValidationError as exc:
-            raise HTTPException(status_code=422, detail=json.loads(exc.json())) from exc
+            request_service = service_for(payload.model_tag)
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=422,
+                detail="model selection requires the ollama runtime and pinned comparison candidates",
+            ) from exc
+        preflight = request_service.preflight_response(
+            payload.question, feature_id=payload.feature_id, require_feature=True
+        )
+        if preflight is not None:
+            return preflight
+
+        has_ollama = isinstance(request_service.client, OllamaClient)
+        variant = payload.variant or (
+            VariantKind.RAG if has_ollama else VariantKind.BASE_LLM
+        )
+        if variant != VariantKind.BASE_LLM and not has_ollama:
+            raise HTTPException(
+                status_code=422, detail="context variants require the ollama runtime"
+            )
+
+        feature_id = payload.feature_id or infer_feature_from_question(payload.question)
         try:
-            return active_service.respond(packet, payload.question)
-        except Exception as exc:  # noqa: BLE001 - never leak internals to the UI
-            raise HTTPException(status_code=500, detail="local generation failed") from exc
+            participant_id = payload.participant_id
+            if participant_id == LOCAL_DEMO_PARTICIPANT_ALIAS:
+                participant_id = select_local_demo_participant(feature_id)
+            packet = build_evidence_packet(participant_id, feature_id=feature_id)
+        except UnknownParticipant as exc:
+            raise HTTPException(
+                status_code=404, detail="participant data not found"
+            ) from exc
+        except UnknownFeature as exc:
+            raise HTTPException(status_code=422, detail="unsupported feature") from exc
+        except (FileNotFoundError, PermissionError):
+            return request_service.evidence_unavailable_response(payload.question)
+        try:
+            return respond_with_variant(
+                request_service,
+                packet,
+                payload.question,
+                variant,
+            )
+        except Exception as exc:
+            raise HTTPException(
+                status_code=500, detail="local generation failed"
+            ) from exc
 
     @app.get("/health")
     def health() -> dict[str, str]:
         return {"status": "ok"}
+
+    @app.get("/models", response_model=ModelCatalogResponse)
+    def models() -> ModelCatalogResponse:
+        return ModelCatalogResponse(
+            runtime=selected_runtime,
+            selection_enabled=selected_runtime == "ollama",
+            default_model_tag=default_model_tag(),
+            available_model_tags=listed_model_tags(),
+        )
 
     return app
 

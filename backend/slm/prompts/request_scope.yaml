@@ -1,0 +1,18 @@
+template_id: request_scope
+template_version: "1.0.0"
+response_mode: generic_fallback
+allowed_claim_ids:
+  - non_diagnostic_boundary
+prohibited_claim_ids:
+  - diagnosis
+  - causal_explanation
+  - treatment_or_crisis_advice
+  - risk_prediction
+text: >
+  I'm not sure which tracked feature to use for this question. I can explain
+  one feature at a time: GPS distance or phone unlock count. Please name one
+  of these features and make sure it matches any selected feature.
+review_note: >
+  Week 8 SLM guardrail draft. Deterministic clarification only; not a model
+  instruction or prompting-method experiment. Requires normal Integration,
+  UI and Evaluation review before participant-facing release.

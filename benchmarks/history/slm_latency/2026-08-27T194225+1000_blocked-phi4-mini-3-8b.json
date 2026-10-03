@@ -1,0 +1,20 @@
+{
+  "timestamp_local": "2026-08-27 19:42:25 AEST",
+  "environment": {
+    "python": "3.14.0",
+    "platform": "macOS-26.5.2-arm64-arm-64bit-Mach-O",
+    "machine": "arm64",
+    "processor": "arm",
+    "ollama_path": null,
+    "llama_cli_path": null
+  },
+  "status": "blocked",
+  "error": "URLError",
+  "message": "<urlopen error [Errno 61] Connection refused>",
+  "benchmark": {
+    "provider": "ollama",
+    "model": "phi4-mini:3.8b",
+    "url": "http://127.0.0.1:11434/api/generate",
+    "cmd": null
+  }
+}

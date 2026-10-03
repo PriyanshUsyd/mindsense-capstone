@@ -40,7 +40,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from backend.data_pipeline.cleaning import clean_gps_distance
+from backend.data_pipeline.cleaning import QUALITY_LOC_MIN_HOURS, clean_gps_distance
 
 DATASET_DIR = Path(__file__).resolve().parents[2] / "dataset"
 GPS_COL = "loc_dist_ep_0"
@@ -76,17 +76,17 @@ def summarize(cleaned: pd.DataFrame) -> dict:
     n_rows_dropped_by_cleaning = n_rows_raw_present - n_rows_clean_present
 
     n_quality_gate_dropped = int(
-        ((cleaned[QUALITY_COL] < 8) & cleaned[GPS_COL].notna()).sum()
+        ((cleaned[QUALITY_COL] < QUALITY_LOC_MIN_HOURS) & cleaned[GPS_COL].notna()).sum()
     )
     n_implausibility_dropped = int(
         (
-            (cleaned[QUALITY_COL] >= 8)
+            (cleaned[QUALITY_COL] >= QUALITY_LOC_MIN_HOURS)
             & cleaned[GPS_COL].notna()
             & (cleaned[GPS_COL] > 500_000)
         ).sum()
     )
     n_genuine_zero_days_kept = int(
-        ((cleaned[QUALITY_COL] >= 8) & (cleaned[GPS_COL] == 0)).sum()
+        ((cleaned[QUALITY_COL] >= QUALITY_LOC_MIN_HOURS) & (cleaned[GPS_COL] == 0)).sum()
     )
 
     clean_values = cleaned[clean_col].dropna()
@@ -104,7 +104,7 @@ def summarize(cleaned: pd.DataFrame) -> dict:
         "n_participant_days_after_cleaning": n_rows_clean_present,
         "n_participant_days_dropped_by_cleaning": n_rows_dropped_by_cleaning,
         "dropped_breakdown": {
-            "quality_gate_below_8h": n_quality_gate_dropped,
+            f"quality_gate_below_{QUALITY_LOC_MIN_HOURS}h": n_quality_gate_dropped,
             "implausibility_filter_over_500km": n_implausibility_dropped,
         },
         "genuine_zero_travel_days_kept": n_genuine_zero_days_kept,

@@ -1,0 +1,6 @@
+;; Local demo verification only: a process-level network boundary, not a file sandbox.
+;; Children inherit this profile. Existing processes are unaffected.
+(version 1)
+(allow default)
+(deny network-outbound)
+(allow network-outbound (remote ip "localhost:*"))

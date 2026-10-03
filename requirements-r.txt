@@ -1,0 +1,4 @@
+# Optional Python bridge for the R-backed statistics path.
+# Install requirements.txt first, then install R and the packages documented in
+# docs/statistics/r-bridge-setup.md. R is not required for the Python fallback.
+rpy2==3.6.7

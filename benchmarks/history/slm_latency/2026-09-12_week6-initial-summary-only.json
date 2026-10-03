@@ -1,0 +1,20 @@
+{
+  "record_type": "summary-only reconstruction",
+  "source": "docs/privacy/master-test-register.md",
+  "timestamp_local": "2026-09-12 (exact time not retained)",
+  "status": "ok",
+  "benchmark": {
+    "provider": "ollama",
+    "model": "phi4-mini:3.8b",
+    "runs": 5,
+    "latency_ms": {
+      "min": 743.83,
+      "mean": 1919.76,
+      "median": 1988.51,
+      "p95": 3031.99,
+      "max": 3268.65
+    },
+    "outputs_available": false
+  },
+  "provenance_note": "The replace-in-place JSON was overwritten before it was committed. Only the verified summary recorded in the master test register is available; prompt-level outputs and the exact timestamp were not reconstructed."
+}
