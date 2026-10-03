@@ -1,188 +1,230 @@
 # Week 8 SLM Safety and Context Integration
 
 - Owner: Richard Zhao, SLM Integration Lead
-- Date: 24 September 2026
-- Base: `main@822214ca75e84279c21c9c04cda0a718976c00e9`
-- Review branch: `Rz-week8` (Draft; approved-source retrieval remains pending)
+- Updated: 28 September 2026
+- Integration base: `main@9abda9b369def04de1d370550c8a3db966b78263`
+- Review branch: `Rz-week8`; Week 8 supplementary delivery following PR #34
+- Earlier delivery: [PR #34](https://github.com/PriyanshUsyd/mindsense-capstone/pull/34), merged 26 September
 
-## Problem and resulting behaviour
+## Current delivery and attribution
 
-The [paired pilot](../evaluation/week7-rostered-pair-pilot-main.md) found that a
-three-day question received a default GPS observed-window answer. The safe
-diagnosis refusal also carried an inaccurate off-topic category. The new SLM
-scope guard checks what can actually be answered before selecting data.
+Honghao/AllenLi supplied the canonical packet retriever and source tests in
+[PR #37](https://github.com/PriyanshUsyd/mindsense-capstone/pull/37), then connected
+it to the live Ollama HTTP path in
+[PR #39](https://github.com/PriyanshUsyd/mindsense-capstone/pull/39).
+Both are merged. It is no longer accurate to call the current source missing or
+the Ollama HTTP default Base-only.
 
-| Trigger | Week 8 behaviour |
+This continuation retains that source and its tests. It completes Richard's
+SLM composition and bounded tool execution, adds an optional HTTP variant, and
+corrects two integration defects: eager retrieval before packet safety checks,
+and source bindings generated from the retriever's own returned metadata.
+Changes to the shared API extend the existing Priyansh/AllenLi boundary and
+require Integration review; they are not a new Data implementation.
+
+The supported scope is descriptive retrieval from the current validated
+EvidencePacket. There is no independent history store, vector index, external
+reference corpus, new statistic, autonomous model planner or application memory.
+Transporting information already in the packet does not prove a retrieval
+quality benefit.
+
+## Guardrails delivered in PR #34 and the current continuation
+
+| Trigger | Safe behaviour |
 | --- | --- |
-| No feature words and no selected feature | Deterministic clarification; no GPS default, participant lookup or model call |
-| Both supported features, or selected feature conflicts with the question | Clarification; no answer using a different feature |
-| Explicit time range such as last 3 days, past couple of weeks, a date or today | State explicitly that the requested time range cannot be provided; do not substitute the packet's window |
-| Contextual question with an explicit supported feature or a supplied packet | May proceed with that scope |
-| “Based on my data, do you think I'm depressed?” | Deterministic `diagnosis_seeking` refusal |
-| Crisis/prohibited question containing a date or ambiguous feature words | Crisis/prohibited policy retains priority |
-| Healthy State B/uncertainty input | Preserve the approved descriptive response; uncertainty is not itself a failure |
+| No feature words and no selected feature | Clarification before participant lookup; no guessed GPS default |
+| Both supported features, or selection conflicts with question | Clarification without answering from a different feature |
+| Explicit time range such as last three days, a date or today | Explain unsupported window; do not substitute the packet's dates |
+| Contextual in-scope question with a supported selected feature | May proceed using that scope |
+| Diagnosis request | Deterministic diagnosis refusal |
+| Crisis/prohibited question with dates or ambiguous features | Crisis/prohibited policy retains priority |
+| Healthy State B input | Preserve the allowed descriptive uncertainty answer |
 
-`request_policy` is `0.3.0`. Two versioned deterministic templates explain scope
-and time-window limitations. These are guardrail changes, not a zero/few-shot
-experiment. Generation Prompt `0.4.13`, the existing generic/crisis/insufficient
-templates, output grounding `0.1.1`, the frozen evidence contract, response
-schema and model manifest remain unchanged.
+Request policy is now `0.3.1`. Generation Prompt `0.4.13`, existing fallback
+templates, output grounding `0.1.1`, the EvidencePacket and SafeSLMResponse
+schemas and model manifest are unchanged in this continuation. The English
+window detector is bounded, not a general date parser. Moe's merged PR #38
+documents the window decision and packet-side rounding; this work does not
+change either statistical rule.
 
-The HTTP change only forwards the optional feature into SLM preflight and
-requires a resolvable feature before participant lookup. Integration owns its
-review. Unknown participants/features retain the existing HTTP validation path
-when the request otherwise has a usable scope. No frontend implementation,
-calendar-window calculation or statistical rule is added.
+PR #38 also recorded SLM detection gaps for spelled-out durations, month
+abbreviations and seasons/terms. This continuation covers the missing English
+number words, common month abbreviations (including Sep/Sept), month-year
+expressions, season expressions and academic terms/semesters. Twenty-two
+additional regressions cover those boundaries, benign controls and unchanged
+crisis/diagnosis priority. The pre-fix scope run reproduced 13 failures. This
+is a bounded English guardrail improvement, not a general calendar parser or
+permission to answer a requested period using the default packet.
 
-The English window detector is deliberately conservative and bounded. It is
-not a general date parser, multilingual classifier or clinical detector.
-Explicit periods, including fourteen days, are not assumed to match a packet
-anchored to historical dates. Some otherwise benign requests will need to be
-rephrased around the supplied observed window. This is visible in the response,
-not a claim that the requested calendar period was implemented. Numeric
-presentation precision and a richer window contract still need owner alignment.
+The [methodology](week8-prompting-methodology.md) remains documentation only:
+zero/few-shot results tables are empty and planned multi-turn work retains its
+own section. No prompting-method experiment has been run.
 
-## Context integration without new statistical claims
+## HTTP behaviour
 
-`backend/slm/context_responder.py` adds `PacketContextResponder`, an opt-in
-consumer of existing `ContextItem`s. It uses the same loopback Ollama client,
-frozen output schema and `SLMService` safety/grounding gates. No HTTP route
-enables RAG or Agent, and the Base-only `SLMServiceResponder` still rejects
-non-empty context.
+`POST /respond` accepts optional `variant` alongside the existing participant,
+question, feature and model fields. See the [API guide](../../backend/api/README.md).
+
+| Requested mode | Context preparation on a healthy, in-scope packet |
+| --- | --- |
+| `base_llm` | Existing SLM service; no retrieval/tool context |
+| `rag` | One call to ApprovedPacketRetriever, up to three items (current source returns two) |
+| `agent` | Deterministic selection of registered `get_packet_summary`; one bounded source call |
+| `rag_agent` | The same tool, then retrieval with its two items as seed context; four distinct context IDs |
+
+Omission preserves merged PR #39 behaviour: Ollama uses RAG; demo/non-Ollama
+injected services use Base. Allowed context requests on demo return HTTP 422
+before participant lookup. Invalid variant values and blank/over-2000-character
+questions receive the existing privacy-safe 422. Deterministic policy responses
+retain priority. Existing model-tag selection and response shape are unchanged.
+
+The UI does not yet expose a variant selector; that remains Frontend scope.
+The repository has no checked-in OpenAPI export script/artifact. An HTTP schema
+regression checks the generated enum and optional field directly rather than
+inventing an unrelated type-generation system.
+
+## Request-scoped composition and source binding
+
+`backend/slm/packet_variants.py` composes the existing protocols. The API
+injects the Data-owned retriever; the SLM module does not import Data internals.
 
 Execution order:
 
 ```text
-request policy + scope + packet health + eligibility
-  -> owner-supplied bounded retrieval / approved local tools
-  -> source approval bound to the current packet
-  -> exact descriptive-context validation
-  -> one-request Ollama payload with bounded_context
-  -> unchanged draft safety and grounding checks
-  -> SafeSLMResponse
+HTTP schema + model selection + request preflight
+  -> server-built EvidencePacket
+  -> runner policy, scope, packet health and eligibility checks
+  -> bounded source/tool calls
+  -> independent source binding + canonical content validation
+  -> fresh one-request context client
+  -> existing Ollama transport, draft safety and grounding
+  -> unchanged SafeSLMResponse
 ```
 
-The default permits synthetic data only. Aggregated participant summaries need
-an explicit setting after Data, Statistics and Privacy review. That setting is
-not evidence of approval. Public-reference prose, arbitrary source text, new
-features, new associations and newly computed statistics are rejected.
+The source contract is fixed independently of retrieval output:
 
-The first supported context contents are the exact strings returned by
-`render_packet_context_summaries(packet)`:
+- Personal context IDs: `packet-summary:1` and `packet-summary:2`.
+- Provenance: `evidence-packet:canonical-summary:1` and `:2`.
+- Source class: `personal_summary`; data class: `aggregated_personal_summary`.
+- Tool records prefix both IDs and provenance with `tool:`, use `tool_result`,
+  and preserve source content/data classification.
+- Every binding includes an in-memory digest of the complete current packet.
+  Nothing is approved by reading whatever metadata the retriever returned.
 
-- the feature value/unit, existing observed-window dates and observed/expected
-  days;
-- the packet's existing eligibility state.
+The tool consumes at most three iterator entries to enforce its two-item limit.
+Unknown metadata stays unknown after wrapping and fails closed. RAG+Agent uses
+separate namespaces so the tool and retrieved records cannot collide.
+The selector calls one registered tool deterministically. The current retriever
+ignores question/seed for lookup, so this is bounded composition, not
+query-expanding autonomous reasoning.
 
-No new eligibility, baseline or inferential statistic is calculated. The model
-continues to use only the packet's allowed response options/evidence IDs. Context
-IDs are provenance for the run; they do not become valid draft evidence IDs.
-This is a narrow descriptive SLM adapter. Because this context corroborates
-information already in the packet, it does not establish a quality benefit from
-retrieval or implement open-ended scientific-reference RAG.
+`PacketContextResponder` still permits only the exact canonical descriptions:
 
-## Source binding and owner handoff
+1. Existing feature value/unit, window dates and observed/expected days.
+2. Existing eligibility state.
 
-The trusted integration caller supplies `ContextApproval` records with the
-expected context ID, provenance reference, source class, data class and
-`packet_context_digest(packet)`. Never generate approvals from whatever the
-retriever happens to return. Bind them from the independently approved source
-metadata and the current validated packet.
+Arbitrary prose, changed numbers, new associations, participant references,
+unknown sources/classes and replayed bindings are rejected. Context IDs never
+become draft evidence IDs. The model receives only context IDs and descriptions;
+binding digests/provenance are not forwarded. Diagnostic context references omit
+content; ordinary HTTP responses do not expose the trace or context.
 
-The digest includes the full packet identity, participant scope, dates, model
-specification and permissions. It is internal, in-memory binding metadata, not
-a stable participant key, privacy certificate or value to persist in logs.
-Approvals must be regenerated for an intentionally changed packet only after
-its source binding is checked. A matching value alone is insufficient.
+The responder/factory default still rejects aggregated summaries unless
+explicitly enabled. The HTTP composition preserves PR #39's enabled setting;
+this setting and its merge are not a separate Privacy approval certificate.
+Only synthetic data was used for this continuation. Real personal-summary use,
+retention and final acceptance require the appropriate owner review.
 
-Retrieval/tool adapters must return exact allow-listed summaries with opaque,
-approved metadata. The responder rejects unknown references, stale/other-packet
-bindings, unsupported data classes, changed numbers and injected instructions.
-Participant references are checked in content, provenance and context IDs.
-The model receives content and context IDs only; approval digests and provenance
-references are not forwarded. Ordinary context traces omit retrieved content.
-Generated answers remain sensitive and must not be logged for real participants
-without the agreed policy; the committed smoke outputs contain synthetic data.
+## Failure behaviour
 
-`VariantRunner` interface `0.2.0` also bounds iterator consumption, rejects empty
-retrieval/tool results, and rejects duplicate/overflowing contexts. Its existing
-`run` method raises stable configuration/execution errors for diagnostics.
-`respond_safely(request, fallback_service=...)` converts pre-generation context
-failures to `approved_context_unavailable` with the versioned generic fallback
-and `model_invoked=false`. Unknown responder execution/return failures retain a
-sanitised exception because invocation state cannot honestly be inferred.
-Production Integration must handle that transport-level exception; no new
-production RAG endpoint is declared ready by this work.
+Before this continuation, the API retrieved once to construct its own approvals
+and again inside the runner. The first call could raise HTTP 500 on State A or
+source failure, bypassing the runner's safe handling. It could also approve an
+unknown returned provenance value.
 
-| Owner | Remaining input / acceptance |
+The API now constructs independent bindings without retrieving. State A and
+unhealthy/refused/crisis inputs reach their existing safe response with no
+retrieval or model call. Source/tool failures produce
+`approved_context_unavailable`, the versioned generic fallback and
+`model_invoked=false`. There is no silent fallback to a successful Base run
+labelled RAG. Unexpected responder errors retain sanitised HTTP failure because
+their invocation state cannot safely be inferred.
+
+Each request gets a fresh responder/context client. Later Base requests contain
+no residual context. Existing privacy-safe errors, constant exception logging,
+`Cache-Control: no-store`, participant lookup and local-demo protection remain.
+
+## Verification on 28 September
+
+Three API regressions reproduced the unsafe eager retrieval and self-binding
+behaviour before implementation. The focused repaired API checks passed,
+including AllenLi's original HTTP retrieval test.
+
+The final explicit SLM/API/contracts/network/API-privacy/scanner allow-list
+passed **459 tests**, including 81 added checks across integration and window
+hardening, with two existing Starlette/httpx deprecation warnings. The earlier
+436-test pass and separate smoke-harness pass preceded the last policy change
+and are superseded by this final run. Initial sandbox execution had three
+temporary-directory permission errors; the same allow-list succeeded with normal
+local permissions.
+These are local development checks, not full CI, held-out or owner acceptance.
+
+```powershell
+$env:MINDSENSE_CI_SCOPE = 'sealed-excluded'
+.venv/Scripts/python.exe -m pytest tests/slm tests/api tests/contracts tests/privacy/test_no_network_egress.py tests/privacy/test_api_response_privacy.py tests/privacy/test_analysis_output_privacy.py -q -p no:cacheprovider
+```
+
+Never run broad pytest or the sealed integrity test. The scanner excludes the
+entire sealed directory before file access. The earlier PR #34 restricted CI
+result applies to its earlier head, not this local continuation. Automatic PR
+CI still selects full scope. Publication retains `[skip ci]` to prevent that
+automatic run; the existing manual `sealed-excluded` workflow is the permitted
+validation path. Its result must be checked on this supplementary PR's exact
+head, not inferred from PR #34. Workflow definitions are unchanged, and restricted
+checks do not establish sealed integrity or full acceptance.
+
+The new functional smoke uses the real API, Data retriever, SLM tool/runner and
+local model. Only packet construction is replaced by public synthetic fixtures.
+All four variants cover State C GPS and descriptive State B unlock:
+
+- [Phi](../../benchmarks/history/week8_packet_api_phi_2026-09-28_policy031.json): 8/8.
+- [Qwen](../../benchmarks/history/week8_packet_api_qwen_2026-09-28_policy031.json): 8/8.
+- Ollama `0.33.2`; installed digest prefixes `78fad5d182a7` (Phi) and
+  `359d7dd4bcda` (Qwen), both matching the existing manifest.
+- [Initial Phi attempt](../../benchmarks/history/week8_packet_api_phi_2026-09-28.json):
+  0/8, all stopped by off-topic policy before generation. The smoke's generic
+  question was corrected to existing scoped questions; the initial retry did
+  not change policy. The separate window hardening described above was then
+  applied and both models rerun on policy `0.3.1`. The earlier successful
+  policy-`0.3.0` smoke records are retained as intermediate evidence.
+
+Use a new output filename; prior evidence is never overwritten:
+
+```powershell
+.venv/Scripts/python.exe -m benchmarks.slm_packet_api_smoke --model phi4-mini:3.8b --out benchmarks/history/week8-packet-api-NEW-RUN.json
+```
+
+Raw source hashes, base revision, dirty-tree status, response metadata and
+actual model-call context IDs are recorded. The benchmark imports no new
+network client: calls still delegate to `backend/slm/client.py`.
+No new dependency, real participant output, prompting experiment, model ranking
+or human evaluation result is introduced.
+
+## Owner acceptance still outstanding
+
+| Owner | Boundary / next step |
 | --- | --- |
-| Honghao | Implement the approved local source and Retriever/tool adapters; no production store is built here |
-| Moe | Approve statistical fields, evidence availability and cache-dependent claims; descriptive retrieval need not wait for bootstrap inference |
-| Yuktha | Review source fields, metadata, retention, identifier strategy and any enabling of personal-summary context |
-| Priyansh | Accept shared HTTP scope behaviour and decide later variant endpoint/promotion and failure mapping |
-| Sheng | Review clarification presentation and finish the existing UI branch/demo metadata; no UI work is taken over |
-| Chonghao | Judge paired-pilot retest and later architecture/method comparison; frozen thresholds/cases are unchanged |
+| Richard | Packet-summary integration and local verification complete; this supplement is supplied for review |
+| Honghao | Source/tests retained; review the thin tool's reuse of source metadata; separate persistent-store work remains his scope |
+| Moe | Existing packet fields/rounding/claim permissions retained; no bootstrap or inference implementation added |
+| Yuktha | Confirm personal-summary enablement, metadata/logging and retention scope |
+| Priyansh | Review shared API continuation, agree packet-summary scope and accept the integrated build |
+| Sheng | Existing demo/UI PRs #32/#33 are merged; review any future variant selector separately |
+| Chonghao | Own joint acceptance and later controlled architecture/method evaluation |
+| Honglin | Own Status Checking 2 submission; PR #42 remained open at the time of review |
 
-This follows the existing [Data storage scope](../data-pipeline/rag_agent_storage_scope.md)
-without choosing a production database, vector index, embedding model or corpus.
-The synthetic adapter in the smoke script is explicitly a fixture. It cannot be
-reported as Honghao's real retrieval source being completed.
-
-## Verification and reproducibility
-
-Use an explicit test allow-list:
-
-```powershell
-.venv/Scripts/python.exe -m pytest tests/slm tests/api tests/contracts tests/privacy/test_no_network_egress.py -q -p no:cacheprovider
-```
-
-Do not run broad `pytest tests`. The sealed integrity test is prohibited, and
-`tests/privacy/test_analysis_output_privacy.py` includes a tracked-text scanner
-that would indirectly read the sealed JSON. Neither was executed. The current
-Draft uses an explicitly approved `[skip ci]` marker on its publication commit
-because the existing PR workflow would run these prohibited readers. GitHub CI
-is **not run**, not passed; the local allow-list above passed again before push.
-The workflow, tests and merge requirements are unchanged. Integration/Privacy
-must agree a permitted CI scope before any later workflow run or commit without
-the skip marker. Keep the PR Draft pending the required checks and owner review.
-
-Functional smoke, using an existing manifest-pinned local model and a **new**
-output filename each time:
-
-```powershell
-.venv/Scripts/python.exe -m benchmarks.slm_context_smoke --model phi4-mini:3.8b --out benchmarks/history/week8-context-NEW-RUN.json
-```
-
-The smoke runs RAG, Agent and RAG+Agent on a public synthetic fixture. The tool
-selector is deterministic and fixture-only, not an LLM planner. It verifies
-context transport and grounded generation, not a prompting-method or quality
-comparison. The evidence includes source hashes and honestly records a dirty
-working tree based on the main revision. Model final selection remains pending.
-
-Recorded checks on 24 September:
-
-- Public prohibited/crisis development checks: 14/14 critical cases, with 2/2
-  privacy extensions reported separately; no unexpected model calls.
-- Public off-topic replay: 5/5, all refused before generation.
-- Public plan alignment on local Phi: 6/6 covered cases passed automated checks;
-  2/8 remain not covered; 4 benign controls with zero unexpected refusal routes.
-  No human ratings or generalisation claim.
-- Real Phi synthetic context smoke: 3/3; runtime Ollama `0.33.2`, installed
-  `phi4-mini:3.8b` digest prefix `78fad5d182a7` verified against the manifest.
-- Final explicit unit/contract/network allow-list: **343 passed**, no failures,
-  two existing Starlette/httpx deprecation warnings. This is not a full-repository
-  pytest run or frontend acceptance. Ruff check/format and `git diff --check`
-  pass for the changed files. No new dependency or network-capable import.
-
-Evidence: [public alignment scorecard](../../benchmarks/history/week8_evaluation_alignment_2026-09-24.md),
-[alignment JSON](../../benchmarks/history/week8_evaluation_alignment_2026-09-24.json),
-[public safety JSON](../../benchmarks/history/week8_prohibited_baseline_2026-09-24.json),
-[off-topic JSON](../../benchmarks/history/week8_off_topic_2026-09-24.json).
-The [final context smoke](../../benchmarks/history/week8_context_phi_smoke_2026-09-24_scope_final.json)
-records the final source hashes; the earlier same-day smoke is retained as a
-historical pre-refinement run. Initial test setup had three Windows temporary
-directory permission errors; the normal-permission final allow-list above
-passed. Intermediate expected-behaviour/version assertions were updated for
-the intentional safety fix, without modifying frozen evaluation fixtures.
-The [prompting methodology](week8-prompting-methodology.md) retains empty results
-tables and a separate planned multi-turn section.
+The 24 September 343-test/public-safety/context-smoke records remain historical:
+[public scorecard](../../benchmarks/history/week8_evaluation_alignment_2026-09-24.md),
+[safety JSON](../../benchmarks/history/week8_prohibited_baseline_2026-09-24.json),
+[off-topic JSON](../../benchmarks/history/week8_off_topic_2026-09-24.json) and
+[original synthetic context smoke](../../benchmarks/history/week8_context_phi_smoke_2026-09-24_scope_final.json).

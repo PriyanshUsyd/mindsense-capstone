@@ -54,3 +54,44 @@ and unknown feature requests remain explicit 404 and 422 responses.
 
 `MINDSENSE_SLM_RUNTIME` accepts only `demo` or `ollama`. An unknown value stops
 startup instead of silently choosing another runtime.
+
+## Bounded packet-summary variants
+
+The optional `variant` field accepts `base_llm`, `rag`, `agent` or `rag_agent`.
+Omission keeps the behaviour introduced by PR #39: Ollama uses RAG and demo
+uses Base. Existing frontend requests remain valid. There is no frontend
+variant control in this backend change.
+
+```json
+{
+  "participant_id": "<approved local lookup value>",
+  "question": "How was my movement different from my recent baseline?",
+  "feature_id": "gps_distance",
+  "model_tag": "phi4-mini:3.8b",
+  "variant": "rag_agent"
+}
+```
+
+Only the existing server-built packet's canonical descriptions are supported.
+RAG calls the Data-owned source once. Agent deterministically selects the
+registered `get_packet_summary` tool, which wraps that source. RAG+Agent runs
+the tool and then retrieval, with distinct context IDs. This does not add a
+database, autonomous planner, raw-data access or new statistics.
+
+An allowed non-Base request requires an Ollama client; demo rejects it with 422
+before participant lookup. Unknown variants and blank/over-2000-character
+questions use the existing private 422 response. Crisis/prohibited preflight
+still takes priority. `SafeSLMResponse`, `/models` and model-tag rules are
+unchanged. Generated OpenAPI describes the optional enum directly.
+
+Context bindings are constructed from the known source contract before
+retrieval, never from returned source metadata. State A, unhealthy packets and
+policy rejections skip context preparation. Source/tool errors return the
+versioned generic fallback with `rejection_reason=approved_context_unavailable`
+and `model_invoked=false`. Existing sanitised errors and `Cache-Control:
+no-store` remain in place. No context or tool traces are added to HTTP responses.
+
+The API retains PR #39's aggregated-summary configuration; configuration is not
+Privacy sign-off. The new validation uses public synthetic packets only.
+Personal-data enablement and joint acceptance still require owner review.
+See [Week 8 integration and reproducible checks](../../docs/slm/week8-safety-context-integration.md).
