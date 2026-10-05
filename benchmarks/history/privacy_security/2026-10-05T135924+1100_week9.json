@@ -1,0 +1,110 @@
+{
+  "record_type": "privacy_security_local_run",
+  "week": 9,
+  "date_local": "2026-10-05",
+  "timezone": "Australia/Sydney",
+  "operator": "Yuktha Naveen",
+  "branch": "yuktha/privacy-week9",
+  "tested_base_commit": "f39f07f",
+  "scope": "sealed-excluded development validation and trusted-operator single-Mac local demo",
+  "environment": {
+    "python": "3.14.0",
+    "r": "4.6.1",
+    "node": "22.19.0",
+    "ollama": "0.33.2",
+    "model": "phi4-mini:3.8b",
+    "dataset": "local ignored CES; no participant rows or identifiers in this record"
+  },
+  "assumptions": [
+    "Week 11 sealed evaluation content remains excluded from development tests.",
+    "The dataset, model and dependencies were installed locally before runtime network isolation.",
+    "All live demo services were started on loopback under the macOS process-level egress profile by one trusted operator.",
+    "The advisory scans check known vulnerabilities at the time of the run, not source provenance."
+  ],
+  "checks": {
+    "initial_sandbox_suite": {
+      "passed": 654,
+      "failed": 5,
+      "reason": "host tool sandbox denied five loopback socket binds before redirect assertions"
+    },
+    "transport_permitted_rerun": {
+      "passed": 7,
+      "failed": 0
+    },
+    "focused_variant_privacy": {
+      "passed": 117,
+      "failed": 0,
+      "new_cases": 11
+    },
+    "exact_ci_privacy_scope": {
+      "passed": 54,
+      "failed": 0,
+      "seconds": 3.98
+    },
+    "complete_sealed_excluded_suite": {
+      "passed": 670,
+      "failed": 0,
+      "skipped": 0,
+      "warnings": 53,
+      "seconds": 108.68
+    },
+    "frontend": {
+      "passed": 27,
+      "failed": 0,
+      "lint": "passed",
+      "production_build": "passed"
+    },
+    "dependencies": {
+      "manifest_changes_since_week8": false,
+      "pip_check": "passed",
+      "python_r_manifest_audit": "no known vulnerabilities",
+      "npm_audit": "0 vulnerabilities"
+    },
+    "live_local_demo": {
+      "frontend_page_served": true,
+      "variant_http_200": ["default_rag", "base_llm", "rag", "agent", "rag_agent"],
+      "all_variant_responses_noncacheable": true,
+      "all_variant_model_calls_succeeded_without_fallback": true,
+      "crisis_and_diagnosis_preflight_without_model": true,
+      "invalid_variant_generic_422": true,
+      "untrusted_browser_origin_allowed": false,
+      "external_tcp_probe_allowed": false,
+      "model_unload_requested": true,
+      "started_services_stopped": true,
+      "interactive_browser_workflow_tested": true,
+      "browser_workflow": "default-RAG question displayed an uncertainty response; synthetic crisis input displayed version-controlled safety support; New conversation and reload returned to the empty welcome state",
+      "browser_console": "6 debug/info entries; no matched request text or participant/evidence markers",
+      "live_library_logs_independently_audited": true,
+      "service_log_line_counts": {
+        "backend": 43,
+        "frontend": 9,
+        "ollama": 385
+      },
+      "service_log_sensitive_marker_matches": 0,
+      "service_log_tracebacks": 0,
+      "log_handling": "owner-restricted temporary files scanned locally and deleted after shutdown; no raw lines retained",
+      "model_unload_confirmed_by_empty_api_ps": true,
+      "demo_ports_closed_after_run": true
+    }
+  },
+  "decision": "conditional technical pass for documented single-operator local demo only",
+  "not_approved": [
+    "real-user account or participant deployment",
+    "unreviewed external or personal retrieval sources",
+    "whole-device or browser-wide offline guarantee"
+  ],
+  "open_risks": [
+    "caller-supplied participant_id has no authentication or owner binding",
+    "future runtime or library versions may emit different log fields and need re-review",
+    "model-memory teardown was requested but not forensically verified"
+  ],
+  "latency_benchmark": {
+    "history_file": "benchmarks/history/slm_latency/2026-10-05T142700+1100_week9_default-rag-app.json",
+    "measured_samples": 5,
+    "mean_ms": 5140.35,
+    "median_ms": 5129.77,
+    "sample_p95_nearest_rank_ms": 5187.51,
+    "fallback_count": 0,
+    "comparison": "different end-to-end workload from historical direct-model runs"
+  }
+}
