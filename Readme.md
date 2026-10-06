@@ -1,4 +1,4 @@
-**Note for teammates:** The `dataset/` folder is not included in this repo (too large for GitHub). Download the College Experience Study directly from Kaggle — see `build-reference.md` Section 2 for the exact link and instructions.
+**Note for teammates:** The `dataset/` folder is not included in this repo. Download the College Experience Study directly from Kaggle. See `build-reference.md` Section 2 for the locked dataset reference, and `docs/data-pipeline/ces_local_provisioning.md` for the required local-only runtime layout, provisioning steps, and preflight checks.
 
 ---
 
