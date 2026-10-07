@@ -1,0 +1,1 @@
+session_id,question_id,evaluator_code,category,item_scores,critical_failure,na_reason,response_mode,rejection_reason,architecture_variant,commit_sha,model_tag,prompt_version,policy_version,evidence_path,notes
