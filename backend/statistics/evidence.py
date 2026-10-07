@@ -65,7 +65,8 @@ numbers) — so `intersect_bootstrap_evidence` combines
 `reclassify_cohort_family`'s output for each method, and only their
 intersection (`label_intersection`) is used as the actual user-facing
 value. This is a post-hoc decision, in the same register as the
-cohort-level family size (213) and the binary user-facing collapse
+cohort-level family definition (the participants holding a per-person
+slope; 214 for this feature) and the binary user-facing collapse
 (CLAUDE.md's "Finalised decisions") — Week 4's pre-registration did not
 anticipate reconciling two different bootstrap estimators, only BH-FDR
 over a single per-person test. Confirmed on the real dataset (B=500 both
@@ -116,26 +117,36 @@ from backend.statistics.mixed_effects_model import Ar1EffectResult, classify_evi
 
 X_WITHIN_TERM = "x_within"
 
-# CLAUDE.md "Finalised decisions": "Cohort-level family = 213, BH-FDR is
-# the reported value, Holm is the sensitivity analysis." Compared against
-# the real per-call family size in `reclassify_cohort_family`, which warns
-# (does not raise) on a mismatch: a different family size can be
-# legitimate (a different feature's eligible cohort, an added participant,
-# a changed filter), so this is a visibility check, not a hard assertion.
+# CLAUDE.md "Finalised decisions": "Cohort-level family = the participants
+# holding a per-person slope for that feature (data-dependent, not a fixed
+# constant — 214 for `loc_dist_ep_0` as of 2026-09-27) ... BH-FDR is the
+# reported value, Holm is the sensitivity analysis."
 #
-# Value is 214, not 213. 213 was the archived
+# These are current observed values for a data-dependent family
+# size, not fixed constants. The check exists to make a change
+# visible, not to forbid one.
+#
+# Keyed by the statistics-side feature name (`FeatureSpec.name`), NOT the
+# SLM-side `participant_evidence` feature_id (gps_distance / unlock_count).
+# `reclassify_cohort_family` compares the real per-call family size with
+# the entry for its `feature_id` and warns (does not raise) on a mismatch;
+# a `feature_id` of None, or one with no entry here, skips the check
+# silently (e.g. synthetic cohorts, an uncalibrated feature).
+#
+# `loc_dist_ep_0` is 214, not 213. 213 was the archived
 # `analysis/archive/evidence_model.py` pipeline's cohort size for this
-# feature, produced by an interaction between that pipeline's
-# `MIN_OCCASIONS_PER_PERSON = 3` floor and its lag-1 term:
-# `x_within_lag1_it` is undefined on each person's first occasion, so that
-# pipeline's `dropna` over that column drops that occasion before the
-# >=3-occasion floor is even applied — anyone whose remaining count then
-# falls below 3 loses the participant entirely. The current primary spec
-# has no lag-1 term (CLAUDE.md's window/transform decisions) and does not
-# port `MIN_OCCASIONS_PER_PERSON` (see `reclassify_cohort_family`
-# docstring), so that path doesn't exist here and 213 does not reproduce —
-# the real GPS cohort is 214.
-EXPECTED_FAMILY_SIZE = 214
+# feature. Its origin is a SUSPICION, NOT VERIFIED: that pipeline applied
+# `MIN_OCCASIONS_PER_PERSON = 3`, exactly one participant in the B=500
+# output has 3 occasions, and its lag-1 term would remove each person's
+# first occasion (leaving that participant at 2, below the floor). That
+# matches by count only; the archived pipeline was not re-run to confirm.
+# The current primary spec has no lag-1 term and does not port
+# `MIN_OCCASIONS_PER_PERSON` (see `reclassify_cohort_family` docstring),
+# so 213 is not reproduced here — the real GPS cohort is 214.
+EXPECTED_FAMILY_SIZE: dict[str, int] = {
+    "loc_dist_ep_0": 214,
+    "unlock_num_ep_0": 216,
+}
 
 
 @dataclass
@@ -228,6 +239,7 @@ def reclassify_cohort_family(
     person_slopes: list[PersonSlope],
     outcome_sd: float,
     predictor_sd: float,
+    feature_id: str | None = None,
 ) -> pd.DataFrame:
     """Per-person exploratory family = every participant who produced a
     candidate `slope_i` for this feature (Moe's documented choice — see
@@ -236,9 +248,11 @@ def reclassify_cohort_family(
     reaches production). BH-FDR (`label_bh`) is the reported/production
     value; Holm (`label_holm`) is the sensitivity analysis (CLAUDE.md).
 
-    Warns (via `warnings.warn`, does not raise) when `len(person_slopes)`
-    does not match `EXPECTED_FAMILY_SIZE` — see that constant's comment.
-    A mismatch can be legitimate (a different feature's eligible cohort,
+    Warns (via `warnings.warn`, does not raise) when `feature_id` (the
+    statistics-side `FeatureSpec.name`) has an entry in
+    `EXPECTED_FAMILY_SIZE` and `len(person_slopes)` does not match it —
+    see that constant's comment. If `feature_id` is None or has no
+    entry, the check is skipped silently. A mismatch can be legitimate (a different feature's eligible cohort,
     an added participant, a changed filter); the warning exists so a
     drift is visibly worth a second look, not silently accepted or
     silently blocked.
@@ -251,8 +265,8 @@ def reclassify_cohort_family(
     something), and none is recorded for this one. The archived
     pipeline's 213 (vs. this module's 214) is not evidence such a
     justification exists either — see `EXPECTED_FAMILY_SIZE`'s comment for
-    why that number came from an interaction with the archived pipeline's
-    lag-1 term, not from the floor doing real work on its own.
+    the suspected (unverified) origin of that number in an interaction
+    with the archived pipeline's lag-1 term.
 
     If every person's `slope_p` is `None` (i.e. `person_slopes` came
     straight from `extract_person_slopes`, before any SE estimate exists —
@@ -270,10 +284,11 @@ def reclassify_cohort_family(
     which calls this function once per bootstrap method and needs each
     method's own SE alongside its label to build a combined table.
     """
-    if len(person_slopes) != EXPECTED_FAMILY_SIZE:
+    expected_size = EXPECTED_FAMILY_SIZE.get(feature_id) if feature_id is not None else None
+    if expected_size is not None and len(person_slopes) != expected_size:
         warnings.warn(
             f"reclassify_cohort_family: family size ({len(person_slopes)}) "
-            f"does not match EXPECTED_FAMILY_SIZE ({EXPECTED_FAMILY_SIZE}). "
+            f"does not match EXPECTED_FAMILY_SIZE[{feature_id!r}] ({expected_size}). "
             "This can be legitimate (a different feature's eligible "
             "cohort, an added participant, a changed filter) and is not "
             "treated as an error, but if this run's cohort is meant to "
@@ -395,7 +410,8 @@ def intersect_bootstrap_evidence(
 
     This is exactly the kind of decision CLAUDE.md's "Finalised
     decisions" section already contains post-hoc entries for (the
-    cohort-level family size of 213; the binary user-facing collapse):
+    cohort-level family defined as the participants holding a per-person
+    slope, 214 for this feature; the binary user-facing collapse):
     Week 4's pre-registration defined BH-FDR correction over a single
     per-person test, not reconciliation across two different bootstrap SE
     estimators — this was not anticipated because the SE gap itself
