@@ -253,6 +253,23 @@ class RealFit:
     fixed_effect_names: list[str]
 
 
+def prepare_model_frame(
+    model_frame: pd.DataFrame,
+    outcome_col: str = "phq4_score",
+    uid_col: str = "uid",
+    date_col: str = "date",
+    extra_fixed_effects: list[str] | None = None,
+) -> pd.DataFrame:
+    """The exact frame the real fit and every bootstrap replicate see:
+    NaN-free in the outcome/date/fixed-effect columns, sorted by
+    `[uid_col, date_col]`, index reset. Factored out of `fit_real_model`
+    so `bootstrap_cache` fingerprints the *same* frame the fit consumes
+    (a separate, hand-copied normalisation could drift)."""
+    fixed_effect_names = ["x_within", "x_between", *(extra_fixed_effects or [])]
+    data = model_frame.dropna(subset=[outcome_col, date_col, *fixed_effect_names]).copy()
+    return data.sort_values([uid_col, date_col]).reset_index(drop=True)
+
+
 def fit_real_model(
     model_frame: pd.DataFrame,
     outcome_col: str = "phq4_score",
@@ -269,8 +286,7 @@ def fit_real_model(
     extra_fixed_effects = extra_fixed_effects or []
     fixed_effect_names = ["x_within", "x_between", *extra_fixed_effects]
 
-    data = model_frame.dropna(subset=[outcome_col, date_col, *fixed_effect_names]).copy()
-    data = data.sort_values([uid_col, date_col]).reset_index(drop=True)
+    data = prepare_model_frame(model_frame, outcome_col, uid_col, date_col, extra_fixed_effects)
 
     ar1_result = fit_ar1_effect(
         data,

@@ -1,10 +1,11 @@
 # CLAUDE.md — MindSense / DATA5702
 
-Working repository for the Statistical Analysis Lead (Moe Tanaka). Not under git management.
+Working repository for the Statistical Analysis Lead (Moe Tanaka). Under git management (branch-based workflow; `main` is the integration branch).
 
 ## Documentation-implementation sync rule
 
-When code under `analysis/` is changed, reflect the change in the following documents within the same session.
+When code under `backend/statistics/` is changed, reflect the change in the following documents within the same session.
+(Until 2026-10-07 this named `analysis/`; the statistics code moved to `backend/statistics/` and `analysis/` is archived.)
 Changing the code without also updating the documentation is prohibited.
 
 - `analysis/preregistration.md`
@@ -57,10 +58,10 @@ respective documents as of 2026-09-13.
 ## Session-start check
 
 This repository is worked on from multiple sessions.
-Before starting work, check the update times of files under `analysis/` to confirm there is no code newer than the documentation.
+Before starting work, check the update times of files under `backend/statistics/` to confirm there is no code newer than the documentation.
 
 ```bash
-find analysis -type f -not -path "*__pycache__*" -printf "%T+  %p\n" | sort | tail -20
+find backend/statistics -type f -not -path "*__pycache__*" -printf "%T+  %p\n" | sort | tail -20
 ls -l --time-style=full-iso analysis/preregistration.md Week5_Statistical_Analysis_Deliverable.md
 ```
 

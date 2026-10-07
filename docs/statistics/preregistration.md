@@ -657,6 +657,25 @@ all. Recorded in the same register as the cohort-level family size (213,
 section 2.2) and the binary user-facing collapse (section 5) — see section 7's
 post-hoc log for the consolidated list.
 
+**Cached bootstrap SE: when a cached result stops counting `[POST-HOC, 2026-10-07]`.**
+The B=500 result is stored (`backend/statistics/bootstrap_cache.py`, under the
+git-ignored `outputs/bootstrap_cache/<feature>/`) together with a fingerprint,
+and is used only while the recomputed fingerprint is identical. The fingerprint
+covers (A) a content hash of the exact model frame the fit consumes, so any
+change to the data, cleaning, windows or transform invalidates it; (B) content
+hashes of every source file on the estimation path (`bootstrap.py`,
+`mixed_effects_model.py`, `r_bridge.py`, `feature_specs.py`, and the
+`backend/data_pipeline` cleaning/feature modules); and (C) the Python/R/`nlme`/
+numpy/scipy/pandas/rpy2 versions and the run configuration (feature, transform,
+`master_seed`, B, engine). The aggregated per-person SE and intersection table
+are additionally keyed on `evidence.py` and the evidence-classification
+thresholds, so a classification-only change invalidates the aggregate without
+invalidating the raw replicates. A missing cache leaves every label
+`insufficient`; a mismatching one stops that feature with an error naming the
+changed key; a cache is only ever written from a committed, unmodified tree, and
+a partial run is only resumed under an identical fingerprint. None of this
+changes what is estimated or any threshold in this document.
+
 ## 5. User-facing collapse to two values `[POST-HOC]`
 
 The evidence contract handed to the SLM collapses the four tiers to two:
