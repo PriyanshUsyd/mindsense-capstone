@@ -1,11 +1,19 @@
 # Release-Candidate Checklist — Week 9 Evaluation Build
 
 **Prepared:** 2026-10-08 (Week 9) by Priyansh Khandelwal, Integration & QA Lead
-**Updated:** 2026-10-08. Candidate moved from `a498b3f` to `fcaadfb` after #48 and its repair (#53) were merged. Lock date set to 2026-10-16.
-**Status:** Provisional candidate, **not tagged**. The final RC SHA is set and tagged `rc-eval-1` on 2026-10-16 at that day's main SHA. The `Pending` items below are still open and must be closed or explicitly waived.
-**Lock date:** 2026-10-16
+**Updated:** 2026-10-08. Candidate moved from `a498b3f` to `fcaadfb` after #48 and its repair (#53) were merged. Lock date set to 2026-10-16; replaced the same day by the release timeline below (evaluation lock 2026-10-12).
+**Status:** Provisional candidate, **not tagged**. The final RC SHA is set and tagged `rc-eval-1` on 2026-10-12 (evaluation lock) at that day's main SHA. The `Pending` items below are still open and must be closed or explicitly waived.
+**Evaluation lock:** 2026-10-12 (Mon)
 
-**Lock rule:** after the lock date, nothing is merged that changes `backend/`, `frontend/`, the SLM model (`backend/slm/model_manifest.yaml`) or prompt/policy files (`backend/slm/prompts/`, `backend/slm/request_policy.py`, `backend/slm/context_responder.py`, `backend/slm/variants.py`) until the evaluation sessions are finished. Docs-only merges are allowed.
+## Release timeline
+
+| Date | Milestone | Rule |
+|---|---|---|
+| **2026-10-12 (Mon)** | **Evaluation lock.** Tag `rc-eval-1` on that day's main SHA | From the lock until sessions ME-P01–P04 finish, nothing is merged that changes `backend/`, `frontend/`, the SLM model (`backend/slm/model_manifest.yaml`) or prompt/policy files (`backend/slm/prompts/`, `backend/slm/request_policy.py`, `backend/slm/context_responder.py`, `backend/slm/variants.py`). Docs-only merges are allowed |
+| 2026-10-12 to 2026-10-15 | Evaluation sessions ME-P01–P04 on the tagged build | The lock lifts when the sessions finish |
+| 2026-10-16 to 2026-10-21 | Fixes (pipeline, guardrail, UI) and Chonghao's second smoke-test round | Normal PR + CI process |
+| By 2026-10-23 | Held-out guardrail check and final fixes | Held-out run requires Priyansh's authorisation (see "Decisions pending") |
+| **2026-10-25 (end of Week 11)** | **Final freeze** | No model, prompt or code changes after this. Week 12 is docs/polish only (`Weekly_Plan.md` L164: "The model/prompt version is locked from Week 11 — no exceptions.") |
 
 Every item is either backed by repository evidence (SHA, PR or path) or marked `Pending` with an owner.
 
@@ -13,18 +21,18 @@ Every item is either backed by repository evidence (SHA, PR or path) or marked `
 
 | Item | Value | Evidence |
 |---|---|---|
-| Candidate SHA | `fcaadfbc657717b4b8ac945c61417ed9306fd67f` (origin/main, 2026-10-08 14:14 +11:00). **Provisional — final RC SHA set and tagged rc-eval-1 on 2026-10-16** | Merge commit of PR #53 |
+| Candidate SHA | `fcaadfbc657717b4b8ac945c61417ed9306fd67f` (origin/main, 2026-10-08 14:14 +11:00). **Provisional — final RC SHA set and tagged rc-eval-1 on 2026-10-12** | Merge commit of PR #53 |
 | CI on the candidate's push run | **success**: all 4 stages passed | GitHub Actions run `37721783837` |
-| RC tag | Not tagged. `rc-eval-1` will be created on 2026-10-16 at that day's main SHA | Pending — Priyansh |
+| RC tag | Not tagged. `rc-eval-1` will be created on 2026-10-12 at that day's main SHA: `git tag -a rc-eval-1 <main SHA on 2026-10-12> -m "Evaluation release candidate (lock 2026-10-12)"` | Pending — Priyansh |
 
 ### Superseded candidates
 
 - **`a498b3f`** (PR #45 merge, green push run `37715285257`) was the earlier draft candidate. It does not contain #48 or #53.
 - **`b60cb84`** (PR #44 merge) is named as the RC on the unmerged `chonghao/evaluation-week9` branch (`9aaabf1`). Its main push run (`37411903601`) **failed** Stage 4 (`npm audit`: 1 high-severity advisory, fixed later by `ef7d45e` / `7ab6aa8`). It does not contain #46, #48, #49 or #53.
 
-Evaluation records must cite the SHA tagged `rc-eval-1` on 2026-10-16, not `b60cb84`. — Pending — Chonghao to update the roster/results templates.
+Evaluation records must cite the SHA tagged `rc-eval-1` on 2026-10-12, not `b60cb84`. — Pending — Chonghao to update the roster/results templates.
 
-### Must land before lock (2026-10-16)
+### Must land before lock (2026-10-12)
 
 | Item | Status | Owner |
 |---|---|---|
@@ -33,6 +41,13 @@ Evaluation records must cite the SHA tagged `rc-eval-1` on 2026-10-16, not `b60c
 | PR opened (and reviewed/merged or explicitly deferred) for `sheng-week9-evaluation-ui-support` (`fb11fd1`) | **Pending** | Sheng Wang |
 | Critical-failure mapping covers all questions, not only Q4 (see Section 8) | **Pending** | Chonghao Shen |
 | Dataset preflight run and recorded on each evaluation machine (`docs/data-pipeline/ces_local_provisioning.md`) | **Pending** | Honghao Li |
+
+### Decisions pending (Priyansh)
+
+| Decision | Conflict | Status |
+|---|---|---|
+| Authorise Richard's held-out set run (`Weekly_Plan.md` L153) | `docs/slm/week8-prompting-methodology.md:64-65`: "Do not open, copy, hash, run, or change the sealed held-out prompts. The later Week 11 plan does not override the current explicit access prohibition." | **Pending** — Priyansh |
+| Demo build variant default: keep RAG as the Ollama `/respond` default, or set `base_llm` before the lock | RAG has been the Ollama default since PR #39 (`docs/privacy/master-test-register.md:1297`); `Weekly_Plan.md` L136 says the variant comparison runs "on its own branch … it does not touch the Tianyi demo build unless/until explicitly promoted" | **Pending** — Priyansh, before 2026-10-12 |
 
 ## 2. Included changes since the last audit baseline (`f39f07f`, 2026-10-03)
 
@@ -129,6 +144,8 @@ From `docs/evaluation/pass-threshold.md` (line 10):
 - [ ] All `Pending` items above closed or explicitly waived (record who waived it and why)
 - [x] PR #48 decision: merged (`b927571`), repaired by #53 (`fcaadfb`); provisional candidate SHA updated
 - [ ] Every "Must land before lock" item (Section 1) landed or explicitly deferred
-- [ ] On 2026-10-16: final RC SHA chosen (that day's green main) and annotated tag `rc-eval-1` created and pushed
-- [x] Lock date set: 2026-10-16
-- [ ] No change to `backend/`, `frontend/`, the SLM model or prompt/policy files on main between the lock date and the end of the evaluation sessions
+- [ ] Both "Decisions pending (Priyansh)" items decided and recorded
+- [ ] On 2026-10-12: final RC SHA chosen (that day's green main) and annotated tag created and pushed: `git tag -a rc-eval-1 <main SHA on 2026-10-12> -m "Evaluation release candidate (lock 2026-10-12)"`
+- [x] Release timeline set: evaluation lock 2026-10-12, sessions 2026-10-12 to 2026-10-15, fixes 2026-10-16 to 2026-10-21, held-out check by 2026-10-23, final freeze 2026-10-25
+- [ ] No change to `backend/`, `frontend/`, the SLM model or prompt/policy files on main between 2026-10-12 and the end of sessions ME-P01–P04
+- [ ] No model, prompt or code change on main after 2026-10-25
