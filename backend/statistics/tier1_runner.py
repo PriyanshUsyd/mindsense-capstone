@@ -129,20 +129,6 @@ def run_one_feature(
     # reclassify_cohort_family's fail-safe applies: every label is
     # "insufficient" until a real SE is supplied separately.
     if ar1.blups is not None:
-moe-week8-cleanup
-        person_slopes = evidence.extract_person_slopes(ar1, frame)
-        outcome_sd = float(frame["phq4_score"].std())
-        predictor_sd = float(frame["x_within"].std())
-        evidence_table = evidence.reclassify_cohort_family(
-            person_slopes, outcome_sd, predictor_sd, feature_id=spec.name
-        )
-        evidence_summary = {
-            "family_size": len(evidence_table),
-            "label_bh_counts": evidence_table["label_bh"].value_counts().to_dict(),
-            "label_holm_counts": evidence_table["label_holm"].value_counts().to_dict(),
-            "all_insufficient_pending_se": bool((evidence_table["label_bh"] == "insufficient").all()),
-        }
-=======
         # Decision c (week7 item 2): no cache -> carry on with the
         # fail-safe "insufficient"; a stale cache raises
         # (BootstrapCacheStale, naming the changed keys). The bootstrap
@@ -166,7 +152,9 @@ moe-week8-cleanup
             person_slopes = evidence.extract_person_slopes(ar1, frame)
             outcome_sd = float(frame["phq4_score"].std())
             predictor_sd = float(frame["x_within"].std())
-            evidence_table = evidence.reclassify_cohort_family(person_slopes, outcome_sd, predictor_sd)
+            evidence_table = evidence.reclassify_cohort_family(
+                person_slopes, outcome_sd, predictor_sd, feature_id=spec.name
+            )
             evidence_summary = {
                 "family_size": len(evidence_table),
                 "label_bh_counts": evidence_table["label_bh"].value_counts().to_dict(),
@@ -174,7 +162,6 @@ moe-week8-cleanup
                 "all_insufficient_pending_se": bool((evidence_table["label_bh"] == "insufficient").all()),
                 "bootstrap_cache": {"status": "absent"},
             }
-main
     else:
         evidence_table = pd.DataFrame()
         evidence_summary = {
