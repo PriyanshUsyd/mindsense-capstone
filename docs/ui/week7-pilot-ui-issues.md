@@ -132,20 +132,53 @@ Run this checklist on the frozen build without using held-out prompts.
 
 | ID | Severity | State | Issue | Evidence / reproduction | Expected Week 8 direction | Status |
 |---|---|---|---|---|---|---|
-| W7-UI-001 | High | Loading / generic fallback | Cold local-model generation can exceed the API timeout and appear to the user as a generic failure. | On 2026-09-12 the first UI request fell back; the same request succeeded through the CLI with a 180-second timeout and took about 134.7 seconds. | Richard/Priyansh should choose preloading, a documented target-machine latency budget, or a configurable timeout. Sheng should retest the resulting loading and fallback behaviour. | Open; current-build reproduction required |
-| W7-UI-002 | High | Normal evidence card | After PR #22, the backend uses a real participant id, but the normal card still renders generic `see response text` fields while `ChatStates.tsx` labels the card `Synthetic demo data` and mentions a Week 5 evidence packet. This creates contradictory provenance on the participant-data path. | `NormalResponse.tsx` uses placeholder evidence values because `SafeSLMResponse` does not return an evidence summary; `ChatStates.tsx` still contains the old fixture label and Week 5 copy. | Either return a safe evidence summary in the response contract or hide/replace the numeric panel until real values are available. Provenance labels must match the actual data path. | Open on `main` at `470fe8c` |
-| W7-UI-003 | Low | Developer setup / documentation | Frontend documentation still says the browser posts `{ evidence_packet, question }`, while PR #22 changed the request to `{ participant_id, question, feature_id }`. | `frontend/README.md` and `frontend/src/features/chat/README.md` describe the obsolete synthetic-packet request. | Update startup and contract documentation after the shared contract is confirmed. | Open on `main` at `470fe8c` |
-| W7-UI-004 | Medium | API contract | The frontend `request_category` union does not include Richard's Week 6 `off_topic` category. Runtime rendering currently relies on `response_mode`, so the known refusal still displays, but the hand-written TypeScript contract is incomplete. | `frontend/src/api/client.ts` lists safety categories but omits `off_topic`; the backend request policy `0.2.0` returns it for off-topic refusal. | Regenerate types from OpenAPI when available or update and test the provisional union in the shared contract change. | Open on `main` at `470fe8c` |
-| W7-UI-005 | High | Local setup | The documented backend command can use an incompatible global Python stack. On Sheng's Anaconda `base`, NumPy 2.2.6 loaded SciPy/statsmodels extensions compiled for NumPy 1.x, so the API could not start. | Full import traceback reproduced on macOS 14.4.1. A project-local `.venv` with NumPy 2.5.3, SciPy 1.18.1, and statsmodels 0.15.0 started cleanly. | Document `.venv` setup as required and introduce a reproducible compatible dependency lock or constraints policy. | Workaround verified; permanent setup fix open |
-| W7-UI-006 | Blocker | End-to-end / generic fallback | The real participant path requires gitignored dataset files that were not provisioned on the pilot machine. `/respond` raised `FileNotFoundError` for `dataset/Sensing/sensing.csv`; the UI misleadingly reported `Local API: Failed to fetch` even though the API received the request and returned 500. | `/health` passed; FastAPI logged `POST /respond` 500; traceback identified the missing file. | Priyansh/Honghao must provide an approved local-only data provisioning process or an approved sanitised demo dataset. The API should fail closed with a handled response, and the UI should distinguish server/data failure from an unreachable service. Sheng retests after provisioning. | Open; blocks current-build E2E on Sheng's Mac |
+| W7-UI-001 | High | Loading / generic fallback | Cold local-model generation can exceed the API timeout and appear to the user as a generic failure. | On 2026-09-12 the first UI request fell back; the same request succeeded through the CLI with a 180-second timeout and took about 134.7 seconds. | Richard/Priyansh should choose preloading, a documented target-machine latency budget, or a configurable timeout. Sheng should retest the resulting loading and fallback behaviour. | **Closed 2026-09-27:** bounded 180-second deadline plus explicit warm-up UI; cold Phi replay passed in 127.83 seconds |
+| W7-UI-002 | High | Normal evidence card | After PR #22, the backend uses a real participant id, but the normal card still renders generic `see response text` fields while `ChatStates.tsx` labels the card `Synthetic demo data` and mentions a Week 5 evidence packet. This creates contradictory provenance on the participant-data path. | `NormalResponse.tsx` uses placeholder evidence values because `SafeSLMResponse` does not return an evidence summary; `ChatStates.tsx` still contains the old fixture label and Week 5 copy. | Either return a safe evidence summary in the response contract or hide/replace the numeric panel until real values are available. Provenance labels must match the actual data path. | **Closed Week 8:** obsolete synthetic panel removed; validated backend response is rendered without invented evidence fields |
+| W7-UI-003 | Low | Developer setup / documentation | Frontend documentation still says the browser posts `{ evidence_packet, question }`, while PR #22 changed the request to `{ participant_id, question, feature_id }`. | `frontend/README.md` and `frontend/src/features/chat/README.md` describe the obsolete synthetic-packet request. | Update startup and contract documentation after the shared contract is confirmed. | **Closed Week 8:** documentation now describes `{ participant_id, question, optional feature_id }` |
+| W7-UI-004 | Medium | API contract | The frontend `request_category` union does not include Richard's Week 6 `off_topic` category. Runtime rendering currently relies on `response_mode`, so the known refusal still displays, but the hand-written TypeScript contract is incomplete. | `frontend/src/api/client.ts` lists safety categories but omits `off_topic`; the backend request policy `0.2.0` returns it for off-topic refusal. | Regenerate types from OpenAPI when available or update and test the provisional union in the shared contract change. | **Closed Week 8:** `off_topic` added to the provisional union with frontend coverage |
+| W7-UI-005 | High | Local setup | The documented backend command can use an incompatible global Python stack. On Sheng's Anaconda `base`, NumPy 2.2.6 loaded SciPy/statsmodels extensions compiled for NumPy 1.x, so the API could not start. | Full import traceback reproduced on macOS 14.4.1. A project-local `.venv` with NumPy 2.5.3, SciPy 1.18.1, and statsmodels 0.15.0 started cleanly. | Document `.venv` setup as required and introduce a reproducible compatible dependency lock or constraints policy. | **Closed 2026-09-27:** constrained `.venv` setup completed; `pip check` and all three imports passed |
+| W7-UI-006 | Blocker | End-to-end / generic fallback | The real participant path requires gitignored dataset files that were not provisioned on the pilot machine. `/respond` raised `FileNotFoundError` for `dataset/Sensing/sensing.csv`; the UI misleadingly reported `Local API: Failed to fetch` even though the API received the request and returned 500. | `/health` passed; FastAPI logged `POST /respond` 500; traceback identified the missing file. | Priyansh/Honghao must provide an approved local-only data provisioning process or an approved sanitised demo dataset. The API should fail closed with a handled response, and the UI should distinguish server/data failure from an unreachable service. Sheng retests after provisioning. | **Partial:** handled HTTP 200 fallback and correct UI verified; approved dataset provisioning remains with Data Pipeline/Integration |
+
+## Week 8 follow-up — 2026-09-27
+
+- **W7-UI-001 (cold start): closed.**
+  Richard's merged SLM fix raises the bounded default deadline from 120 to 180
+  seconds and exposes `MINDSENSE_OLLAMA_TIMEOUT_SECONDS` with a 1–300 second
+  validation range. Sheng's follow-up keeps the browser request active and,
+  after 12 seconds, changes the visible state to `Local model warming up` with
+  a three-minute expectation. Automated frontend coverage confirms that this
+  notice does not submit a second request or re-enable the composer. On Sheng's
+  Mac, a real cold `phi4-mini:3.8b` replay completed in 127.83 seconds, returned
+  `normal`, used no fallback, and reported `model_invoked=true`.
+- **W7-UI-005 (NumPy/SciPy environment): closed.**
+  `constraints-python312.txt` pins the NumPy 2.5.3, SciPy 1.18.1,
+  and statsmodels 0.15.0 combination that previously imported successfully on
+  Sheng's Mac. `scripts/setup_local_python_env.sh` creates the repository
+  `.venv`, installs through that constraint set, runs `pip check`, and imports
+  all three packages. The README no longer recommends an unqualified global
+  `uvicorn` command. Sheng ran the setup on macOS: `pip check` reported no
+  broken requirements and the pinned NumPy, SciPy, and statsmodels imports all
+  succeeded.
+- **W7-UI-006 (fetch/root cause): partial by ownership.** The backend now fails
+  closed with HTTP 200, `generic_fallback`, and
+  `evidence_source_unavailable`; the frontend separately labels unreachable
+  transport and handled server failures. The remaining missing approved local
+  dataset/provisioning path belongs to Data Pipeline/Integration and is not
+  claimed as a UI fix.
+- **Frontend machine evidence: confirmed on the latest follow-up.** Sheng's
+  2026-09-27 browser run loaded the Vite application and rendered the complete
+  chat interface and handled fallback on macOS. This confirms that the
+  frontend runs cleanly on Sheng's machine; the fallback itself remains the
+  expected symptom of the separately owned data-provisioning gap.
 
 ## Visual-state verification note
 
 The current CSS now gives the three previously similar states different icons:
 uncertainty uses `!`, insufficient data uses `○`, and generic fallback uses
-`⚙`. This is a code-level improvement, not yet a completed runtime visual
-review on the current frozen build. The checklist therefore keeps this item
-open until the three rendered states are inspected at desktop and phone width.
+`⚙`. The Week 8 frontend tests enforce the distinct icons and accent
+treatments. Sheng also completed desktop and phone-width visual checks during
+the 2026-09-22 UI hardening run and confirmed the latest handled-fallback view
+on macOS on 2026-09-27.
 
 ## Handoff
 

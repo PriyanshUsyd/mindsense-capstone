@@ -17,12 +17,17 @@ this file that expensive. This module therefore does the cheap part only
 per-person point estimates -> evidence classification, which stays
 "insufficient" for everyone until a real `slope_se` is supplied — see
 `backend.statistics.evidence`'s module docstring) and stops there.
-`tier1_runner` names that narrower, actually-current scope; a caller who
-wants real per-person labels runs `backend.statistics.bootstrap`
-separately and feeds its output through `evidence
-.build_person_slopes_from_bootstrap_se` / `intersect_bootstrap_evidence`
-(not wired into this runner — a deliberate extension point, not an
-oversight).
+`tier1_runner` names that narrower, actually-current scope.
+
+**Bootstrap cache (2026-10, `backend.statistics.bootstrap_cache`).** The
+runner *reads* a previously built, fingerprinted cache of the per-person
+bootstrap SE and intersection table; it never runs the bootstrap. No cache
+-> labels stay `insufficient`. Stale cache (fingerprint mismatch) ->
+`BootstrapCacheStale` naming the changed keys, raised only for that feature:
+`main` collects per-feature failures, writes the other features' output and
+then raises `Tier1RunFailed`. Build the cache with
+`python -m backend.statistics.bootstrap_cache <feature>` from a clean,
+committed tree.
 
 Uses `backend.statistics.feature_specs.TIER1_FEATURE_SPECS` — each
 feature's raw column, transform, and cleaning entry point are declared
@@ -45,7 +50,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from backend.statistics import evidence
+from backend.statistics import bootstrap_cache, evidence
 from backend.statistics.feature_specs import TIER1_FEATURE_SPECS, FeatureSpec
 from backend.statistics.mixed_effects_model import build_model_frame, fit_ar1_effect, fit_mixed_effects_model
 
@@ -124,6 +129,7 @@ def run_one_feature(
     # reclassify_cohort_family's fail-safe applies: every label is
     # "insufficient" until a real SE is supplied separately.
     if ar1.blups is not None:
+moe-week8-cleanup
         person_slopes = evidence.extract_person_slopes(ar1, frame)
         outcome_sd = float(frame["phq4_score"].std())
         predictor_sd = float(frame["x_within"].std())
@@ -136,6 +142,39 @@ def run_one_feature(
             "label_holm_counts": evidence_table["label_holm"].value_counts().to_dict(),
             "all_insufficient_pending_se": bool((evidence_table["label_bh"] == "insufficient").all()),
         }
+=======
+        # Decision c (week7 item 2): no cache -> carry on with the
+        # fail-safe "insufficient"; a stale cache raises
+        # (BootstrapCacheStale, naming the changed keys). The bootstrap
+        # itself is never started from here.
+        cached = bootstrap_cache.load_aggregated_cache(spec, frame, engine=ar1.engine)
+        if cached is not None:
+            evidence_table = cached.intersection
+            evidence_summary = {
+                "family_size": len(evidence_table),
+                "label_parametric_counts": evidence_table["label_parametric"].value_counts().to_dict(),
+                "label_cluster_counts": evidence_table["label_cluster"].value_counts().to_dict(),
+                "label_intersection_counts": evidence_table["label_intersection"].value_counts().to_dict(),
+                "all_insufficient_pending_se": False,
+                "bootstrap_cache": {
+                    "status": "loaded",
+                    "fingerprint_sha256": cached.fingerprint_sha256,
+                    "n_iterations": cached.n_iterations,
+                },
+            }
+        else:
+            person_slopes = evidence.extract_person_slopes(ar1, frame)
+            outcome_sd = float(frame["phq4_score"].std())
+            predictor_sd = float(frame["x_within"].std())
+            evidence_table = evidence.reclassify_cohort_family(person_slopes, outcome_sd, predictor_sd)
+            evidence_summary = {
+                "family_size": len(evidence_table),
+                "label_bh_counts": evidence_table["label_bh"].value_counts().to_dict(),
+                "label_holm_counts": evidence_table["label_holm"].value_counts().to_dict(),
+                "all_insufficient_pending_se": bool((evidence_table["label_bh"] == "insufficient").all()),
+                "bootstrap_cache": {"status": "absent"},
+            }
+main
     else:
         evidence_table = pd.DataFrame()
         evidence_summary = {
@@ -230,27 +269,56 @@ def _json_default(o):
     return None
 
 
+class Tier1RunFailed(RuntimeError):
+    """One or more features failed (e.g. a stale bootstrap cache). The other
+    features' outputs were still written before this was raised."""
+
+    def __init__(self, failures: dict[str, Exception], out_dir: Path | None):
+        self.failures = failures
+        self.out_dir = out_dir
+        detail = "\n".join(f"  {name}: {type(exc).__name__}: {exc}" for name, exc in failures.items())
+        super().__init__(
+            f"{len(failures)} feature(s) failed; remaining features' output is in {out_dir}:\n{detail}"
+        )
+
+
 def main(prefer_r: bool = True) -> Path:
     sensing, ema = load_sensing_and_ema()
 
-    results = {
-        name: run_one_feature(spec, sensing, ema, prefer_r=prefer_r) for name, spec in TIER1_FEATURE_SPECS.items()
-    }
-    reconciliation = reconcile_participant_sets(results)
+    # Features are independent (week7 item 2, decision d): a feature whose
+    # cache fails to load must not take the other feature's result with it.
+    # Failures are collected, the rest is written, then Tier1RunFailed is
+    # raised -- failing closed, but not discarding unrelated work.
+    results: dict[str, FeatureRunResult] = {}
+    failures: dict[str, Exception] = {}
+    for name, spec in TIER1_FEATURE_SPECS.items():
+        try:
+            results[name] = run_one_feature(spec, sensing, ema, prefer_r=prefer_r)
+        except Exception as exc:  # noqa: BLE001 - re-raised below as Tier1RunFailed
+            failures[name] = exc
 
-    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    out_dir = OUTPUT_ROOT / timestamp
-    write_outputs(results, reconciliation, out_dir)
+    out_dir: Path | None = None
+    if results:
+        reconciliation = reconcile_participant_sets(results)
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        out_dir = OUTPUT_ROOT / timestamp
+        write_outputs(results, reconciliation, out_dir)
 
-    print(f"wrote Tier-1 run output to {out_dir}")
-    for name, result in results.items():
+        print(f"wrote Tier-1 run output to {out_dir}")
+        for name, result in results.items():
+            print(
+                f"  {name}: engine={result.primary_fit['engine']!r} "
+                f"beta={result.primary_fit['x_within_beta']} p={result.primary_fit['x_within_p']} "
+                f"n_occasions={result.n_occasions} n_participants={result.n_participants}"
+            )
         print(
-            f"  {name}: engine={result.primary_fit['engine']!r} "
-            f"beta={result.primary_fit['x_within_beta']} p={result.primary_fit['x_within_p']} "
-            f"n_occasions={result.n_occasions} n_participants={result.n_participants}"
+            f"  participant sets: {reconciliation.get('intersection_n')} shared / "
+            f"{reconciliation.get('union_n')} union"
         )
-    print(f"  participant sets: {reconciliation.get('intersection_n')} shared / {reconciliation.get('union_n')} union")
 
+    if failures:
+        raise Tier1RunFailed(failures, out_dir)
+    assert out_dir is not None
     return out_dir
 
 

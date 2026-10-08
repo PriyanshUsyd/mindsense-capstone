@@ -26,6 +26,14 @@ backend, or local-model behaviour.
    `off_topic` request category.
 5. Frontend setup and chat documentation now describes the current
    `{ participant_id, question, optional feature_id }` request.
+6. A request still running after 12 seconds is now identified as **Local model
+   warming up**. The browser keeps the request active under the backend's
+   bounded 180-second deadline and tells the user that a first local response
+   may take up to three minutes.
+7. The macOS backend setup now requires a project-local `.venv`. A checked-in
+   Python 3.12 constraints file pins the verified compatible NumPy 2.5.3,
+   SciPy 1.18.1, and statsmodels 0.15.0 combination, and the setup script runs
+   both `pip check` and a three-package import check.
 
 ## Visual direction
 
@@ -60,3 +68,52 @@ npm run build
 
 The visual review should cover the welcome view, normal response, all safety
 states, retry behaviour, desktop width, and phone width.
+
+### Sheng's Mac verification boundary
+
+On 2026-09-22, Sheng verified commit `bc47185` on a macOS MacBook Air using the
+project-local `.venv`, Ollama, and the Vite frontend. The frontend loaded at
+`127.0.0.1:5173`, FastAPI started at `127.0.0.1:8000`, and repeated
+`POST /respond` requests returned HTTP 200. The browser correctly rendered the
+handled evidence-source fallback and the known development off-topic refusal.
+Frontend tests (25), lint, and the production build passed.
+
+This evidence confirms that the frontend itself ran cleanly on Sheng's machine.
+It does not close the separate pipeline/data-provisioning gap: without the
+approved local sensing dataset, an allowed evidence question safely returns
+`generic_fallback` with `evidence_source_unavailable` rather than a normal
+evidence response.
+
+On 2026-09-27, Sheng completed the final Mac rerun on the follow-up build:
+
+- the constrained environment completed with `No broken requirements found`;
+- NumPy 2.5.3, SciPy 1.18.1, and statsmodels 0.15.0 imported successfully;
+- after unloading `phi4-mini:3.8b`, the development GPS fixture returned
+  `normal` in 127.83 seconds, below the 180-second deadline, with
+  `used_fallback=false` and `model_invoked=true`;
+- the Vite application loaded and rendered the handled fallback correctly on
+  the MacBook Air.
+
+Therefore W7-UI-001 and W7-UI-005 are closed, and the frontend clean-run check
+is confirmed. W7-UI-006 remains partial only because approved local dataset
+provisioning is a Data Pipeline/Integration dependency.
+
+Run this final check from the repository root:
+
+```bash
+./scripts/setup_local_python_env.sh
+source .venv/bin/activate
+python -m pip check
+python -c "import numpy, scipy, statsmodels; print(numpy.__version__, scipy.__version__, statsmodels.__version__)"
+MINDSENSE_SLM_RUNTIME=ollama python -m uvicorn backend.api.app:app --reload
+```
+
+In a second terminal:
+
+```bash
+cd frontend
+npm test -- --run
+npm run lint
+npm run build
+npm run dev
+```
