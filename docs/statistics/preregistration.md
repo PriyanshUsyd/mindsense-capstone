@@ -390,11 +390,19 @@ where Holm and BH are both mathematically identical to the raw p-value — i.e. 
 correction was in effect.
 
 **The cohort-level family is defined as the participants who have a per-person
-slope for this feature: 213.** (A data-dependent number, stated because it is the
-family size itself.) This definition is post-hoc.
+slope for this feature.** The size is data-dependent, not a fixed constant: it
+is **214** for `loc_dist_ep_0` as of 2026-09-27. (The retired `analysis/`
+pipeline's figure was 213; its origin is suspected, not verified, to be its
+lag-1 term pushing one participant below the 3-occasion floor — see
+`docs/statistics/week7-calibration-concerns.md` item 8. The current primary
+has no lag-1 term and gives 214.) This definition is post-hoc.
+`unlock_num_ep_0` is 216 as of 2026-10-06; `evidence.EXPECTED_FAMILY_SIZE` is
+a per-feature dict of such current observed values (a visibility check that
+warns on change, not a constraint).
 
-- **Reported values use BH-FDR x 213.**
-- **Holm-Bonferroni x 213 is reported alongside as a sensitivity analysis.**
+- **Reported values use BH-FDR across that family (n = 214 currently).**
+- **Holm-Bonferroni across the same family is reported alongside as a
+  sensitivity analysis.**
 - Raw per-person p-values are never surfaced. A family-of-1 column is retained in
   `evidence_per_person.csv` (`label_family1`) as a legacy reference only.
 
@@ -653,8 +661,8 @@ construction.
 (written pre-sign-off) specifies BH-FDR correction over a single per-person
 test; it did not anticipate reconciling two different bootstrap SE estimators,
 because the SE gap itself was not foreseen as needing a bootstrap solution at
-all. Recorded in the same register as the cohort-level family size (213,
-section 2.2) and the binary user-facing collapse (section 5) — see section 7's
+all. Recorded in the same register as the cohort-level family definition
+(participants holding a per-person slope; 214 currently, section 2.2) and the binary user-facing collapse (section 5) — see section 7's
 post-hoc log for the consolidated list.
 
 **Cached bootstrap SE: when a cached result stops counting `[POST-HOC, 2026-10-07]`.**
@@ -817,13 +825,24 @@ Other outcomes (PHQ-4 subscales, PAM, stress, sse3), lag 1 as a standalone
 claim, episode-of-day features, the 7-day PHQ-4 **alignment**-window sensitivity
 analysis, interaction terms, and any per-person multi-statement report.
 
+The now-deleted analysis/preregistration.md described the 7-day
+alignment-window check as a pre-registered robustness analysis
+with a "β1 materially unchanged" acceptance criterion. Here it is
+listed as exploratory. Which status it should carry is not
+settled by this document; the compiled file's framing is not
+authoritative (it was assembled by session tooling, not written
+as a specification). Not to be confused with the 7-day recency
+window retired in open item #4 below, which is a different
+window.
+
 ## 7. Register of post-hoc decisions
 
 Decisions taken after the Week 4 lock, listed so the freeze is auditable:
 
 1. **`IMPLAUSIBLE_MIN_M = 0`** (section 1.5) — new rule outside the Week 4 lock;
    0 rows affected in the current dataset.
-2. **Cohort-level family = 213** (section 2.2) — a family Week 4 never defined;
+2. **Cohort-level family = participants holding a per-person slope for the
+   feature (data-dependent; 214 for `loc_dist_ep_0`)** (section 2.2) — a family Week 4 never defined;
    BH-FDR reported, Holm as sensitivity.
 3. **User-facing 2-value collapse** (section 5) — thresholds unchanged.
 
@@ -916,6 +935,16 @@ part of the 2026-09-12 archival; only the three pipeline modules under
 4. COVID-era / term-phase fixed effect not yet included (Week 4 doc open item 5).
 5. The 250 km / 1,000 km implausibility sensitivity analysis (section 1.5) is
    pre-registered but has not been run.
+6. **`term_phase` calendar `[open item, added 2026-10-06]`.** Item 4 above says
+   the term-phase effect is "not yet included"; to be precise, it exists in
+   `backend.statistics.mixed_effects_model` as an optional extra fixed effect
+   (not used in the primary fit, section 1.4) built from a **generic
+   US-academic-year heuristic** (winter break ~Dec 15-Jan 15, spring break
+   ~Mar 8-16, summer break ~May 15-Aug 25), not the real Dartmouth academic
+   calendar for the study years, because the CES dataset carries no
+   academic-calendar field. **Open:** replace the heuristic with the actual
+   Dartmouth calendar, or accept it as a documented approximation. Undecided;
+   needs the Statistical Analysis Lead.
 
 ## 10. Not to be changed after Wednesday sign-off
 
