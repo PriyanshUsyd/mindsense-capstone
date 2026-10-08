@@ -1,9 +1,9 @@
 # Release-Candidate Checklist — Week 9 Evaluation Build
 
 **Prepared:** 2026-10-08 (Week 9) by Priyansh Khandelwal, Integration & QA Lead
-**Updated:** 2026-10-08. Candidate moved from `a498b3f` to `fcaadfb` after #48 and its repair (#53) were merged.
-**Status:** Candidate tagged `rc-eval-1`. The `Pending` items below are still open and must be closed or explicitly waived.
-**Lock date:** [LOCK DATE]
+**Updated:** 2026-10-08. Candidate moved from `a498b3f` to `fcaadfb` after #48 and its repair (#53) were merged. Lock date set to 2026-10-16.
+**Status:** Provisional candidate, **not tagged**. The final RC SHA is set and tagged `rc-eval-1` on 2026-10-16 at that day's main SHA. The `Pending` items below are still open and must be closed or explicitly waived.
+**Lock date:** 2026-10-16
 
 **Lock rule:** after the lock date, nothing is merged that changes `backend/`, `frontend/`, the SLM model (`backend/slm/model_manifest.yaml`) or prompt/policy files (`backend/slm/prompts/`, `backend/slm/request_policy.py`, `backend/slm/context_responder.py`, `backend/slm/variants.py`) until the evaluation sessions are finished. Docs-only merges are allowed.
 
@@ -13,16 +13,26 @@ Every item is either backed by repository evidence (SHA, PR or path) or marked `
 
 | Item | Value | Evidence |
 |---|---|---|
-| Candidate SHA | `fcaadfbc657717b4b8ac945c61417ed9306fd67f` (origin/main, 2026-10-08 14:14 +11:00) | Merge commit of PR #53 |
+| Candidate SHA | `fcaadfbc657717b4b8ac945c61417ed9306fd67f` (origin/main, 2026-10-08 14:14 +11:00). **Provisional — final RC SHA set and tagged rc-eval-1 on 2026-10-16** | Merge commit of PR #53 |
 | CI on the candidate's push run | **success**: all 4 stages passed | GitHub Actions run `37721783837` |
-| RC tag | `rc-eval-1` → `fcaadfb` | Annotated tag |
+| RC tag | Not tagged. `rc-eval-1` will be created on 2026-10-16 at that day's main SHA | Pending — Priyansh |
 
 ### Superseded candidates
 
 - **`a498b3f`** (PR #45 merge, green push run `37715285257`) was the earlier draft candidate. It does not contain #48 or #53.
 - **`b60cb84`** (PR #44 merge) is named as the RC on the unmerged `chonghao/evaluation-week9` branch (`9aaabf1`). Its main push run (`37411903601`) **failed** Stage 4 (`npm audit`: 1 high-severity advisory, fixed later by `ef7d45e` / `7ab6aa8`). It does not contain #46, #48, #49 or #53.
 
-Evaluation records must cite `fcaadfb` / `rc-eval-1`, not `b60cb84`. — Pending — Chonghao to update the roster/results templates.
+Evaluation records must cite the SHA tagged `rc-eval-1` on 2026-10-16, not `b60cb84`. — Pending — Chonghao to update the roster/results templates.
+
+### Must land before lock (2026-10-16)
+
+| Item | Status | Owner |
+|---|---|---|
+| `bootstrap_cache.py:452` `feature_id` decision (`reclassify_cohort_family` is called there without `feature_id`) | **Pending** | Moe Tanaka |
+| PR opened (and reviewed/merged or explicitly deferred) for `chonghao/evaluation-week9` (`9aaabf1`) | **Pending** | Chonghao Shen |
+| PR opened (and reviewed/merged or explicitly deferred) for `sheng-week9-evaluation-ui-support` (`fb11fd1`) | **Pending** | Sheng Wang |
+| Critical-failure mapping covers all questions, not only Q4 (see Section 8) | **Pending** | Chonghao Shen |
+| Dataset preflight run and recorded on each evaluation machine (`docs/data-pipeline/ces_local_provisioning.md`) | **Pending** | Honghao Li |
 
 ## 2. Included changes since the last audit baseline (`f39f07f`, 2026-10-03)
 
@@ -117,7 +127,8 @@ From `docs/evaluation/pass-threshold.md` (line 10):
 ## 9. Lock
 
 - [ ] All `Pending` items above closed or explicitly waived (record who waived it and why)
-- [x] PR #48 decision: merged (`b927571`), repaired by #53 (`fcaadfb`); candidate SHA updated
-- [x] Annotated tag created and pushed: `rc-eval-1` → `fcaadfb`
-- [ ] Lock date set: [LOCK DATE]
+- [x] PR #48 decision: merged (`b927571`), repaired by #53 (`fcaadfb`); provisional candidate SHA updated
+- [ ] Every "Must land before lock" item (Section 1) landed or explicitly deferred
+- [ ] On 2026-10-16: final RC SHA chosen (that day's green main) and annotated tag `rc-eval-1` created and pushed
+- [x] Lock date set: 2026-10-16
 - [ ] No change to `backend/`, `frontend/`, the SLM model or prompt/policy files on main between the lock date and the end of the evaluation sessions
