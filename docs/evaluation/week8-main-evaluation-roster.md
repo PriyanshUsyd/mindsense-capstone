@@ -40,6 +40,7 @@ For each question, save:
 - one screenshot containing the exact question and answer;
 - the `/respond` JSON from Browser DevTools;
 - the response mode and any fallback/rejection reason;
+- the `critical_failure` result and type using the [Q1–Q4 critical-failure map](results/main-evaluation/critical-failure-map.md);
 - the evaluator's questionnaire answers.
 
 ### Second half
