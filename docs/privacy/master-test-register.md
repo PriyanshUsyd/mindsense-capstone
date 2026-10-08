@@ -2,7 +2,7 @@
 
 Owner: Yuktha Naveen, Privacy and Security Lead  
 Coverage: Week 4 onward  
-Last updated: 26 September 2026
+Last updated: 5 October 2026
 Status: authoritative index of executed project checks; update this file every week
 
 ## Purpose
@@ -65,6 +65,7 @@ is not approval for clinical use or participant deployment.
 | 8 | Live application verification | 10 API cases checked; browser response, refusal, crisis, reset, outage and recovery verified | Actual local integration works; native runner CORS, missing user authentication, and offline validation still block final participant-use approval. |
 | 8 | Phi-4 Mini latency | 5/5 completed; mean 1.46 s; sample p95 2.17 s | Warm synthetic direct-model timing only; the real integrated GPS/unlock requests took 16.25 s and 22.80 s respectively. |
 | 8 | Local-demo follow-up verification | Complete for the user-confirmed demo scope: 563 Python/R and 27 frontend tests passed under OS process egress restrictions | Runner origin hardened, safe exception logging checked, dataset directory restricted, live inference and model unloading verified. Not real-user deployment or whole-device offline approval. |
+| 9 | Post-PR #39/#43 privacy recheck | 670/670 sealed-excluded Python/R tests; exact Stage 4 privacy scope 54/54; 27/27 frontend tests; lint/build and dependency audits passed | New Ollama variant-isolation checks passed, and a loopback-only live demo exercised default RAG and all four explicit variants. This does not approve authenticated participant access or new retrieval sources. |
 
 The Week 5 latency sample was about 15.7% slower on mean latency than Week 4.
 Five prompts are too small a sample to establish a performance regression or a
@@ -1283,6 +1284,64 @@ Week 8 history record is preserved unchanged, and no new latency benchmark was
 needed for this follow-up. All services started for this verification are
 stopped at completion.
 
+## Week 9 Post-Merge Privacy Recheck - 5 October 2026
+
+**Operator:** Yuktha Naveen, Privacy and Security Lead. **Branch:**
+`yuktha/privacy-week9`, based on main commit `f39f07f`. Results are recorded
+on this branch only; this is not a merge to main. Machine: Yuktha's Mac,
+Python 3.14.0, R 4.6.1, Node 22.19.0,
+Ollama 0.33.2 with the installed `phi4-mini:3.8b` model. The dataset stayed in
+ignored, owner-restricted `dataset/`; no raw rows, identifiers or responses were
+written to this register or the history record.
+
+**Change under review:** PR #39 made packet-bound RAG the default for Ollama
+`/respond`; PR #43 added the optional `variant` request field. The selectable
+modes are `base_llm`, `rag`, `agent`, and `rag_agent`. The retriever currently
+returns only two canonical descriptive summaries from the current
+EvidencePacket. Those summaries include a feature value and date window, so
+"the SLM is local" is not, by itself, proof of appropriate access or retention.
+
+| Check | Assumptions before running | Result | What it proves / does not prove |
+| --- | --- | --- | --- |
+| Existing complete Python/R suite | Real local R and CES are installed; Week 11 sealed content is not authorised for this development run. `MINDSENSE_CI_SCOPE=sealed-excluded`; held-out directory and integrity test are excluded before collection. | Initial sandbox run: 654 passed, 5 loopback-bind failures, 53 warnings. The complete rerun with loopback socket access: **670 passed, 0 failed, 0 skipped, 53 warnings** in 108.68 s. | The five initial failures were host-tool socket restrictions, not application assertions: all 7 transport tests passed in a separate loopback-permitted rerun. The final complete run includes 11 new cases. It does not exercise sealed evaluation content. |
+| New variant privacy regressions | Synthetic packets and a recording Ollama transport model API composition without network or CES. | 10 parameterised sensitive-request cases plus 1 sequential-request isolation case passed. Focused API/context/variant selection: **117 passed**. | Across default and four explicit variants, crisis/diagnosis requests do not load data, retrieve context or call the model. A default-RAG request, a Base call and a later default-RAG request do not carry the earlier packet's context forward. This does not establish user authentication. |
+| Exact Stage 4 privacy scope | The workflow explicitly includes `tests/privacy/test_api_response_privacy.py`; loopback socket access is available for redirect assertions. | **54 passed**, 0 failed in 3.98 s. | The newly added cases run automatically in the existing privacy job without changing the workflow. This local rerun is not a GitHub Actions result. |
+| Frontend test and build | Installed lockfile packages; no UI data needs to leave the device for these checks. | **27/27 tests passed**; Oxlint and Vite production build passed. | Existing UI regressions stayed green. Interactive workflow was checked separately below. |
+| Dependencies | Declared Python/R/frontend manifests are unchanged from the Week 8 privacy commit. Advisory services were reachable for the scan. | `pip check` passed; strict audit of `requirements.txt` and `requirements-r.txt`: no known vulnerabilities; `npm audit --audit-level=high`: 0 vulnerabilities. | No broken installed Python requirements or currently reported advisories were found. This is not a code or supply-chain provenance audit. |
+| Live local-demo stack | One trusted operator on one Mac; Ollama, FastAPI/R and Vite were launched with `privacy/macos-loopback.sb`, bound to `127.0.0.1`; cloud mode off, backend access log off, runner CORS origin restricted. No pre-existing process occupied the demo ports. | Frontend served; default RAG, `base_llm`, `rag`, `agent`, and `rag_agent` each returned HTTP 200 with noncacheable uncertainty responses, model invoked, and no fallback. Crisis and diagnosis requests stopped before model invocation. Invalid variant returned generic 422; untrusted browser Origin received no CORS allow-origin. External TCP probe was denied. Model unload was confirmed with empty `/api/ps`; all three demo ports were closed after the run. | Confirms the current API variants function with real local CES-backed evidence and the installed model under a process-level external-egress block. It does **not** prove whole-device/browser offline operation, secure account ownership, forensic deletion of model memory, or safety of future sources. |
+| Interactive browser workflow | Temporary local demo tab, synthetic questions only; browser itself was outside the service sandbox. | A submitted movement question displayed a local-model uncertainty response. A synthetic crisis question displayed the version-controlled safety message. New conversation cleared the chat; a reload remained on the empty welcome state. Six browser console entries were debug/info only, with no matched request or evidence markers. | The user-facing request, safety and reset paths worked in this local session. It does not prove browser-wide offline isolation or forensic memory erasure. |
+| Live service-log review | Temporary owner-restricted logs from this exact run; backend request access log disabled. Search included submitted questions, participant/evidence keys and values, credential/contact patterns and tracebacks. | **43 backend, 9 frontend and 385 Ollama lines** scanned while live; zero sensitive-marker or traceback matches. A post-shutdown scan again found zero listed markers; temporary raw logs were removed. | No sampled question, packet or identifier appeared in the emitted service logs for this run. New runtime/library versions or new log settings require another review; pattern scanning cannot prove absence of every possible sensitive value. |
+| Default-RAG application latency | Same Mac and local model; `variant` and `feature_id` omitted, so Ollama selected default RAG and question-based GPS inference. One uncounted warmup; five sequential complete HTTP requests. | **5/5** measured requests returned HTTP 200, `no-store`, model invoked, uncertainty response and no fallback. Minimum **5118.75 ms**, mean **5140.35 ms**, median **5129.77 ms**, sample p95 (nearest rank) **5187.51 ms**, maximum **5187.51 ms**. | End-to-end API/R/RAG/model timing under this workload. Historical direct Ollama prompt benchmarks are not like-for-like; five warm samples do not establish a production p95. |
+
+**Commands/evidence:** Complete suite used `.venv/bin/python -m pytest -q -p
+no:cacheprovider --ignore=tests/evaluation/held_out
+--ignore=tests/evaluation/test_held_out_integrity.py --disable-warnings` with
+`MINDSENSE_CI_SCOPE=sealed-excluded`, `RPY2_CFFI_MODE=ABI`, and `PYTHONPATH=.`.
+The initial five loopback-bind failures were rerun with socket permission using
+`tests/slm/test_transport_privacy.py` (7 passed). Focused tests used
+`tests/privacy/test_api_response_privacy.py`, `tests/api/test_packet_variant_api.py`,
+`tests/slm/test_packet_variants.py`, and `tests/slm/test_context_responder.py`.
+Frontend used `npm --prefix frontend test -- --run`, `run lint`, and `run build`.
+The dependency checks used `pip check`, `pip_audit --strict -r requirements.txt
+-r requirements-r.txt`, and `npm audit --audit-level=high`. A temporary local
+smoke harness started and stopped the three process-sandboxed services without
+saving participant responses. Machine-readable redacted evidence:
+`benchmarks/history/privacy_security/2026-10-05T135924+1100_week9.json`.
+The follow-up browser, log and default-RAG application-latency checks are
+recorded in the same Week 9 record and the separate immutable benchmark
+`benchmarks/history/slm_latency/2026-10-05T142700+1100_week9_default-rag-app.json`.
+
+**Decision:** The tested, single-operator local-demo configuration has a
+conditional technical pass for these changes. The earlier Week 8 sign-off did
+not cover default RAG; this record updates the tested scope, not the product's
+participant-use approval. `/respond` still accepts a caller-supplied
+`participant_id` without authentication or owner mapping. Before real users
+access their own records, require a verified session/PIN design, backend-only
+ID-to-data mapping, ownership tests, and review of any new retrieval source,
+prompt/log retention, and deletion policy. The new five-request default-RAG
+application timing is recorded separately from historical direct-model timing
+because it measures a different workload.
+
 ## SLM Latency Run History
 
 `benchmarks/slm_latency_results.json` remains the stable latest-result file.
@@ -1308,6 +1367,13 @@ grounding result and scorecard are also preserved under
 `benchmarks/history/slm_grounding_prompt048/`: the 4 September pre-joint-review
 run and the 6 September consensus update. No other machine-readable benchmark
 result had been overwritten in Git history as of 13 September 2026.
+
+The 5 October Week 9 default-RAG **application** latency result is in
+`benchmarks/history/slm_latency/2026-10-05T142700+1100_week9_default-rag-app.json`:
+five warm end-to-end requests, mean 5140.35 ms, median 5129.77 ms, and sample
+p95 (nearest rank) 5187.51 ms. It does not replace the stable direct-model
+`benchmarks/slm_latency_results.json` and is not directly comparable with the
+earlier rows in this table.
 
 ## Meaning of the Combined Results
 
