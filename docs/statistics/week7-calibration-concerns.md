@@ -22,7 +22,7 @@ The Week 7 pilot has already taken place: a lightweight remote rostered-pair ses
 | # | Item | Status |
 |---|---|---|
 | 1 | The evidence-derivation path was not wired into `/respond` | **Superseded** by `11df143` (2026-09-16) |
-| 2 | Per-person standard errors are not in the production path | Open |
+| 2 | Per-person standard errors are not in the production path | Cache implemented 2026-10-07 (runner only); B=500 rebuild and `/respond` wiring open |
 | 3 | B=500 results vs. the current primary specification | **CLOSED** |
 | 4 | B=500 results were only in a temporary scratchpad | Mitigated; storage location open |
 | 5 | Participant sets differ between the two Tier-1 features | Open |
@@ -63,7 +63,7 @@ What remains open on the statistics side is item 2 (the bootstrap SE is not in t
 
 **Relationship to `docs/statistics/bootstrap-caching-design.md`.** That document was written by Priyansh Khandelwal on 2026-09-20, transcribing what Moe Tanaka relayed over WhatsApp, and says so itself. It lists four things to settle in Week 7 (where the cached output lives; how `tier1_runner` reads it without triggering a live run; what invalidates it; whether a stale cache fails closed or warns) and states that none of them had been answered. **Decisions a–d below are the confirmed answers to those four points**, in a different order: (1) → a, (2) → d, (3) → b, (4) → c. The two documents do not conflict: one is the agenda, the other the answers. (They do disagree on where 23/214 came from and on whether a rerun is needed — see item 3.)
 
-**Week 8.** Owner: Moe Tanaka. Design in Week 7; implementation in Week 8. Caching design decisions a–d are finalised. Nothing below is implemented yet.
+**Week 8.** Owner: Moe Tanaka. Design in Week 7; implementation in Week 8. Caching design decisions a–d are finalised. *(Implemented 2026-10-07 on branch `moe-week9-bootstrap-cache` — see "Implementation status" at the end of this item; the text of a–d below is the design as decided, with the changes made at implementation listed there.)*
 
 **a. Storage and format — a-1.** Separate the raw checkpoint from the aggregated per-person SE.
 - The raw checkpoint (JSON Lines, every iteration) stays under `outputs/` (gitignored). It is heavy and contains per-person BLUPs.
@@ -98,6 +98,24 @@ When the runner stops on a fingerprint mismatch, the error must name which key c
 - **Correction to how this was first framed:** it was described as matching an existing per-feature exception policy in `run_one_feature`. That policy does not exist yet. `run_one_feature` fits each feature independently, but `tier1_runner.main` calls it in a dict comprehension with no `try`/`except`, so an exception in one feature aborts the whole run and the other feature's result is lost. Per-feature exception handling is new behaviour that decision d requires, not something already in place.
 
 Decisions a–d cover the runner. Reading the cache from `participant_evidence` (the `/respond` path) is not covered by them and needs its own decision.
+
+### Implementation status (2026-10-07)
+
+**Done** (`backend/statistics/bootstrap_cache.py`, `tier1_runner.py`, `bootstrap.prepare_model_frame`; tests in `tests/statistics/test_bootstrap_cache.py`):
+- **a.** Raw checkpoint (`raw_checkpoint.jsonl` + `raw_fingerprint.json`) and the aggregated cache (`aggregated_cache.json`: per-person SE rows `uid, method, slope_se, n_occasions, n_bootstrap_draws`, and the `intersect_bootstrap_evidence` table) are separate files under `outputs/bootstrap_cache/<feature>/` (gitignored). This resolves "where the cache lives" for now as the ignored tree, not a tracked location: `docs/privacy/local-demo-privacy-check.md` forbids committing per-person bootstrap rows, so a tracked location is not needed for this cache (the location of the 2026-09-13 archive, item 4, is a separate question and still awaits Yuktha's review). Permissions: mode 700/600 on POSIX; on Windows `icacls` with inheritance removed and the current user only, best effort (a failure warns and does not stop the run).
+- **b.** Fingerprint, key dictionary stored beside the SHA-256. **c.** No aggregated cache → `None` and everyone stays `insufficient`; mismatch → `BootstrapCacheStale` naming the changed keys. **d.** `tier1_runner.main` now catches per feature, writes the other features' output and then raises `Tier1RunFailed`.
+- `tier1_runner` reads the cache only; the bootstrap is started only by `python -m backend.statistics.bootstrap_cache <feature>`. **Not wired into `/respond`** (`participant_evidence`), per the scope of this change; that still needs its own decision (above).
+
+**Changes from design a–d:**
+1. **`git_commit` is not a key.** Replaced by content hashes: the fingerprint has three layers — (A) a hash of the exact model frame the fit consumes, (B) content hashes of the estimation-path files (`bootstrap.py`, `mixed_effects_model.py`, `r_bridge.py`, `feature_specs.py`, `data_pipeline/{cleaning,gps_distance_feature,unlock_frequency_feature}.py`), (C) environment and configuration. This addresses the second consequence noted under b (a commit that does not touch the estimate no longer invalidates 30–40 minutes of work), and a test walks the real import graph so that a new module on the estimation path fails CI unless it is hashed or listed as excluded with a reason.
+2. **Input data and environment were missing from the key.** The b list (feature, transform, seed, B, engine, `git_commit`) could not see a changed dataset (`dataset/` is gitignored), a changed cleaning rule outside `backend/statistics/`, or an R/`nlme`/numpy/scipy/pandas/rpy2 upgrade. Layers A and C add them. Per-file hashes normalise CRLF to LF so a Windows checkout does not invalidate a cache built on LF.
+3. **Two-stage key (decision a, made concrete).** The aggregated cache's key is every raw key plus the content hash of `evidence.py` and the classification thresholds (`classify_evidence_strength`, `EXPECTED_FAMILY_SIZE`); a classification-only change invalidates the aggregate, not the raw checkpoint's fingerprint. (`classify_evidence_strength` lives in `mixed_effects_model.py`, which layer B hashes, so a threshold edit still invalidates the raw layer too — conservative, and recorded here rather than hidden.)
+4. **Mixing legs on resume.** The 2026-09-13 run was resumed twice and nothing recorded each leg's code state. A raw checkpoint is now appended to only if its sidecar fingerprint equals the current one; a checkpoint with records but no sidecar is refused.
+5. **Dirty-tree rule moved to write time.** "Dirty tree counts as `None` and invalidates" became: writing a raw checkpoint or an aggregated cache is refused when a keyed file is modified or untracked (`git status --porcelain`; also refused if git cannot answer). Reading compares hashes only and needs no git: identical content is identical code.
+
+**Stage 1 reproducibility check (2026-10-07, from an uncommitted tree, so not a cache entry):** iterations 0–11 of both methods were rerun on current code (serial, `master_seed=20260913`) and compared with the archived 2026-09-13 records. The real fit matches (214 participants, 28,337 occasions, per-person `slope_i` max abs diff 1e-16). All 24 records match exactly: seeds, `usable`/`error`/fallback flags, cluster `uid_map` and `selection_counts`, and `ar1_phi`, β and every BLUP with max abs diff 0.0 (bit-identical).
+
+**Not done / still open:** the real B=500 rebuild on committed code (GPS first, `unlock_num_ep_0` as a separate run afterwards), and the comparison of that rebuild with the archive. The 2026-09-13 result remains the only B=500 result until then, and it still has no valid cache entry.
 
 ---
 
