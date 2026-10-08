@@ -10,7 +10,24 @@ is Priyansh's transcription of what she said, committed so the scope has a
 real record instead of living only in a chat thread. Any correction to
 what's recorded here should come from Moe directly.
 
-## Context: why this is entangled with the AR(1)/lme4 recalculation
+> **Correction, 2026-10-07 (Moe Tanaka).** The "Context" section below and
+> steps 1, 2 and 4 of the "Week 8 plan" were written on the premise that the
+> existing 23/214 intersection came from the `lme4` fit and would shift under
+> AR(1). **That premise is wrong.** `extract_person_slopes` builds each
+> `slope_i` from `fit_ar1_effect`, so the per-person BLUPs behind 23/214 were
+> `nlme::lme` + `corAR1` from the start, and both bootstrap estimators refit
+> through the same `nlme` path (`lme4` is only the sensitivity fit). The B=500
+> run was checked against the current primary specification on every point
+> that matters and nothing differs (`docs/statistics/week7-calibration-concerns.md`
+> item 3); commit `4af4d7a` ("AR(1) as primary") changed documents only. The
+> text is left as originally relayed so the record of what was said is intact;
+> read it with this correction applied. The rerun is still being done, but for
+> a different reason: the 2026-09-13 run came from an uncommitted working tree,
+> so no fingerprint can describe it, and the cache needs a run whose code state
+> is known (week7 item 2, decision b and its implementation status). Decisions
+> a–d of that item are the answers to the four open points below.
+
+## Context: why this is entangled with the AR(1)/lme4 recalculation *(premise corrected — see above)*
 
 The existing 23/214 cross-method intersection (see
 `docs/statistics/preregistration.md`) was computed against the `lme4` fit,
@@ -46,11 +63,18 @@ anything is implemented against them. Treat any specific technical answer
 to (1)–(4) that appears elsewhere as unconfirmed until it traces back to
 her.
 
-## Week 8 plan (as she described it)
+## Week 8 plan (as she described it) *(steps 1, 2 and 4 superseded — see correction above)*
 
 1. Rerun both bootstrap methods (parametric and cluster) on the AR(1) fit.
+   *(Superseded: the existing run already is the AR(1) fit. Rerun instead on
+   committed code, to obtain a result a fingerprint can describe, and compare
+   it with the archived 2026-09-13 data as a reproducibility check.)*
 2. Recompute the cross-method intersection against the AR(1)-based
-   per-person BLUPs.
+   per-person BLUPs. *(Superseded: same reason; the intersection is
+   recomputed from the rerun as part of building the cache, not because the
+   classification is expected to shift.)*
 3. Land the cache (per whatever the Week 7 design settles on).
 4. Update `Week5_Statistical_Analysis_Deliverable.md` and
    `docs/statistics/preregistration.md` to reflect the AR(1)-based numbers.
+   *(Superseded: there are no "AR(1)-based numbers" distinct from the
+   current ones; documents change only if the rerun disagrees with 23/214.)*
