@@ -4,7 +4,7 @@
 
 **Branch:** `sheng-week9-evaluation-ui-support`
 
-**Status:** Prepared; evaluation sessions not yet logged
+**Status:** Prepared for the locked RC; evaluation sessions not yet logged
 
 **Created:** 2026-10-07
 
@@ -15,6 +15,11 @@ supporting the Week 9 internal evaluation sessions. It does not change the
 frozen response-quality prompts, model variants, statistical calibration,
 guardrail thresholds, dataset contents, or backend-generated response text.
 
+All evaluation support is performed against the fixed RC commit
+`b60cb848237a2a2a2cbc726551267a275f1668d0`. This documentation branch is not
+the evaluation build. No dependency, frontend, backend, model, or prompt change
+is introduced into the locked RC during the sessions.
+
 The session operator remains responsible for the evaluation procedure in
 `docs/evaluation/team-session-runbook-v0.1.md`. Sheng supports the visible web
 interface, records UI failures without hiding failed attempts, and routes
@@ -22,11 +27,17 @@ non-UI problems to the appropriate owner.
 
 ## Privacy and evaluation boundary
 
-- Record session codes, never teammate names or participant identifiers.
+- GitHub receives only the aggregate frontend-support result and redacted UI
+  issue descriptions with independently reproducible steps.
+- Keep individual ratings, session codes, screenshots, and full `/respond`
+  request or response JSON local. Session codes are not anonymous because the
+  team roster identifies the members of each pair.
 - Do not copy held-out prompts, expected answers, raw sensing rows, locations,
-  questionnaire responses, or participant-level output into this file.
-- Use only screenshots that contain approved synthetic or de-identified data.
-- Record response metadata only when it is needed to reproduce a UI problem.
+  questionnaire responses, participant identifiers, or participant-level
+  output into this file.
+- Describe visual evidence without committing the underlying screenshot. A
+  minimal, non-sensitive crop may be shared only after Privacy approval.
+- Record only the response metadata required to reproduce the UI symptom.
 - If raw identifiers, locations, hidden instructions, unsupported clinical
   claims, or a missed crisis route appear, stop the session and notify the
   Evaluation and Privacy leads.
@@ -35,7 +46,8 @@ non-UI problems to the appropriate owner.
 
 Complete this once on every evaluation machine before its first session.
 
-- [ ] Record the exact frozen/RC commit below.
+- [x] Record the fixed RC commit:
+      `b60cb848237a2a2a2cbc726551267a275f1668d0`.
 - [ ] Confirm the approved dataset is locally available without opening raw
       participant data in the browser or terminal capture.
 - [ ] Confirm the project-local Python environment passes `python -m pip check`.
@@ -52,19 +64,23 @@ Complete this once on every evaluation machine before its first session.
 - [ ] Record the result as Pass, Blocked, or Pass with issue; never silently
       restart and report only the successful attempt.
 
-## Evaluation machine record
+## Evaluation environment summary
 
-| Machine code | RC commit | OS | Browser and version | Viewport | API/model status | Frontend result | Checked at | Evidence |
-|---|---|---|---|---|---|---|---|---|
-| Pending | Pending | Pending | Pending | Pending | Pending | Not yet checked | Pending | Pending |
+Do not enter a machine owner, pair, session code, exact session timestamp, or
+local evidence path in the committed table.
 
-## Session support record
+| RC commit | OS | Browser and version | Viewport | API/model status | Frontend result | Check date | Redacted evidence summary |
+|---|---|---|---|---|---|---|---|
+| `b60cb848237a2a2a2cbc726551267a275f1668d0` | Pending | Pending | Pending | Pending | Not yet checked | Pending | Pending |
 
-Add one row for every supported session, including sessions with no UI issue.
+## Aggregate session support record
 
-| Session code | Date/time | Machine code | RC commit | Frontend result | UI issue IDs | Notes |
-|---|---|---|---|---|---|---|
-| Pending | Pending | Pending | Pending | Not yet run | None recorded | Awaiting evaluation schedule |
+Keep the detailed session-by-session worksheet outside the repository. Update
+this table only with totals after the supported sessions are complete.
+
+| RC commit | Sessions supported | Sessions blocked by UI | New UI issue IDs | Overall frontend outcome | Notes |
+|---|---:|---:|---|---|---|
+| `b60cb848237a2a2a2cbc726551267a275f1668d0` | Pending | Pending | None recorded | Not yet run | Awaiting evaluation sessions |
 
 ## UI issue register
 
@@ -75,9 +91,9 @@ No Week 9 UI issue has been observed yet. Assign IDs sequentially from
 
 #### W9-UI-___ — Short symptom
 
-- **First observed:** YYYY-MM-DD HH:MM and session code
+- **First observed:** evaluation date only; no session code or exact time
 - **RC commit:** full commit SHA
-- **Machine/browser/viewport:** machine code, OS, browser version, viewport
+- **Environment:** OS, browser version, and viewport; no machine owner or code
 - **Severity:** Blocker / High / Medium / Low
 - **Frequency:** Always / Intermittent / Once; reproduced N of N attempts
 - **Area:** startup / navigation / composer / loading / response rendering /
@@ -90,8 +106,9 @@ No Week 9 UI issue has been observed yet. Assign IDs sequentially from
   4. Observe the symptom without silently retrying.
 - **Expected:** what the interface should visibly do
 - **Actual:** what the interface visibly did
-- **Evidence:** non-sensitive screenshot filename, console excerpt, HTTP status,
-  and timestamp as applicable
+- **Evidence summary:** redacted visible symptom, console error class, or HTTP
+  status required for reproduction; screenshots and full JSON remain local
+- **Local evidence retained:** Yes / No; do not enter its identifying path
 - **Workaround:** none, or the temporary operator action used
 - **Suspected owner:** Frontend / Data Pipeline / Statistics / SLM / Evaluation
   / Integration
@@ -112,11 +129,12 @@ No Week 9 UI issue has been observed yet. Assign IDs sequentially from
 
 Before opening the Week 9 PR:
 
-- [ ] Replace all Pending rows with verified records or a clear reason that no
-      session occurred.
+- [ ] Replace all Pending values with aggregate verified results or a clear
+      reason that no session occurred.
 - [ ] Confirm every observed issue includes exact reproduction steps.
-- [ ] Confirm sessions with no UI issue are still recorded.
-- [ ] Remove or redact sensitive screenshots and raw data.
+- [ ] Confirm the aggregate count includes sessions with no UI issue.
+- [ ] Confirm no individual ratings, session codes, screenshots, full JSON,
+      held-out prompts, or raw data are tracked by Git.
 - [ ] Link fixes and retest evidence; do not mark an issue Closed without both.
 - [ ] Run frontend tests, lint, and production build if frontend code changed.
 - [ ] Reply to the team with the PR link or final commit SHA.
