@@ -2,7 +2,7 @@
 
 **Template:** COMP5703 Group-Based Capstone Project Progress Report  
 **Coordinator:** Honglin Lu  
-**Status:** Week 7 initial outline  
+**Status:** Working Progress Report draft — updated through Week 9  
 **Reporting basis:** Group Proposal, frozen build evidence and verified pilot-testing results
 
 ## 1. Progress and Achievements
