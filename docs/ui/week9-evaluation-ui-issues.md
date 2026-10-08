@@ -4,7 +4,8 @@
 
 **Branch:** `sheng-week9-evaluation-ui-support`
 
-**Status:** Prepared for the locked RC; evaluation sessions not yet logged
+**Status:** One evaluation session supported on the locked RC; no new UI issue
+observed
 
 **Created:** 2026-10-07
 
@@ -49,19 +50,25 @@ Complete this once on every evaluation machine before its first session.
 - [x] Record the fixed RC commit:
       `b60cb848237a2a2a2cbc726551267a275f1668d0`.
 - [ ] Confirm the approved dataset is locally available without opening raw
-      participant data in the browser or terminal capture.
+      participant data in the browser or terminal capture. This remains a data
+      provisioning check outside the frontend support result.
 - [ ] Confirm the project-local Python environment passes `python -m pip check`.
-- [ ] Confirm Ollama and the approved local model are available.
+      This command was not rerun during the supported session.
+- [x] Confirm Ollama and the approved local model are available.
 - [ ] Confirm FastAPI starts on `127.0.0.1:8000` and its health check succeeds.
-- [ ] Confirm the Vite frontend starts and loads in the approved browser.
-- [ ] Confirm the frontend reaches `/respond` without CORS or transport errors.
-- [ ] Confirm an approved public smoke question renders the expected response
+      FastAPI started and `/respond` returned HTTP 200; the standalone health
+      check was not rerun during this session.
+- [x] Confirm the Vite frontend starts and loads in the approved browser.
+- [x] Confirm the frontend reaches `/respond` without CORS or transport errors.
+- [x] Confirm an approved public smoke question renders the expected response
       state without exposing raw identifiers or hidden metadata.
 - [ ] Confirm Enter submits, Shift+Enter adds a new line, duplicate submission
-      is blocked, retry works, and New conversation resets the thread.
-- [ ] Confirm the loading/warm-up state, response card, and composer remain
+      is blocked, retry works, and New conversation resets the thread. Enter
+      submission and New conversation were exercised; the remaining controls
+      were not separately retested.
+- [x] Confirm the loading/warm-up state, response card, and composer remain
       readable at the evaluation window size.
-- [ ] Record the result as Pass, Blocked, or Pass with issue; never silently
+- [x] Record the result as Pass, Blocked, or Pass with issue; never silently
       restart and report only the successful attempt.
 
 ## Evaluation environment summary
@@ -71,7 +78,7 @@ local evidence path in the committed table.
 
 | RC commit | OS | Browser and version | Viewport | API/model status | Frontend result | Check date | Redacted evidence summary |
 |---|---|---|---|---|---|---|---|
-| `b60cb848237a2a2a2cbc726551267a275f1668d0` | Pending | Pending | Pending | Pending | Not yet checked | Pending | Pending |
+| `b60cb848237a2a2a2cbc726551267a275f1668d0` | macOS (version not recorded) | Google Chrome (version not recorded) | Desktop evaluation window with docked DevTools | Local API available; all four recorded `/respond` requests returned HTTP 200 | Pass | 2026-10-08 | Local-only screenshots and JSON retained; no blocking, transport, or response-rendering UI failure observed |
 
 ## Aggregate session support record
 
@@ -80,12 +87,13 @@ this table only with totals after the supported sessions are complete.
 
 | RC commit | Sessions supported | Sessions blocked by UI | New UI issue IDs | Overall frontend outcome | Notes |
 |---|---:|---:|---|---|---|
-| `b60cb848237a2a2a2cbc726551267a275f1668d0` | Pending | Pending | None recorded | Not yet run | Awaiting evaluation sessions |
+| `b60cb848237a2a2a2cbc726551267a275f1668d0` | 1 | 0 | None | Pass | Four assigned scenarios completed; response-policy outcomes are evaluated separately from frontend behaviour |
 
 ## UI issue register
 
-No Week 9 UI issue has been observed yet. Assign IDs sequentially from
-`W9-UI-001` only after reproducing a new issue on the frozen/RC build.
+No Week 9 UI issue was observed during the supported evaluation session on
+2026-10-08. Assign IDs sequentially from `W9-UI-001` only after reproducing a
+new issue on the frozen/RC build.
 
 ### Issue template
 
