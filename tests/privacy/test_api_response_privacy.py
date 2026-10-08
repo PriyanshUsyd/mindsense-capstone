@@ -1,9 +1,14 @@
 """Synthetic HTTP privacy regressions; no CES data or model daemon required."""
 
+import json
+from pathlib import Path
+
 import pytest
 from fastapi.testclient import TestClient
 
-from backend.api.app import create_app
+from backend.api.app import create_app, create_runtime_service
+from backend.contracts.evidence import EvidencePacket
+from backend.data_pipeline.retrieval_source import ApprovedPacketRetriever
 from backend.statistics.participant_evidence import UnknownFeature, UnknownParticipant
 from benchmarks.slm_prohibited_request_baseline import load_packet
 
@@ -153,3 +158,88 @@ def test_unexpected_data_error_has_generic_noncacheable_response(monkeypatch, ca
     assert "event=local_api_unexpected_failure" in caplog.text
     assert PRIVATE_MARKER not in caplog.text
     assert all(record.exc_info is None for record in caplog.records)
+
+
+@pytest.mark.parametrize("variant", [None, "base_llm", "rag", "agent", "rag_agent"])
+@pytest.mark.parametrize(
+    "question", ["I want to kill myself.", "Can you diagnose me with depression?"]
+)
+def test_ollama_variants_reject_sensitive_requests_before_data_or_context(
+    monkeypatch, variant, question
+):
+    monkeypatch.setattr("backend.api.app.build_evidence_packet", _forbidden)
+    monkeypatch.setattr(ApprovedPacketRetriever, "retrieve", _forbidden)
+    service = create_runtime_service("ollama")
+    monkeypatch.setattr(service.client.transport, "post_json", _forbidden)
+    payload = {"participant_id": "local-demo", "question": question}
+    if variant is not None:
+        payload["variant"] = variant
+
+    response = TestClient(create_app(service)).post("/respond", json=payload)
+
+    assert response.status_code == 200
+    assert response.json()["model_invoked"] is False
+    assert response.headers["cache-control"] == "no-store"
+
+
+def test_ollama_default_context_does_not_persist_across_requests_or_base_mode(
+    monkeypatch,
+):
+    fixture = (
+        Path(__file__).resolve().parents[1] / "slm/fixtures/week5_gps_eligible.json"
+    )
+    first = EvidencePacket.model_validate_json(fixture.read_text(encoding="utf-8"))
+    second = first.model_copy(
+        update={
+            "identity": first.identity.model_copy(
+                update={
+                    "packet_id": "synthetic_second_packet",
+                    "participant_ref": "second-private-scope",
+                }
+            ),
+            "feature_window": first.feature_window.model_copy(update={"value": 99.0}),
+        }
+    )
+    monkeypatch.setattr(
+        "backend.api.app.build_evidence_packet",
+        lambda participant_id, **kwargs: {
+            "synthetic-first": first,
+            "synthetic-second": second,
+        }[participant_id],
+    )
+    service = create_runtime_service("ollama")
+    payloads = []
+
+    def record_local_payload(endpoint, payload, timeout_seconds):
+        payloads.append(payload)
+        user = json.loads(payload["messages"][1]["content"])
+        draft = {
+            "packet_id": user["evidence_packet"]["identity"]["packet_id"],
+            **user["allowed_response_options"][0],
+        }
+        return {"message": {"content": json.dumps(draft)}}
+
+    monkeypatch.setattr(service.client.transport, "post_json", record_local_payload)
+    client = TestClient(create_app(service))
+    request = {"question": QUESTION, "feature_id": "gps_distance"}
+    for participant_id, variant in [
+        ("synthetic-first", None),
+        ("synthetic-second", "base_llm"),
+        ("synthetic-second", None),
+    ]:
+        body = {**request, "participant_id": participant_id}
+        if variant is not None:
+            body["variant"] = variant
+        response = client.post("/respond", json=body)
+        assert response.status_code == 200
+        assert response.headers["cache-control"] == "no-store"
+
+    users = [json.loads(payload["messages"][1]["content"]) for payload in payloads]
+    assert len(users[0]["bounded_context"]) == 2
+    assert "bounded_context" not in users[1]
+    assert len(users[2]["bounded_context"]) == 2
+    assert "3.8 kilometres_per_day" in users[0]["bounded_context"][0]["content"]
+    assert "99.0 kilometres_per_day" in users[2]["bounded_context"][0]["content"]
+    assert "3.8 kilometres_per_day" not in json.dumps(users[2])
+    assert first.identity.participant_ref not in json.dumps(payloads)
+    assert "second-private-scope" not in json.dumps(payloads)

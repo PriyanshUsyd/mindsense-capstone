@@ -1,0 +1,36 @@
+{
+  "record_type": "slm_application_latency_local_run",
+  "week": 9,
+  "recorded_at_local": "2026-10-05 14:27:00 AEDT",
+  "operator": "Yuktha Naveen",
+  "branch": "yuktha/privacy-week9",
+  "tested_base_commit": "f39f07f",
+  "status": "ok",
+  "workload": {
+    "endpoint": "POST http://127.0.0.1:8000/respond",
+    "request": "synthetic local-demo alias; baseline GPS question; feature_id and variant omitted",
+    "effective_variant": "rag (Ollama default selected by backend.api.app)",
+    "model": "phi4-mini:3.8b",
+    "runtime": "Ollama 0.33.2, local CES-backed FastAPI/R stack",
+    "isolation": "Ollama and backend under macOS process-level loopback-only sandbox",
+    "measurement": "wall time around complete HTTP request/response, sequential, one uncounted warmup then five samples",
+    "privacy": "No raw participant rows, question text, prompts or response bodies retained"
+  },
+  "checks": {
+    "http_200": "6 of 6 including warmup",
+    "cache_control_no_store": "6 of 6",
+    "model_invoked": "6 of 6",
+    "response_mode": "uncertainty for all six",
+    "fallback_count_in_measured_samples": 0
+  },
+  "warmup_ms": 5157.87,
+  "sample_latency_ms": [5129.77, 5187.51, 5122.27, 5143.46, 5118.75],
+  "latency_ms": {
+    "min": 5118.75,
+    "mean": 5140.35,
+    "median": 5129.77,
+    "sample_p95_nearest_rank": 5187.51,
+    "max": 5187.51
+  },
+  "interpretation": "End-to-end default-RAG application timing; not directly comparable with historical direct Ollama /api/generate prompt timings. Five warm samples are a spot check, not a production performance distribution."
+}

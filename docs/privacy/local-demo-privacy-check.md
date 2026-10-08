@@ -80,9 +80,18 @@ network boundary to make a missing dependency download succeed.
   local, use synthetic input, and remove temporary debug logs after review.
   Never publish request bodies, raw CES IDs, person-level output tables or
   screenshots of participant summaries as test artifacts.
-- Real personal-summary retrieval remains disabled/unapproved. Existing
-  synthetic context validation is covered by tests; enabling real sources
-  requires a separate schema, ownership, retention and deletion review.
+- On 5 October, the live Week 9 browser workflow and temporary backend,
+  frontend and Ollama service logs were checked. No submitted question,
+  participant/evidence marker, credential or traceback matched in those logs;
+  raw logs were deleted. Recheck after runtime or logging changes. The separate
+  browser process was not covered by the service-level network sandbox.
+- Current Ollama `/respond` defaults to packet-bound RAG and accepts an
+  optional variant selector. Its retriever adds two descriptive summaries from
+  the current EvidencePacket; it does not read a separate personal store. The
+  Week 9 local smoke check exercised all variants, but this does not approve
+  account-based access, new retrieval sources, or a multi-user deployment.
+  Authentication, owner mapping, retention and deletion still require review
+  before real users can access their own records.
 
 ## End the Demo
 
