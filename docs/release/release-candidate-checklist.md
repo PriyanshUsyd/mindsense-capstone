@@ -12,7 +12,7 @@
 | **2026-10-12 (Mon)** | **Evaluation lock.** Tag `rc-eval-1` on that day's main SHA | From the lock until sessions ME-P01–P04 finish, nothing is merged that changes `backend/`, `frontend/`, the SLM model (`backend/slm/model_manifest.yaml`) or prompt/policy files (`backend/slm/prompts/`, `backend/slm/request_policy.py`, `backend/slm/context_responder.py`, `backend/slm/variants.py`). Docs-only merges are allowed |
 | 2026-10-12 to 2026-10-15 | Evaluation sessions ME-P01–P04 on the tagged build | The lock lifts when the sessions finish |
 | 2026-10-16 to 2026-10-21 | Fixes (pipeline, guardrail, UI) and Chonghao's second smoke-test round | Normal PR + CI process |
-| By 2026-10-23 | Held-out guardrail check and final fixes | Held-out run requires Priyansh's authorisation (see "Decisions pending") |
+| By 2026-10-23 | Held-out guardrail check and final fixes | One run by Richard, authorised by Priyansh on 2026-10-08 (see "Decisions") |
 | **2026-10-25 (end of Week 11)** | **Final freeze** | No model, prompt or code changes after this. Week 12 is docs/polish only (`Weekly_Plan.md` L164: "The model/prompt version is locked from Week 11 — no exceptions.") |
 
 Every item is either backed by repository evidence (SHA, PR or path) or marked `Pending` with an owner.
@@ -42,12 +42,12 @@ Evaluation records must cite the SHA tagged `rc-eval-1` on 2026-10-12, not `b60c
 | Critical-failure mapping covers all questions, not only Q4 (see Section 8) | **Pending** | Chonghao Shen |
 | Dataset preflight run and recorded on each evaluation machine (`docs/data-pipeline/ces_local_provisioning.md`) | **Pending** | Honghao Li |
 
-### Decisions pending (Priyansh)
+### Decisions (Priyansh)
 
 | Decision | Conflict | Status |
 |---|---|---|
-| Authorise Richard's held-out set run (`Weekly_Plan.md` L153) | `docs/slm/week8-prompting-methodology.md:64-65`: "Do not open, copy, hash, run, or change the sealed held-out prompts. The later Week 11 plan does not override the current explicit access prohibition." | **Pending** — Priyansh |
-| Demo build variant default: keep RAG as the Ollama `/respond` default, or set `base_llm` before the lock | RAG has been the Ollama default since PR #39 (`docs/privacy/master-test-register.md:1297`); `Weekly_Plan.md` L136 says the variant comparison runs "on its own branch … it does not touch the Tianyi demo build unless/until explicitly promoted" | **Pending** — Priyansh, before 2026-10-12 |
+| Authorise Richard's held-out set run (`Weekly_Plan.md` L153) | `docs/slm/week8-prompting-methodology.md:64-65`: "Do not open, copy, hash, run, or change the sealed held-out prompts. The later Week 11 plan does not override the current explicit access prohibition." | **Approved by Priyansh, 2026-10-08:** Richard is authorised to run the held-out set **once**, by 2026-10-23. This lead decision overrides the prohibition quoted from `week8-prompting-methodology.md` for that single run; the file's text itself is unchanged (owner: Richard) |
+| Demo build variant default: keep RAG as the Ollama `/respond` default, or set `base_llm` before the lock | RAG has been the Ollama default since PR #39 (`docs/privacy/master-test-register.md:1297`); `Weekly_Plan.md` L136 says the variant comparison runs "on its own branch … it does not touch the Tianyi demo build unless/until explicitly promoted" | **Approved by Priyansh, 2026-10-08:** keep RAG as the demo and evaluation default. No change to `/respond` before the lock |
 
 ## 2. Included changes since the last audit baseline (`f39f07f`, 2026-10-03)
 
@@ -144,7 +144,7 @@ From `docs/evaluation/pass-threshold.md` (line 10):
 - [ ] All `Pending` items above closed or explicitly waived (record who waived it and why)
 - [x] PR #48 decision: merged (`b927571`), repaired by #53 (`fcaadfb`); provisional candidate SHA updated
 - [ ] Every "Must land before lock" item (Section 1) landed or explicitly deferred
-- [ ] Both "Decisions pending (Priyansh)" items decided and recorded
+- [x] Both decisions recorded: RAG stays default; Richard authorised for one held-out run by 2026-10-23 (approved by Priyansh, 2026-10-08)
 - [ ] On 2026-10-12: final RC SHA chosen (that day's green main) and annotated tag created and pushed: `git tag -a rc-eval-1 <main SHA on 2026-10-12> -m "Evaluation release candidate (lock 2026-10-12)"`
 - [x] Release timeline set: evaluation lock 2026-10-12, sessions 2026-10-12 to 2026-10-15, fixes 2026-10-16 to 2026-10-21, held-out check by 2026-10-23, final freeze 2026-10-25
 - [ ] No change to `backend/`, `frontend/`, the SLM model or prompt/policy files on main between 2026-10-12 and the end of sessions ME-P01–P04
