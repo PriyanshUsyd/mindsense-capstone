@@ -676,6 +676,19 @@ changed key; a cache is only ever written from a committed, unmodified tree, and
 a partial run is only resumed under an identical fingerprint. None of this
 changes what is estimated or any threshold in this document.
 
+**Cache and per-person output permissions: fail-closed `[POST-HOC, 2026-10-09]`.**
+The cache and `tier1_runner`'s per-person outputs contain participant uids. Every
+such directory and file is restricted to the owner (POSIX mode 700/600; Windows
+`icacls`, inheritance removed, current user only) and the result is **verified by
+reading the permissions back**, not by the exit status of the command. Earlier
+this was best-effort (a failure warned and the run continued); it is now
+fail-closed: if the restriction cannot be applied and verified, nothing is
+written, and an existing cache folder that is not owner-only is restricted once
+on load/resume or the run stops with an error. A permission failure is a
+different class of error from a stale cache and aborts the whole Tier-1 run
+rather than only the affected feature. This changes where and how files are
+stored, not what is estimated or any threshold in this document.
+
 ## 5. User-facing collapse to two values `[POST-HOC]`
 
 The evidence contract handed to the SLM collapses the four tiers to two:

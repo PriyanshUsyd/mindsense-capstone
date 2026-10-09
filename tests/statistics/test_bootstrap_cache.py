@@ -18,7 +18,7 @@ import pandas as pd
 import pytest
 
 import backend.statistics.tier1_runner as runner
-from backend.statistics import bootstrap, bootstrap_cache as bc
+from backend.statistics import bootstrap, bootstrap_cache as bc, private_files as pf
 from backend.statistics.feature_specs import TIER1_FEATURE_SPECS
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -345,33 +345,159 @@ def test_checkpoint_without_sidecar_is_refused(fake_repo, tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# Permissions are best-effort: never raise
+# Permissions are fail-closed (Privacy & Security Lead, PR #49)
 # ---------------------------------------------------------------------------
 
 
-def test_restrict_failure_warns_and_continues(tmp_path, monkeypatch):
+@pytest.fixture
+def cannot_restrict(monkeypatch):
+    """Both mechanisms (chmod on POSIX, icacls on Windows) fail."""
+
     def boom(*a, **k):
-        raise OSError("no icacls")
+        raise OSError("permission change refused")
 
-    monkeypatch.setattr(bc.subprocess, "run", boom)
-    monkeypatch.setattr(bc.os, "chmod", boom)
-    with pytest.warns(UserWarning, match="restrict permissions"):
-        assert bc._restrict_to_owner(tmp_path, is_dir=True) is False
+    monkeypatch.setattr(pf.os, "chmod", boom)
+    monkeypatch.setattr(pf.subprocess, "run", boom)
 
 
-def test_restrict_actually_applies_on_this_platform(tmp_path):
-    d = tmp_path / "private"
-    d.mkdir()
-    f = d / "x.json"
-    f.write_text("{}")
+@pytest.fixture
+def fake_acl(monkeypatch):
+    """Call `.install()` AFTER building a real cache: from then on, permissions
+    read back as NOT owner-only until `restrict_to_owner` has been applied to
+    that very path (the folder 'as found'). `.attempts` records the paths
+    restricted since."""
+    state = SimpleNamespace(restricted=set(), attempts=[])
+
+    def fake_is_owner_only(path, *, is_dir):
+        return str(path) in state.restricted
+
+    def fake_restrict(path, *, is_dir):
+        state.attempts.append(str(path))
+        state.restricted.add(str(path))
+
+    def install():
+        monkeypatch.setattr(pf, "is_owner_only", fake_is_owner_only)
+        monkeypatch.setattr(pf, "restrict_to_owner", fake_restrict)
+        monkeypatch.setattr(bc, "restrict_to_owner", fake_restrict)
+
+    state.install = install
+    return state
+
+
+def test_permission_error_is_not_a_cache_error():
+    assert not issubclass(pf.PermissionRestrictionError, bc.BootstrapCacheError)
+    assert not issubclass(bc.BootstrapCacheError, pf.PermissionRestrictionError)
+
+
+def test_raw_checkpoint_not_written_when_restriction_fails(fake_repo, tmp_path, cannot_restrict):
+    root = tmp_path / "cache"
+    with pytest.raises(pf.PermissionRestrictionError):
+        bc.prepare_raw_checkpoint(
+            SPEC.name, _keys(fake_repo), cache_root=root, repo_root=fake_repo, git_status=_no_git_changes
+        )
+    d = root / SPEC.name
+    assert not (d / bc.RAW_FINGERPRINT_NAME).exists()
+    assert not (d / bc.RAW_CHECKPOINT_NAME).exists()
+    assert not list(root.rglob("*.tmp"))
+
+
+def test_aggregated_cache_not_written_when_restriction_fails(fake_repo, tmp_path, cannot_restrict):
+    root = tmp_path / "cache"
     with warnings.catch_warnings():
-        warnings.simplefilter("error")  # a warning here == the restriction failed
-        assert bc._restrict_to_owner(d, is_dir=True)
-        assert bc._restrict_to_owner(f, is_dir=False)
-    if sys.platform != "win32":
-        assert (d.stat().st_mode & 0o777) == 0o700
-        assert (f.stat().st_mode & 0o777) == 0o600
-    assert f.read_text() == "{}"  # still readable by the owner
+        warnings.simplefilter("ignore")
+        with pytest.raises(pf.PermissionRestrictionError):
+            _write_cache(fake_repo, root)
+    assert not list(root.rglob("*.json")) and not list(root.rglob("*.tmp"))
+
+
+def test_not_written_if_restriction_succeeds_but_does_not_read_back(fake_repo, tmp_path, monkeypatch):
+    """The OS reports success but the permissions read back are not
+    owner-only: still a refusal, and no uid reaches disk."""
+    monkeypatch.setattr(pf, "is_owner_only", lambda path, *, is_dir: False)
+    monkeypatch.setattr(pf, "_icacls", lambda args: "")
+    monkeypatch.setattr(pf, "current_identity", lambda: "HOST\\someone")
+    monkeypatch.setattr(pf.os, "chmod", lambda *a, **k: None)
+    root = tmp_path / "cache"
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        with pytest.raises(pf.PermissionRestrictionError, match="read back"):
+            _write_cache(fake_repo, root)
+    assert not list(root.rglob("*.json"))
+
+
+def test_existing_unrestricted_cache_is_restricted_once_on_load(fake_repo, tmp_path, fake_acl):
+    root = tmp_path / "cache"
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        path = _write_cache(fake_repo, root)
+    fake_acl.install()
+    cached = _load(fake_repo, root)
+    assert cached is not None
+    assert sorted(fake_acl.attempts) == sorted({str(root), str(path.parent), str(path)})  # once each
+
+
+def test_already_restricted_cache_is_not_touched_on_load(fake_repo, tmp_path, fake_acl):
+    root = tmp_path / "cache"
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        path = _write_cache(fake_repo, root)
+    fake_acl.install()
+    for p in (root, path.parent, path):  # restricted earlier, as far as the fake can tell
+        fake_acl.restricted.add(str(p))
+    assert _load(fake_repo, root) is not None
+    assert fake_acl.attempts == []
+
+
+def test_existing_unrestricted_cache_that_cannot_be_restricted_raises_on_load(fake_repo, tmp_path, monkeypatch):
+    root = tmp_path / "cache"
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        _write_cache(fake_repo, root)
+
+    def refuse(path, *, is_dir):
+        raise pf.PermissionRestrictionError(f"cannot restrict {path}")
+
+    monkeypatch.setattr(pf, "is_owner_only", lambda path, *, is_dir: False)
+    monkeypatch.setattr(pf, "restrict_to_owner", refuse)
+    with pytest.raises(pf.PermissionRestrictionError):
+        _load(fake_repo, root)
+
+
+def test_existing_unrestricted_cache_is_checked_before_resume(fake_repo, tmp_path, fake_acl):
+    keys = _keys(fake_repo)
+    root = tmp_path / "cache"
+    bc.prepare_raw_checkpoint(SPEC.name, keys, cache_root=root, repo_root=fake_repo, git_status=_no_git_changes)
+    fake_acl.install()
+    bc.prepare_raw_checkpoint(SPEC.name, keys, cache_root=root, repo_root=fake_repo, git_status=_no_git_changes)
+    d = root / SPEC.name
+    assert {str(root), str(d), str(d / bc.RAW_FINGERPRINT_NAME), str(d / bc.RAW_CHECKPOINT_NAME)} <= set(
+        fake_acl.attempts
+    )
+
+
+def test_resume_of_unrestricted_cache_that_cannot_be_restricted_raises(fake_repo, tmp_path, monkeypatch):
+    keys = _keys(fake_repo)
+    root = tmp_path / "cache"
+    bc.prepare_raw_checkpoint(SPEC.name, keys, cache_root=root, repo_root=fake_repo, git_status=_no_git_changes)
+
+    def refuse(path, *, is_dir):
+        raise pf.PermissionRestrictionError("no")
+
+    monkeypatch.setattr(pf, "is_owner_only", lambda path, *, is_dir: False)
+    monkeypatch.setattr(pf, "restrict_to_owner", refuse)
+    with pytest.raises(pf.PermissionRestrictionError):
+        bc.prepare_raw_checkpoint(SPEC.name, keys, cache_root=root, repo_root=fake_repo, git_status=_no_git_changes)
+
+
+def test_written_cache_is_owner_only_on_this_platform(fake_repo, tmp_path):
+    root = tmp_path / "cache"
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        path = _write_cache(fake_repo, root)
+    assert pf.is_owner_only(root, is_dir=True)
+    assert pf.is_owner_only(path.parent, is_dir=True)
+    assert pf.is_owner_only(path, is_dir=False)
+    assert bc.AGGREGATED_NAME in path.name and path.read_text(encoding="utf-8")  # owner can still read it
 
 
 # ---------------------------------------------------------------------------
@@ -417,8 +543,27 @@ def test_excluded_modules_are_not_also_fingerprinted():
 
 def test_tier1_runner_and_cache_module_are_deliberately_outside_the_fingerprint():
     # Consumers/orchestration: editing them does not change any estimate.
-    for rel in ("backend/statistics/tier1_runner.py", "backend/statistics/bootstrap_cache.py"):
+    for rel in (
+        "backend/statistics/tier1_runner.py",
+        "backend/statistics/bootstrap_cache.py",
+        "backend/statistics/private_files.py",
+    ):
         assert rel not in bc.ESTIMATION_CODE_FILES
+        assert rel not in bc.AGGREGATION_CODE_FILES
+
+
+def test_private_files_is_not_on_the_estimation_import_path():
+    """Only bootstrap_cache and tier1_runner may import it. If `bootstrap` or
+    `feature_specs` ever did, it would join the estimation path and an edit to
+    it would silently invalidate a B=500 run (the import-graph test above
+    would fail too)."""
+    code = (
+        "import sys\n"
+        "import backend.statistics.bootstrap, backend.statistics.feature_specs\n"
+        "print('backend.statistics.private_files' in sys.modules)\n"
+    )
+    out = subprocess.run([sys.executable, "-c", code], cwd=REPO_ROOT, capture_output=True, text=True, check=True).stdout
+    assert out.strip().splitlines()[-1] == "False"
 
 
 # ---------------------------------------------------------------------------
