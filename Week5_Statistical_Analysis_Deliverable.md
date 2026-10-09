@@ -1043,6 +1043,8 @@ name and passes it to `reclassify_cohort_family` as `feature_id`, so the
 `unlock_num_ep_0`) runs during cache aggregation; before, it passed none and
 the check was silently skipped. No estimate or classification changes.
 
+`unlock_num_ep_0` was run in Week 9; results are in preregistration §4.1 and week7-calibration-concerns.md item 2.
+
 ---
 
 ## 6. Handover to other workstreams
