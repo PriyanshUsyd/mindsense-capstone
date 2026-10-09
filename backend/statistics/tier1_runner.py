@@ -169,7 +169,9 @@ def run_one_feature(
             person_slopes = evidence.extract_person_slopes(ar1, frame)
             outcome_sd = float(frame["phq4_score"].std())
             predictor_sd = float(frame["x_within"].std())
-            evidence_table = evidence.reclassify_cohort_family(person_slopes, outcome_sd, predictor_sd)
+            evidence_table = evidence.reclassify_cohort_family(
+                person_slopes, outcome_sd, predictor_sd, feature_id=spec.name
+            )
             evidence_summary = {
                 "family_size": len(evidence_table),
                 "label_bh_counts": evidence_table["label_bh"].value_counts().to_dict(),

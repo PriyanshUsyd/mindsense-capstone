@@ -1,6 +1,6 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { ResponseMode, SafeSLMResponse } from '../../api/client'
 import { RespondError, respond } from '../../api/client'
@@ -57,6 +57,10 @@ beforeEach(() => {
   mockedRespond.mockReset()
 })
 
+afterEach(() => {
+  vi.useRealTimers()
+})
+
 describe('NormalResponse', () => {
   it('starts with the wellbeing welcome state and an enabled quick question', () => {
     render(<NormalResponse />)
@@ -88,6 +92,26 @@ describe('NormalResponse', () => {
       expect(screen.getByText(NORMAL_RESPONSE.text)).toBeInTheDocument()
     })
     expect(screen.getByRole('button', { name: /ask mindsense/i })).toBeDisabled()
+  })
+
+  it('explains a slow first response as a local-model cold start without cancelling it', async () => {
+    vi.useFakeTimers()
+    mockedRespond.mockReturnValue(new Promise(() => undefined))
+
+    render(<NormalResponse />)
+    fireEvent.click(screen.getByRole('button', { name: /ask about my recent movement/i }))
+
+    expect(screen.getByRole('status')).not.toHaveTextContent('warming up')
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(12_000)
+    })
+
+    expect(screen.getByRole('status')).toHaveTextContent('local model is warming up')
+    expect(screen.getByRole('status')).toHaveTextContent('up to three minutes')
+    expect(screen.getByText('Local model warming up')).toBeInTheDocument()
+    expect(mockedRespond).toHaveBeenCalledTimes(1)
+    expect(screen.getByRole('button', { name: /asking…/i })).toBeDisabled()
   })
 
   it('renders the normal state without inventing unavailable evidence fields', async () => {

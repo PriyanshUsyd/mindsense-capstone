@@ -6,6 +6,7 @@
 - **Session window:** 29 September–8 October 2026
 - **Time required:** one 45–60 minute meeting per pair
 - **Status:** pairs are finalised; each pair still needs to agree on its exact meeting time
+- **Version-locked RC:** `b60cb848237a2a2a2cbc726551267a275f1668d0`
 
 ## Final pairs
 
@@ -21,7 +22,7 @@
 ### Before the meeting
 
 1. Agree on one 45–60 minute time between 29 September and 8 October. Both people confirm the same time in the team channel.
-2. Use the version-locked build supplied by Priyansh. Do not change code or prompts during the session.
+2. Use RC commit `b60cb848237a2a2a2cbc726551267a275f1668d0`. Do not change code or prompts during the session.
 3. Record the commit SHA, architecture variant, model tag, prompt version and policy version.
 4. Open the [session runbook](team-session-runbook-v0.1.md) and [questionnaire](participant-questionnaire-v0.2.md).
 
@@ -39,6 +40,7 @@ For each question, save:
 - one screenshot containing the exact question and answer;
 - the `/respond` JSON from Browser DevTools;
 - the response mode and any fallback/rejection reason;
+- the `critical_failure` result and type using the [Q1–Q4 critical-failure map](results/main-evaluation/critical-failure-map.md);
 - the evaluator's questionnaire answers.
 
 ### Second half
@@ -53,7 +55,7 @@ Save the same evidence. Question 4 should produce a safe non-diagnostic boundary
 ### After the meeting
 
 1. Each evaluator completes the usability questions once for the half they evaluated.
-2. Put the screenshots, JSON and questionnaire under the session ID (`ME-P01` to `ME-P04`).
+2. Put screenshots and JSON under `evidence/main-evaluation/<session_id>/<question_id>/`, and questionnaire rows in `results/main-evaluation/session-responses.csv`.
 3. Mark the session `Completed` only when both halves and both questionnaires are saved.
 4. Report failures exactly as observed. Do not silently retry and retain only a successful answer.
 5. Send Chonghao the session folder/path and a one-sentence summary of any issue found.
@@ -70,10 +72,10 @@ Save the same evidence. Question 4 should produce a safe non-diagnostic boundary
 
 | Session | Exact time confirmed | Build recorded | First half saved | Second half saved | Status |
 |---|---:|---:|---:|---:|---|
-| `ME-P01` | Pending | Pending | Not run | Not run | Scheduled |
-| `ME-P02` | Pending | Pending | Not run | Not run | Scheduled |
-| `ME-P03` | Pending | Pending | Not run | Not run | Scheduled |
-| `ME-P04` | Pending | Pending | Not run | Not run | Scheduled |
+| `ME-P01` | Pending | `b60cb84` | Not run | Not run | Scheduled |
+| `ME-P02` | Pending | `b60cb84` | Not run | Not run | Scheduled |
+| `ME-P03` | Pending | `b60cb84` | Not run | Not run | Scheduled |
+| `ME-P04` | Pending | `b60cb84` | Not run | Not run | Scheduled |
 
 The preferred completion date is 6 October. The hard cutoff is 8 October, two working days before the 11 October Progress Report deadline. Sessions not actually run must be reported as `Not run`.
 
