@@ -4,8 +4,8 @@
 
 **Branch:** `sheng-week9-evaluation-ui-support`
 
-**Status:** One evaluation session supported on the locked RC; no new UI issue
-observed
+**Status:** Pre-session rehearsal completed on the locked RC; official sessions
+run from 10--15 October 2026
 
 **Created:** 2026-10-07
 
@@ -25,6 +25,10 @@ The session operator remains responsible for the evaluation procedure in
 `docs/evaluation/team-session-runbook-v0.1.md`. Sheng supports the visible web
 interface, records UI failures without hiding failed attempts, and routes
 non-UI problems to the appropriate owner.
+
+The evaluation build keeps RAG as the default answering method. In this build,
+RAG reuses the participant's approved evidence summary; it does not search or
+retrieve from a document store.
 
 ## Privacy and evaluation boundary
 
@@ -78,7 +82,7 @@ local evidence path in the committed table.
 
 | RC commit | OS | Browser and version | Viewport | API/model status | Frontend result | Check date | Redacted evidence summary |
 |---|---|---|---|---|---|---|---|
-| `b60cb848237a2a2a2cbc726551267a275f1668d0` | macOS (version not recorded) | Google Chrome (version not recorded) | Desktop evaluation window with docked DevTools | Local API available; all four recorded `/respond` requests returned HTTP 200 | Pass | 2026-10-08 | Local-only screenshots and JSON retained; no blocking, transport, or response-rendering UI failure observed |
+| `b60cb848237a2a2a2cbc726551267a275f1668d0` | macOS (version not recorded) | Google Chrome (version not recorded) | Desktop evaluation window with docked DevTools | Local API available; all four rehearsal `/respond` requests returned HTTP 200 | Rehearsal pass | 2026-10-08 | Pre-session rehearsal only; local-only screenshots and JSON retained; no blocking, transport, or response-rendering UI failure observed |
 
 ## Aggregate session support record
 
@@ -87,13 +91,14 @@ this table only with totals after the supported sessions are complete.
 
 | RC commit | Sessions supported | Sessions blocked by UI | New UI issue IDs | Overall frontend outcome | Notes |
 |---|---:|---:|---|---|---|
-| `b60cb848237a2a2a2cbc726551267a275f1668d0` | 1 | 0 | None | Pass | Four assigned scenarios completed; response-policy outcomes are evaluated separately from frontend behaviour |
+| `b60cb848237a2a2a2cbc726551267a275f1668d0` | 0 | 0 | None | Not yet run | A four-scenario rehearsal completed before the official 10--15 October session window; response-policy outcomes are evaluated separately from frontend behaviour |
 
 ## UI issue register
 
-No Week 9 UI issue was observed during the supported evaluation session on
-2026-10-08. Assign IDs sequentially from `W9-UI-001` only after reproducing a
-new issue on the frozen/RC build.
+No Week 9 UI issue was observed during the pre-session rehearsal on 2026-10-08.
+Official session issues will be logged during 10--15 October. Assign IDs
+sequentially from `W9-UI-001` only after reproducing a new issue on the
+frozen/RC build.
 
 ### Issue template
 
