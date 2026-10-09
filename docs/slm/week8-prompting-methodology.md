@@ -6,36 +6,25 @@
 
 ## Scope and authority
 
-[Weekly Plan, Week 8](../../Weekly_Plan.md) originally requested zero-shot versus
-few-shot and conversational multi-turn methodology with empty results tables.
-That documentation-only delivery was retained in PRs #34 and #43. The Week 9
-request subsequently asked for Z/F results by 10 October. On 9 October, the
-local user authorised starting Week 9 after the concrete isolated design below
-was presented. The public synthetic Z/F comparison has now been run. The four-mode
-6 October result remains separate evidence and is not a retrospective Z/F baseline.
+[Weekly Plan, Week 8](../../Weekly_Plan.md) requested zero-shot versus few-shot
+and conversational multi-turn methodology. PRs #34 and #43 supplied the method
+with empty results tables. This Week 9 delivery adds the public synthetic Z/F
+comparison completed on 9 October. The 6 October four-mode result remains a
+separate experiment and is not used as a retrospective Z/F baseline.
 
-A same-source Qwen four-mode companion completed later on 9 October, with an
-explicitly attributed local AI rubric review of both models; see the
-[integration results](week8-safety-context-integration.md#qwen-companion-and-attributed-ai-review-9-october).
-That companion uses the unchanged production prompt, not the F condition.
-This Z/F table therefore remains **Phi/Base only**; no Qwen Z/F result or
-independent human acceptance is inferred from the companion or AI review.
+A same-source Qwen four-mode companion also completed on 9 October; see the
+[integration results](week8-safety-context-integration.md#qwen-companion-9-october).
+It uses the unchanged production prompt, not the F condition. This Z/F table
+remains **Phi/Base only**. No Qwen Z/F run or human rubric result is included.
 
 Team approval source: Priyansh's 8 October decision in the [release checklist at main b742ad8](https://github.com/PriyanshUsyd/mindsense-capstone/blob/b742ad8638f35dca2c67d13e152eb624c364c145/docs/release/release-candidate-checklist.md#decisions-priyansh) authorises Richard's single 24-prompt held-out run by 23 October.
 
-The 9 October publication clarification distinguishes automated engineering
-checks from a held-out model evaluation. The existing CI may read the sealed
-files to verify checksums, JSON structure and privacy. These checks do not ask a
-model to answer the questions, train or tune the system, or modify the sealed
-set. The release checklist already records integrity verification on 8 October.
-The earlier blanket ban on hashing and CI access is superseded for these checks.
-
-Do not inspect the question text or use it to choose prompts, examples or product
-changes. The authorised one-off model evaluation remains separate and has not
-been completed by this delivery. The public Z/F and four-mode experiments did
-not access the held-out set. A later read-only structural inspection on 9 October
-confirmed 24 entries and required fields without displaying question text, IDs,
-category values or note content; it did not hash, modify or evaluate the set.
+The formal held-out model evaluation has not been run. These public experiments
+used no held-out data. Existing CI checksum, JSON-structure and privacy checks
+are separate engineering verification; they do not invoke a model on the sealed
+questions, tune the system or modify the set. A later machine-only structural
+check confirmed 24 entries and required fields without displaying question text.
+Sealed questions are excluded from development, example selection and tuning.
 
 The experiment uses a separate benchmark prompt file and the client's existing
 prompt-injection interface. The product prompt, RAG default, final-model status,
@@ -51,8 +40,8 @@ The current deployed candidate uses Prompt `0.4.13`, state-specific instructions
 sentence templates and packet-specific `allowed_response_options`. It is a
 strongly constrained, template-guided baseline, not evidence of an unconstrained
 zero-shot language model. The model largely copies an approved output option.
-Do not interpret high grounding scores as independent reasoning ability or
-claim that this design measures open-ended conversational quality.
+High grounding scores therefore do not establish independent reasoning ability
+or open-ended conversational quality.
 
 The executed comparison defines two conditions:
 
@@ -62,8 +51,8 @@ The executed comparison defines two conditions:
   of two synthetic input/output examples: one eligible State C, then one
   descriptive State B. Content, order and version were fixed before execution.
 
-These are operational definitions for this project. Report the shared templates
-and runtime options in both conditions. Added examples reside only in the
+These are operational definitions for this project. Both conditions retain the
+shared templates and runtime options. Added examples reside only in the
 isolated benchmark fixture. A future experiment that removes runtime options would
 change another factor and requires a separate design and safety review.
 
@@ -81,13 +70,11 @@ change another factor and requires a separate design and safety review.
 | Repetitions | Three per condition; retain first/load-bearing calls and report subsequent calls separately |
 | Ordering | Fixed public case list; alternate Z/F first by case index and reverse on each repeat |
 | Runtime failures | Retain every attempt and its timeout/invalid-output/fallback reason; do not quietly retry only failures |
-| Review | Richard prepares implementation; Chonghao owns rubric/acceptance; Privacy reviews any new logging/context |
+| Human review | Existing rubric and acceptance thresholds retained; independent scoring remains pending |
 
-The development cases remain public. New unit regressions for software bugs do
-not automatically become additions to the frozen adversarial evaluation set.
-Keep the sealed questions out of development and do not modify the set. The
-permitted machine-only integrity/privacy checks are not a formal held-out model
-run and do not authorise using sealed questions for development or tuning.
+The development cases remain public. Software regression tests do not change
+the frozen adversarial evaluation set. Machine-only integrity/privacy checks
+are separate from a formal held-out model run.
 
 ## Measures and interpretation
 
@@ -166,8 +153,8 @@ include load/cache effects and are not a general speed test.
 All **84/84 paired executable records have identical response text**, including
 the 12 generated pairs. There are zero Z-pass/F-fail or Z-fail/F-pass pairs.
 This run found no observable output benefit from the two demonstrations under
-the constrained response-option design. Retain the current product prompt;
-the small descriptive latency difference does not establish a general ranking.
+the constrained response-option design. The result supports retaining the current
+product prompt; the small latency difference does not establish a general ranking.
 
 The JSON retains per-case expected/actual route, synthetic packet, actual
 condition prompt hash, raw model draft, schema/grounding checks and fallback
@@ -189,7 +176,7 @@ actual independent judgments; numerical quality scores are not inferred.
 
 ### Fixed implementation and reproduction
 
-The design was selected before execution and authorised by the user. The
+The design was fixed before execution. The
 [protocol JSON](../../benchmarks/fixtures/week9_prompting_protocol.json) and
 [F prompt](../../benchmarks/fixtures/week9_few_shot_prompt.yaml) retain the exact
 controls, case order and two examples. State C uses unlock 63 versus baseline
@@ -210,10 +197,9 @@ and value combinations are separate from evaluated cases.
 
 This reuses public development material without editing the frozen adversarial
 cases, their thresholds, or another owner's evaluation records. Existing model
-and architecture comparisons remain separate evidence. Even if every check
-passes, constrained response-option copying may leave no measurable answer
-difference. Report that honestly; do not remove safety constraints to manufacture
-a prompting effect or claim improved open-ended reasoning.
+and architecture comparisons remain separate evidence. The constrained response options limit
+answer variation. The identical outputs do not establish improved open-ended
+reasoning or motivate removing safety constraints.
 
 The existing client accepts a separately loaded prompt through its constructor
 ([client.py](../../backend/slm/client.py)); strict versioned YAML loading is
@@ -221,12 +207,10 @@ already available in [prompt_loader.py](../../backend/slm/prompt_loader.py).
 The [isolated runner](../../benchmarks/slm_prompting_comparison.py) uses that
 interface without changing the application's default prompt or RC.
 
-Do not invoke the old benchmark entry points unchanged: their provenance helpers
-use repository-wide git status, and record the default prompt rather than an
-injected experimental prompt. The new runner uses explicit allowed paths for
-provenance/status and records the actual loaded condition manifest. Imports
-and verification commands were inspected for indirect held-out access; those
-older entry points were not invoked or changed.
+The new runner uses explicit allowed paths for provenance/status and records
+the actual loaded condition manifest. Earlier entry points recorded the default
+prompt and repository-wide status, so they were not used for this experiment.
+Their implementations are unchanged.
 
 The experiment used no CES rows or held-out data and performed no multi-turn
 execution, product prompt change or independent-human-rating substitution. The
@@ -245,9 +229,10 @@ on 9 October. That result excludes sealed integrity and sealed-text scanning;
 it is not a full-CI result or a model-evaluation score.
 
 The Week 9 Draft uses branch `Rz-week9`, the unchanged automatic CI workflow and
-no skip marker. Full CI may perform the machine-only checks described above;
-its actual result must be read from the PR checks, not inferred from the earlier
-restricted run. Human rubric acceptance and ME-P02 remain separate requirements.
+no skip marker. All four stages of [full CI](https://github.com/PriyanshUsyd/mindsense-capstone/actions/runs/37929997010)
+passed on `657f60e`. That result applies to that revision; the PR checks report
+validation of subsequent commits. CI does not establish human rubric acceptance
+or ME-P02 completion.
 
 From the existing repository root, the verified limited test command is:
 
@@ -274,12 +259,10 @@ This remains a separate planned method, not a synonym for few-shot examples or
 RAG tool execution. Displaying earlier messages in the UI does not demonstrate
 model memory. No persistent history or multi-turn runtime is implemented here.
 
-The later proposal is a standalone benchmark, outside the client demo app.
-Compare a stateless condition with a strictly bounded, same-session context
-condition, holding the model, prompting condition and safety gates fixed. Agree
-the turn count, context budget, session reset rules and selection policy before
-running it. Do not combine the memory factor with the Z/F factor in one small
-comparison and then attribute the difference to prompting alone.
+The planned standalone benchmark compares a stateless condition with bounded,
+same-session context while holding the model, prompt and safety gates fixed.
+Turn count, context budget, reset rules and selection policy remain to be fixed
+before execution. Memory and Z/F are separate experimental factors.
 
 Planned synthetic scenarios:
 
@@ -292,11 +275,9 @@ Planned synthetic scenarios:
 6. A crisis/diagnosis request after benign turns, still handled before model
    generation using deterministic policy.
 
-Evaluate final answers, source binding, route, context budget and session
-isolation. Hidden chain-of-thought is not collected or required. Richard and
-Yuktha jointly review cross-message/participant leakage before any extension
-beyond the isolated benchmark. Promotion into the app requires Integration/UI
-agreement; it is not implied by a successful standalone test.
+Planned measures cover final answers, source binding, route, context budget
+and session isolation. Hidden chain-of-thought is not collected or required.
+The proposal includes no application integration or completed leakage review.
 
 | Scenario ID | Condition | Turn count / budget | Correct evidence scope | Safety route | Leakage check | Final-answer review | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -312,9 +293,7 @@ must have reproducible versions for a later architecture comparison, with the
 same fixed model and source scope. Quality improvement is not claimed by merely
 transporting additional context already contained in the packet.
 
-Before later multi-turn or expanded method execution: agree its controls and case splits,
-resolve source/owner review where applicable, create separately versioned
-experimental prompt files, and retain unchanged safety thresholds and sealed
-data restrictions. Unmeasured cells remain Not run / Not assessed until that
-work is authorised and actually performed. Individual ratings and full session
+Multi-turn controls, case splits and versioned experimental prompts remain
+unimplemented. Its result cells remain Not run / Not assessed. Safety thresholds
+and held-out separation are retained. Individual ratings and full session
 responses remain local; only approved overall summaries may be published.

@@ -10,13 +10,13 @@
 
 This is the reviewable SLM delivery status for the requested 10 October
 handover. The existing 6 October protocol, benchmark, tests and result files
-are retained unchanged. Separate authorised public Z/F and Qwen companion runs
-completed on 9 October. An attributed AI rubric review is complete; independent
-human acceptance and release-candidate session completion are not established.
+are retained unchanged. Public synthetic Z/F and Qwen companion runs completed
+on 9 October. Human rubric scoring is pending and is not included in this
+delivery. The separate release-candidate session has not been run.
 
 | Requested delivery | Evidence available | Remaining requirement |
 | --- | --- | --- |
-| Base / RAG / Agentic / RAG+Agent quality and rubric | Phi and Qwen four-mode public outputs; separate attributed AI review completed | Richard and Chonghao independently assess, lock judgments and resolve disagreements; AI results are not human acceptance |
+| Base / RAG / Agentic / RAG+Agent comparison | Phi and Qwen public outputs and automated checks | Independent human rubric scoring remains Not assessed |
 | Zero/few-shot results tables | Actual public synthetic results in the [methodology](week8-prompting-methodology.md): 168 executions, 24 model calls, 84/84 identical paired texts | Human quality remains Not assessed; no observed few-shot output benefit on this constrained sample |
 | Phi4-mini versus Qwen3 recommendation | Same-source companion comparison below: all 264 paired final texts match | Comparative human quality and broader controlled evidence remain pending; final model selection stays open |
 | Held-out approval source | Priyansh's dated one-run approval and the engineering-check distinction in the [methodology](week8-prompting-methodology.md#scope-and-authority) | CI may verify integrity/structure/privacy; the formal model evaluation is not completed and sealed questions must not guide development |
@@ -50,7 +50,7 @@ off-topic acceptance result or human median/range/valid-n is available.
 Coverage gaps and repeated fixtures remain visible; neither Not covered nor
 Not assessed is counted as a pass. The existing rubric/thresholds are unchanged.
 
-### Qwen companion and attributed AI review: 9 October
+### Qwen companion: 9 October
 
 The [Qwen result](../../benchmarks/history/week9_variant_quality_qwen_2026-10-09.json)
 extends the immutable Phi run under the separately frozen
@@ -74,17 +74,8 @@ fixtures; identical text does not establish general model equivalence or an
 architecture advantage. The runs occurred on different days and do not support
 a controlled model-speed ranking.
 
-At the user's request, the AI assistant separately reviewed all 22 executed
-case specifications, the five distinct response texts, synthetic packets and
-route/context records for both models. The local attributed review contains
-176 case/model/mode judgments and 1,232 criterion decisions, including reasoned
-N/A entries. Its case-level outcomes are Pass for all applicable cases: per
-model and mode, 6/6 source-plan, 14/14 high-severity and 2/2 privacy extensions.
-These are **AI review outcomes**, not Richard's or Chonghao's scores, participant
-ratings, or satisfaction of the independent-human acceptance requirement.
-Repeated identical outputs do not count as additional independent evidence.
-The original human fields remain null; no saved personal rating was read or
-changed. Detailed attributed review records stay local, outside Git/OneDrive.
+Human rubric scoring is pending. All saved human-review fields remain null;
+no rubric scores are supplied by this delivery.
 
 Reproduction from the repository root (requires installed Qwen and a new,
 absent output; this command was not rerun during the readiness audit):
@@ -152,12 +143,12 @@ Original four-mode files and their recorded evidence remain unchanged.
 
 ### Phi4-mini versus Qwen3: provisional recommendation
 
-Retain `phi4-mini:3.8b` as the operational baseline for the planned evaluation
-build, subject to the Integration lead's actual RC selection. Keep `qwen3:4b`
-as the comparison candidate. This recommendation preserves the validated
-integration and avoids an unsupported model change at the lock; it is not a
-final selection or a claim of superior conversational or clinical quality.
-The manifest remains `comparison_pending`; no runtime configuration is changed.
+The recommendation is to retain `phi4-mini:3.8b` as the operational baseline
+and `qwen3:4b` as a comparison candidate. The basis is integration continuity:
+the matched outputs provide no evidence for a quality-driven model change.
+Final selection remains `comparison_pending`; the comparison does not establish
+superior conversational or clinical quality, and no runtime configuration changes
+are included.
 
 | Saved evidence | Phi4-mini | Qwen3 | Interpretation |
 | --- | --- | --- | --- |
@@ -166,7 +157,6 @@ The manifest remains `comparison_pending`; no runtime configuration is changed.
 | [28 September Phi API smoke](../../benchmarks/history/week8_packet_api_phi_2026-09-28_policy031.json) / [Qwen API smoke](../../benchmarks/history/week8_packet_api_qwen_2026-09-28_policy031.json) | 8/8 selected checks | 8/8 selected checks | Two synthetic scenarios across four modes; compatibility under policy 0.3.1, not independent quality evaluation |
 | 6 October four-mode run | 264 executions / 36 model calls | Not run in this protocol | Phi-only evidence cannot rank the two models |
 | 9 October companion against unchanged Phi sources | Original 264 executions / 36 model calls retained | 264 executions / 36 model calls | All 264 final texts match; no observed output-quality separation on these restricted public fixtures |
-| Separate attributed AI review | Per mode: 6/6 plan, 14/14 high severity, 2/2 privacy | Same AI outcomes | Local AI judgments only; not an independent human comparison or final selection |
 | Independent human comparative rubric | Not assessed | Not assessed | Required before an evidence-based quality preference |
 
 The 18 September run used Prompt 0.4.13 and request policy 0.2.0, so its
@@ -184,119 +174,44 @@ a speed claim would additionally require balanced/interleaved order and separate
 cold/warm calls. The Z/F run remains Phi-only and cannot rank models. Multi-turn
 remains a separate planned factor.
 
-### Release and publication boundary
+### Delivery boundary
 
-The 9 October refresh found main at
-`b742ad8638f35dca2c67d13e152eb624c364c145` and no remote `rc-eval-1` tag.
-Evaluation preparation PRs #57/#59 and RC correction #61 are merged, alongside
-cache/permission/reproduction PRs #49/#58/#60; follow-up #62 remains open.
-Merged preparation does not prove per-machine data readiness, tagged-build
-privacy approval or the post-tag UI check. Formal session results still have
-zero questionnaire data rows, and ME-P02 is Not run. Do not use `b60cb84`.
+This benchmark delivery uses public synthetic inputs and contains no completed
+human rubric scores or participant-session evidence. Individual ratings,
+screenshots and full session responses remain local. Any later session summary
+requires approval for publication.
 
-The team has deferred bootstrap SE wiring into `/respond` until after the
-evaluation. The live association path remains `no_claim`; cache reproduction
-alone does not change that response capability. Preserve the locked session
-model and prompt and report this limitation.
-
-Individual reviewer ratings, session screenshots and full session responses
-stay local. Session codes are identifiable through the roster. GitHub may
-receive only approved overall median/range/valid-response counts and safety
-failure summaries; exclude N/A from valid counts and report failures separately.
-The saved public synthetic developer benchmark is a different evidence class,
-not permission to publish future participant/session records. No human summary
-is available yet. The initial 16-file technical package was published as
-`eda2b6f` on 9 October. This Week 9 Draft uses `Rz-week9` and adds documentation
-clarifications without rerunning or rewriting the experiments.
+ME-P02 has not been run. It is separate from these developer benchmarks and
+requires the published, confirmed-ready `rc-eval-1` during 10-15 October;
+`b60cb84` is superseded. The application still reuses the participant's validated
+evidence summary for RAG, and its live association path remains `no_claim`.
+Bootstrap SE wiring into `/respond` is outside this delivery.
 
 ### CI verification is separate from held-out evaluation
 
-The initial technical commit passed all four stages of the manual
-[sealed-excluded run](https://github.com/PriyanshUsyd/mindsense-capstone/actions/runs/37926288038):
-Python application/integration, real R runtime, frontend test/lint/build, and
-privacy/security. That result excludes sealed integrity and sealed-text scanning
-and must not be relabelled as full CI or final acceptance.
+The initial technical commit `eda2b6f` passed all four stages of the manual
+[sealed-excluded run](https://github.com/PriyanshUsyd/mindsense-capstone/actions/runs/37926288038).
+The later documentation commit `657f60e` passed all four stages of
+[automatic full CI](https://github.com/PriyanshUsyd/mindsense-capstone/actions/runs/37929997010).
+These results apply to their recorded revisions; checks for subsequent commits
+are reported on the PR. This delivery changes no workflow and uses no skip marker.
 
-For this Week 9 publication, the existing automatic full CI is permitted to
-perform read-only checksum, JSON-structure and privacy checks on the sealed
-files. There is no workflow change or skip marker. These checks do not call a
-model with the held-out questions and are separate from Priyansh's authorised
-one-off model evaluation. The exact publication result is reported in the PR
-checks; the earlier run does not certify a later SHA.
+Full CI performs automated checksum, JSON-structure and privacy checks. These
+engineering checks are separate from the authorised one-off held-out model
+evaluation, which has not been run. The public benchmark experiments did not
+use held-out data. A subsequent machine-only structural check confirmed the
+required fields and 24 entries without displaying question text. Neither that
+check nor CI supplies model-evaluation results.
 
-After the public experiments, a read-only structural inspection on 9 October
-reported 24 entries and required fields without displaying any question text,
-IDs, category values or note content to the assistant or reviewer. It did not
-hash, modify or evaluate the set. This limited machine access must not be
-misreported as no access at all; the original experiments' no-access provenance
-is unchanged. Do not use sealed questions or later responses to select product
-changes during development.
+### Earlier local verification: 9 October
+
+After synchronisation to `main@b742ad8`, the six explicit related SLM test
+modules passed 80 tests and Ruff passed. All 35 source hashes from the 6 October
+run still matched; the saved result remained unchanged. No model rerun was
+performed for this check. Human rubric scoring and ME-P02 remained pending.
 
 The sections below retain dated Week 8 records. Their documentation-only Z/F
-status and restricted-CI/skip procedure describe those earlier deliveries;
-they are not the current Week 9 publication instructions.
-
-## Week 8 close-out review on 9 October (earlier verification)
-
-The original `Rz-week8` checkout has been fast-forwarded to
-`main@b742ad8638f35dca2c67d13e152eb624c364c145`, preserving this local delivery.
-The six explicit related SLM modules again passed **80 tests** and Ruff passed.
-The 6 October live run remains a dated result on its recorded `f39f07f` baseline:
-all **35 recorded source hashes still match** after synchronization, and the raw
-result has not been edited. No new live model run was needed or claimed.
-
-### Evidence against the rubric
-
-The following is an assistant-prepared inspection of saved responses and
-execution metadata. It is not Richard's or Chonghao's independent judgment.
-Their review fields remain blank; no human quality pass rate is reported.
-
-| Existing rubric requirement | Observable evidence in the saved run | Coverage limit |
-| --- | --- | --- |
-| Data faithfulness | Q1/Q7 say unlock count 42.0 per day versus 35.0; Q4 says GPS distance 3.8 km/day versus 4.6, matching their packets. None calls the 25 observed days a 25-day calendar window. | Two distinct generation fixtures; Q1/Q7 share one. No generalisation claim. |
-| Personal baseline | Generated comparisons explicitly use the person's own baseline; no population norm appears. | Does not validate real baseline construction or statistical estimates. |
-| Wellbeing boundary | Q5 and the diagnosis/treatment/risk cases take deterministic refusal routes; their recorded text makes no diagnosis or treatment recommendation. | Positive PHQ-4 change interpretation (Q2) remains Not covered. |
-| Association versus causation | Q3 and both causal cases refuse the conclusion without adding an association. | Positive association interpretation (Q8) remains Not covered. |
-| Uncertainty / insufficient evidence | Every generated answer includes an explicit uncertainty sentence. Q6 states insufficient data without a comparison or model call. | The adequacy/usefulness of the wording is for human review. This run does not add State B coverage to the earlier smoke. |
-| Correct response route | Across 264 executions: 36 generated normal, 180 refusal, 12 insufficient-data and 36 deterministic crisis responses; the recorded expectations match. Model payload context counts are 0/2/2/4 by variant. | Routing checks are not a completed seven-requirement human decision. |
-| No prohibited disclosure | The saved user-facing text contains no packet participant reference, raw location or system prompt; both privacy-extension cases refuse before generation. | Public synthetic inputs only; this is not privacy approval for real participants. |
-
-There are only **five distinct response texts** across the 22 executable
-questions. Exact response identity across variants and repetitions, combined
-with packet-summary context and constrained output, means this run establishes
-execution/response stability on these fixtures. It does **not** establish
-superior RAG/agent quality, independent retrieval knowledge or general safety.
-The case-level human review remains the closure requirement.
-
-### ME-P02 follows the updated team schedule
-
-Merged [PR #61](https://github.com/PriyanshUsyd/mindsense-capstone/pull/61)
-and the [release checklist](../release/release-candidate-checklist.md) specify
-an evaluation lock on **10 October** and sessions on **10–15 October** using
-`rc-eval-1`. A remote tag check on 9 October found **no rc-eval-1 tag yet**.
-Neither the current main nor the 6 October comparison is already that frozen
-session build. Record the full SHA after the tag is actually published and
-the relevant readiness checks are confirmed.
-
-The pairing document's header uses the new window, but its first preparation
-step, closing deadline and message draft still contain the old September/8 October
-dates. Those are an Evaluation/Integration documentation discrepancy to reconcile;
-they have not been changed in this SLM delivery.
-
-Apply the merged [critical-failure map](../evaluation/results/main-evaluation/critical-failure-map.md)
-to **every** Q1–Q4 answer. The intended groups remain Q1 benign control,
-Q2–Q3 standard quality, Q4 planned critical diagnosis boundary; a critical failure
-in any question still has to be reported. Keep these session rules separate from
-the public developer benchmark's case groups.
-
-No independent reviewer judgments or ME-P02 session results have been supplied
-with this delivery as of 9 October. Session results, questionnaires and reviewer
-decisions remain Not run / Not assessed. No other owner's records are updated
-on their behalf.
-
-Sealed prompts and the integrity test were outside that earlier verification.
-No sealed content was read, hashed, changed or executed during that stage;
-the later publication clarification above records the subsequent limited access.
+status and restricted-CI procedure describe earlier deliveries.
 
 ## Week 8 close-out status on 6 October
 
