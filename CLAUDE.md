@@ -52,7 +52,7 @@ Before starting work, check the update times of files under `backend/statistics/
 
 ```bash
 find backend/statistics -type f -not -path "*__pycache__*" -printf "%T+  %p\n" | sort | tail -20
-ls -l --time-style=full-iso analysis/preregistration.md Week5_Statistical_Analysis_Deliverable.md
+ls -l --time-style=full-iso docs/statistics/preregistration.md Week5_Statistical_Analysis_Deliverable.md
 ```
 
 If there is code newer than the documentation's update time, it is likely an unreflected change.

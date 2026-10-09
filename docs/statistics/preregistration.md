@@ -832,6 +832,16 @@ forbids the model from computing a percentage. `current` and `baseline`
 remain the only two values ever surfaced, shown side by side, each rounded
 independently by the same rule.
 
+### 5.3 Small-cell suppression in published aggregates `[POST-HOC, 2026-10-09]`
+
+Any aggregate table that is published — in a report, in slides, or as a table
+leaving the repository — must either suppress (hide) every cell with a count
+below 5 or merge it into an adjacent category so that no published cell is
+below 5. This was added at the Privacy & Security Lead's request. Analysis
+outputs that stay inside the repository (`analysis/output/`, `outputs/`) are
+exempt, but the rule applies as soon as a table is transcribed from them into
+anything published.
+
 ## 6. Exploratory family (BH-FDR, q=0.05)
 
 Other outcomes (PHQ-4 subscales, PAM, stress, sse3), lag 1 as a standalone
