@@ -48,13 +48,22 @@ not need `.git`.
 fingerprint equals the current one; the 2026-09-13 run was resumed twice
 with nothing recording the code state of each leg.
 
+**Permissions are fail-closed** (`backend.statistics.private_files`). The
+cache holds participant uids. Every directory and file is owner-only,
+verified by reading the permissions back (not by the exit code of
+`icacls` / `chmod`). On write: a path that cannot be restricted raises
+`PermissionRestrictionError` and nothing is written. On read and on resume
+of an existing cache: the directory and files are checked first; if they are
+not owner-only one restriction attempt is made, and a failure raises. That
+error is deliberately *not* a `BootstrapCacheError` (it is not a cache
+mismatch and must not be handled as one).
+
 Run (after committing; real dataset required):
   python -m backend.statistics.bootstrap_cache loc_dist_ep_0
 """
 
 from __future__ import annotations
 
-import getpass
 import hashlib
 import importlib.metadata
 import inspect
@@ -62,8 +71,6 @@ import json
 import os
 import subprocess
 import sys
-import tempfile
-import warnings
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -71,6 +78,14 @@ from pathlib import Path
 import pandas as pd
 
 from backend.statistics import bootstrap, evidence, r_bridge
+from backend.statistics.private_files import (
+    PermissionRestrictionError,  # noqa: F401 - re-exported for callers
+    ensure_owner_only,
+    ensure_private_file,
+    private_dir,
+    restrict_to_owner,
+    write_private_text,
+)
 from backend.statistics.feature_specs import FeatureSpec
 from backend.statistics.mixed_effects_model import classify_evidence_strength
 
@@ -307,54 +322,21 @@ def assert_clean_for_write(
         )
 
 
-def _restrict_to_owner(path: Path, *, is_dir: bool) -> bool:
-    """POSIX: mode 700 / 600. Windows: icacls, inheritance removed, current
-    user only (best effort — `os.chmod` cannot express this on Windows).
-    `docs/privacy/local-demo-privacy-check.md`. Never raises: a failure is
-    a warning, the run continues."""
-    try:
-        if os.name == "posix":
-            os.chmod(path, 0o700 if is_dir else 0o600)
-            return True
-        user = os.environ.get("USERNAME") or getpass.getuser()
-        grant = f"{user}:(OI)(CI)F" if is_dir else f"{user}:F"
-        proc = subprocess.run(
-            ["icacls", str(path), "/inheritance:r", "/grant:r", grant],
-            capture_output=True,
-            text=True,
-            encoding="mbcs",
-            errors="replace",
-            timeout=30,
-        )
-        if proc.returncode != 0:
-            raise OSError(proc.stderr.strip() or proc.stdout.strip() or f"icacls exit {proc.returncode}")
-        return True
-    except Exception as exc:  # noqa: BLE001 - best effort by design
-        warnings.warn(
-            f"could not restrict permissions on {path} ({type(exc).__name__}: {exc}); "
-            "the cache contains participant uids — restrict it manually.",
-            stacklevel=2,
-        )
-        return False
-
-
-def _private_dir(path: Path) -> None:
-    created = not path.exists()
-    path.mkdir(parents=True, exist_ok=True)
-    if created:
-        _restrict_to_owner(path, is_dir=True)
-
-
 def _write_json_atomic(path: Path, payload: object) -> None:
-    fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=path.name + ".", suffix=".tmp")
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8") as f:
-            json.dump(payload, f, allow_nan=False)
-        _restrict_to_owner(Path(tmp), is_dir=False)
-        os.replace(tmp, path)
-    except BaseException:
-        Path(tmp).unlink(missing_ok=True)
-        raise
+    write_private_text(path, json.dumps(payload, allow_nan=False))
+
+
+def _verify_existing_cache(d: Path, cache_root: Path, files: Sequence[str]) -> None:
+    """Fail-closed check for a cache that already exists on disk (read, or
+    resume): directories and uid-bearing files must be owner-only. Not
+    owner-only -> one attempt to restrict -> `PermissionRestrictionError`."""
+    for directory in (cache_root, d):
+        if directory.is_dir():
+            ensure_owner_only(directory, is_dir=True)
+    for name in files:
+        f = d / name
+        if f.is_file():
+            ensure_private_file(f)
 
 
 def cache_dir(feature: str, cache_root: Path = CACHE_ROOT) -> Path:
@@ -386,6 +368,7 @@ def prepare_raw_checkpoint(
     current = make_fingerprint(raw_keys)
 
     if sidecar.exists():
+        _verify_existing_cache(d, cache_root, (RAW_FINGERPRINT_NAME, RAW_CHECKPOINT_NAME))
         try:
             recorded = _check_recorded(json.loads(sidecar.read_text(encoding="utf-8")), sidecar)
         except json.JSONDecodeError as exc:
@@ -401,11 +384,11 @@ def prepare_raw_checkpoint(
         )
 
     assert_clean_for_write(ESTIMATION_CODE_FILES, repo_root, git_status)
-    _private_dir(cache_root)
-    _private_dir(d)
+    private_dir(cache_root)
+    private_dir(d)
     _write_json_atomic(sidecar, current)
     checkpoint.touch()
-    _restrict_to_owner(checkpoint, is_dir=False)
+    restrict_to_owner(checkpoint, is_dir=False)
     return checkpoint
 
 
@@ -468,8 +451,8 @@ def write_aggregated_cache(
     assert_clean_for_write((*ESTIMATION_CODE_FILES, *AGGREGATION_CODE_FILES), repo_root, git_status)
     se, intersection, summaries = aggregate_checkpoint(real_fit, records, n_iterations)
     d = cache_dir(feature, cache_root)
-    _private_dir(cache_root)
-    _private_dir(d)
+    private_dir(cache_root)
+    private_dir(d)
     path = d / AGGREGATED_NAME
     _write_json_atomic(
         path,
@@ -497,11 +480,13 @@ def load_aggregated_cache(
 ) -> AggregatedCache | None:
     """`None` if no aggregated cache exists (decision c: carry on with
     `insufficient`). Raises `BootstrapCacheStale` on a fingerprint mismatch
-    and `BootstrapCacheError` if the file is unreadable. Compares hashes
-    only — no git involved."""
+    and `BootstrapCacheError` if the file is unreadable; an existing cache
+    that is not owner-only is restricted, or `PermissionRestrictionError`.
+    Compares hashes only — no git involved."""
     path = cache_dir(spec.name, cache_root) / AGGREGATED_NAME
     if not path.exists():
         return None
+    _verify_existing_cache(path.parent, cache_root, (AGGREGATED_NAME,))
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
         recorded = _check_recorded(payload["fingerprint"], path)

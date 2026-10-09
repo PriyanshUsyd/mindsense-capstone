@@ -29,6 +29,22 @@ then raises `Tier1RunFailed`. Build the cache with
 `python -m backend.statistics.bootstrap_cache <feature>` from a clean,
 committed tree.
 
+**Two kinds of failure, handled differently.** A *statistical* failure of one
+feature (stale cache, fit problem; design d) is collected: the other
+feature's output is still written, then `Tier1RunFailed` is raised. A
+*permission* failure (`private_files.PermissionRestrictionError`: the output
+directory or an existing cache cannot be restricted to the owner) stops the
+whole run immediately, is never collected per feature, and writes no
+per-person output for either feature — every output file here holds
+participant uids, so if the output directory cannot be made private no
+feature's file can be written safely. "One feature fails, the other is still
+written" assumes the failure says nothing about where it is safe to write.
+
+Uid-bearing outputs (all five kinds): `{feature}_evidence_per_person.csv`
+(`uid` column), `{feature}_summary.json` (`participant_uids`),
+`participant_set_reconciliation.json` (uid lists). They are written only into
+an owner-only directory, each file restricted and verified before content.
+
 Uses `backend.statistics.feature_specs.TIER1_FEATURE_SPECS` — each
 feature's raw column, transform, and cleaning entry point are declared
 once there, not duplicated here (see that module for why: commit
@@ -53,6 +69,7 @@ import pandas as pd
 from backend.statistics import bootstrap_cache, evidence
 from backend.statistics.feature_specs import TIER1_FEATURE_SPECS, FeatureSpec
 from backend.statistics.mixed_effects_model import build_model_frame, fit_ar1_effect, fit_mixed_effects_model
+from backend.statistics.private_files import PermissionRestrictionError, private_dir, write_private_text
 
 DATASET_DIR = Path(__file__).resolve().parents[2] / "dataset"
 OUTPUT_ROOT = Path(__file__).resolve().parents[2] / "outputs" / "tier1"
@@ -224,18 +241,28 @@ def reconcile_participant_sets(results: dict[str, FeatureRunResult]) -> dict:
 
 
 def write_outputs(results: dict[str, FeatureRunResult], reconciliation: dict, out_dir: Path) -> None:
-    out_dir.mkdir(parents=True, exist_ok=True)
+    """Every file written here contains participant uids, so `out_dir` is made
+    owner-only (and verified) first; on `PermissionRestrictionError` nothing
+    is written and a directory this call created is removed again."""
+    created = not out_dir.exists()
+    try:
+        private_dir(out_dir)
+    except PermissionRestrictionError:
+        if created:
+            try:
+                out_dir.rmdir()
+            except OSError:
+                pass
+        raise
 
     for name, result in results.items():
         summary = {k: v for k, v in asdict_no_df(result).items()}
-        (out_dir / f"{name}_summary.json").write_text(
-            json.dumps(summary, indent=2, default=_json_default), encoding="utf-8"
+        write_private_text(out_dir / f"{name}_summary.json", json.dumps(summary, indent=2, default=_json_default))
+        write_private_text(
+            out_dir / f"{name}_evidence_per_person.csv", result.evidence_per_person.to_csv(index=False)
         )
-        result.evidence_per_person.to_csv(out_dir / f"{name}_evidence_per_person.csv", index=False)
 
-    (out_dir / "participant_set_reconciliation.json").write_text(
-        json.dumps(reconciliation, indent=2), encoding="utf-8"
-    )
+    write_private_text(out_dir / "participant_set_reconciliation.json", json.dumps(reconciliation, indent=2))
 
 
 def asdict_no_df(result: FeatureRunResult) -> dict:
@@ -273,12 +300,16 @@ def main(prefer_r: bool = True) -> Path:
     # Features are independent (week7 item 2, decision d): a feature whose
     # cache fails to load must not take the other feature's result with it.
     # Failures are collected, the rest is written, then Tier1RunFailed is
-    # raised -- failing closed, but not discarding unrelated work.
+    # raised -- failing closed, but not discarding unrelated work. A
+    # PermissionRestrictionError is the exception: it aborts the run (nothing
+    # uid-bearing is written for any feature).
     results: dict[str, FeatureRunResult] = {}
     failures: dict[str, Exception] = {}
     for name, spec in TIER1_FEATURE_SPECS.items():
         try:
             results[name] = run_one_feature(spec, sensing, ema, prefer_r=prefer_r)
+        except PermissionRestrictionError:
+            raise  # not a per-feature failure: see the module docstring
         except Exception as exc:  # noqa: BLE001 - re-raised below as Tier1RunFailed
             failures[name] = exc
 
