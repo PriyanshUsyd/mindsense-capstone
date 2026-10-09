@@ -832,6 +832,19 @@ forbids the model from computing a percentage. `current` and `baseline`
 remain the only two values ever surfaced, shown side by side, each rounded
 independently by the same rule.
 
+### 5.3 Evaluation questionnaire ratings: small-cell handling and evaluator privacy
+
+Evaluation questionnaire ratings come from team members acting
+as evaluators — participants in the evaluation, though their
+ratings are opinions of the system rather than health or
+behavioural data. The under-5 cell rule is not applied to them,
+since every cell is small by design (n ≈ 8) and suppression
+would blank the table. Instead, only cross-evaluator aggregates
+(per-item n, median, range) and critical failures by session and
+question are published; per-evaluator rows and the mapping from
+evaluator codes to people are not. Pending confirmation with the
+Privacy & Security Lead.
+
 ## 6. Exploratory family (BH-FDR, q=0.05)
 
 Other outcomes (PHQ-4 subscales, PAM, stress, sse3), lag 1 as a standalone
