@@ -16,8 +16,10 @@ supporting the Week 9 internal evaluation sessions. It does not change the
 frozen response-quality prompts, model variants, statistical calibration,
 guardrail thresholds, dataset contents, or backend-generated response text.
 
-All evaluation support is performed against the fixed RC commit
-`b60cb848237a2a2a2cbc726551267a275f1668d0`. This documentation branch is not
+All evaluation support is performed against the fixed RC
+rc-eval-1 (tagged 2026-10-10; SHA posted at lock). The 2026-10-08 pre-session rehearsal ran on
+`b60cb848237a2a2a2cbc726551267a275f1668d0` (`b60cb84`), which predates
+#46, #48, #49, #53 and #58; the UI must be re-checked on rc-eval-1. This documentation branch is not
 the evaluation build. No dependency, frontend, backend, model, or prompt change
 is introduced into the locked RC during the sessions.
 
@@ -51,8 +53,8 @@ retrieve from a document store.
 
 Complete this once on every evaluation machine before its first session.
 
-- [x] Record the fixed RC commit:
-      `b60cb848237a2a2a2cbc726551267a275f1668d0`.
+- [ ] Record the fixed RC commit:
+      rc-eval-1 (tagged 2026-10-10; SHA posted at lock).
 - [ ] Confirm the approved dataset is locally available without opening raw
       participant data in the browser or terminal capture. This remains a data
       provisioning check outside the frontend support result.
@@ -84,6 +86,10 @@ local evidence path in the committed table.
 |---|---|---|---|---|---|---|---|
 | `b60cb848237a2a2a2cbc726551267a275f1668d0` | macOS (version not recorded) | Google Chrome (version not recorded) | Desktop evaluation window with docked DevTools | Local API available; all four rehearsal `/respond` requests returned HTTP 200 | Rehearsal pass | 2026-10-08 | Pre-session rehearsal only; local-only screenshots and JSON retained; no blocking, transport, or response-rendering UI failure observed |
 
+The rehearsal row above records true history: it ran on `b60cb84`, which predates
+#46, #48, #49, #53 and #58. It is not a check of the evaluation build; the UI
+must be re-checked on rc-eval-1 (tagged 2026-10-10; SHA posted at lock).
+
 ## Aggregate session support record
 
 Keep the detailed session-by-session worksheet outside the repository. Update
@@ -91,7 +97,7 @@ this table only with totals after the supported sessions are complete.
 
 | RC commit | Sessions supported | Sessions blocked by UI | New UI issue IDs | Overall frontend outcome | Notes |
 |---|---:|---:|---|---|---|
-| `b60cb848237a2a2a2cbc726551267a275f1668d0` | 0 | 0 | None | Not yet run | A four-scenario rehearsal completed before the official 10--15 October session window; response-policy outcomes are evaluated separately from frontend behaviour |
+| rc-eval-1 (tagged 2026-10-10; SHA posted at lock) | 0 | 0 | None | Not yet run | A four-scenario rehearsal completed before the official 10--15 October session window; response-policy outcomes are evaluated separately from frontend behaviour |
 
 ## UI issue register
 
