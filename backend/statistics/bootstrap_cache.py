@@ -414,7 +414,13 @@ def _records(df: pd.DataFrame) -> list[dict]:
     return json.loads(df.to_json(orient="records"))
 
 
-def aggregate_checkpoint(real_fit: bootstrap.RealFit, records: list[dict], n_iterations: int) -> tuple[pd.DataFrame, pd.DataFrame, dict]:
+def aggregate_checkpoint(
+    feature: str, real_fit: bootstrap.RealFit, records: list[dict], n_iterations: int
+) -> tuple[pd.DataFrame, pd.DataFrame, dict]:
+    """`feature` is the statistics-side name (`FeatureSpec.name`); it is
+    passed to `reclassify_cohort_family` as `feature_id` so the family-size
+    check against `evidence.EXPECTED_FAMILY_SIZE` actually runs (with
+    `feature_id=None` it is skipped silently)."""
     summaries = {m: bootstrap.failure_summary(records, m) for m in ("parametric", "cluster")}
     for method, summary in summaries.items():
         if summary["n_total"] != n_iterations:
@@ -436,7 +442,7 @@ def aggregate_checkpoint(real_fit: bootstrap.RealFit, records: list[dict], n_ite
             ]
         )
         slopes = bootstrap.build_person_slopes_from_bootstrap_se(real_fit, se_df)
-        tables[method] = evidence.reclassify_cohort_family(slopes, outcome_sd, predictor_sd)
+        tables[method] = evidence.reclassify_cohort_family(slopes, outcome_sd, predictor_sd, feature_id=feature)
     intersection = evidence.intersect_bootstrap_evidence(tables["parametric"], tables["cluster"])
     return pd.concat(se_rows, ignore_index=True), intersection, summaries
 
@@ -453,8 +459,8 @@ def write_aggregated_cache(
     git_status: Callable[[Path, Sequence[str]], list[str]] = _git_porcelain,
 ) -> Path:
     assert_clean_for_write((*ESTIMATION_CODE_FILES, *AGGREGATION_CODE_FILES), repo_root, git_status)
-    se, intersection, summaries = aggregate_checkpoint(real_fit, records, n_iterations)
-    d = cache_dir(feature, cache_root)
+    se, intersection, summaries = aggregate_checkpoint(feature, real_fit, records, n_iterations)
+    d =cache_dir(feature, cache_root)
     private_dir(cache_root)
     private_dir(d)
     path = d / AGGREGATED_NAME

@@ -398,7 +398,11 @@ lag-1 term pushing one participant below the 3-occasion floor — see
 has no lag-1 term and gives 214.) This definition is post-hoc.
 `unlock_num_ep_0` is 216 as of 2026-10-06; `evidence.EXPECTED_FAMILY_SIZE` is
 a per-feature dict of such current observed values (a visibility check that
-warns on change, not a constraint).
+warns on change, not a constraint). Both entry points pass the statistics-side
+name (`FeatureSpec.name`) as `feature_id` so the check runs:
+`participant_evidence` and, since 2026-10-09, the cached aggregation
+(`bootstrap_cache.aggregate_checkpoint`, which previously passed none and so
+skipped the check silently).
 
 - **Reported values use BH-FDR across that family (n = 214 currently).**
 - **Holm-Bonferroni across the same family is reported alongside as a
@@ -908,6 +912,12 @@ Resolved Week 4 open items (decisions, not post-hoc changes):
    documentation correction to match what was actually run — the primary
    β_W = −0.184 and the B=500 bootstrap were already computed from the
    two-term formula; no analysis changed.
+10. **Small-cell suppression in published aggregates** (section 5.3,
+    2026-10-09) — cells below 5 are suppressed or merged into an adjacent
+    category in anything published (report, slides, tables leaving the
+    repository). Not a Week 4 open item; added at the Privacy & Security
+    Lead's request. In-repository outputs are exempt, but the rule applies when
+    a table is transcribed from them.
 
 ## 8. Reference implementation
 

@@ -222,6 +222,71 @@ def test_roundtrip_returns_se_and_intersection(fake_repo, tmp_path):
     assert cached.failure_summary["parametric"]["n_total"] == B
 
 
+def _cohort(n: int) -> tuple[SimpleNamespace, list[dict]]:
+    """A synthetic real fit and bootstrap records for `n` participants."""
+    uids = [f"u{i:03d}" for i in range(n)]
+    rng = np.random.default_rng(1)
+    frame = pd.DataFrame(
+        [
+            {"uid": u, "phq4_score": 3.0 + 0.01 * i + 0.1 * t, "x_within": 0.2 * t - 0.4}
+            for i, u in enumerate(uids)
+            for t in range(5)
+        ]
+    )
+    fit = SimpleNamespace(
+        ar1_result=SimpleNamespace(
+            params={"x_within": -0.2}, blups={u: {"x_within": 0.001 * i} for i, u in enumerate(uids)}
+        ),
+        model_frame=frame,
+        uid_col="uid",
+        outcome_col="phq4_score",
+    )
+    records = [
+        {
+            "method": method,
+            "iteration_index": k,
+            "usable": True,
+            "error": None,
+            "used_random_slope": True,
+            "beta": {"x_within": float(-0.2 + rng.normal(0, 0.02))},
+            "blups": {u: {"x_within": float(rng.normal(0, 0.05))} for u in uids},
+            "uid_map": None,
+        }
+        for method in ("parametric", "cluster")
+        for k in range(B)
+    ]
+    return fit, records
+
+
+def _family_size_warnings(caught) -> list[str]:
+    return [str(w.message) for w in caught if "EXPECTED_FAMILY_SIZE" in str(w.message)]
+
+
+@pytest.mark.parametrize("feature", ["loc_dist_ep_0", "unlock_num_ep_0"])
+def test_aggregation_matches_the_calibrated_family_size_without_warning(feature):
+    from backend.statistics import evidence
+
+    fit, records = _cohort(evidence.EXPECTED_FAMILY_SIZE[feature])  # 214 / 216
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        _, intersection, _ = bc.aggregate_checkpoint(feature, fit, records, B)
+    assert len(intersection) == evidence.EXPECTED_FAMILY_SIZE[feature]
+    assert _family_size_warnings(caught) == []
+
+
+def test_aggregation_actually_runs_the_family_size_check(monkeypatch):
+    # The no-warning test above cannot tell "check passed" from "check
+    # skipped" (feature_id=None skips silently); this one can.
+    from backend.statistics import evidence
+
+    monkeypatch.setitem(evidence.EXPECTED_FAMILY_SIZE, "loc_dist_ep_0", 999)
+    fit, records = _cohort(214)
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        bc.aggregate_checkpoint("loc_dist_ep_0", fit, records, B)
+    assert any("(214)" in m and "(999)" in m for m in _family_size_warnings(caught))
+
+
 def test_stale_cache_raises_and_names_the_changed_key(fake_repo, tmp_path):
     root = tmp_path / "cache"
     with warnings.catch_warnings():
