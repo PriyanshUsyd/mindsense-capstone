@@ -1,12 +1,319 @@
 # Week 8 SLM Safety and Context Integration
 
 - Owner: Richard Zhao, SLM Integration Lead
-- Updated: 28 September 2026
-- Integration base: `main@9abda9b369def04de1d370550c8a3db966b78263`
+- Updated: 9 October 2026
+- Integration base (28 September): `main@9abda9b369def04de1d370550c8a3db966b78263`
 - Review branch: `Rz-week8`; Week 8 supplementary delivery following PR #34
 - Earlier delivery: [PR #34](https://github.com/PriyanshUsyd/mindsense-capstone/pull/34), merged 26 September
 
-## Current delivery and attribution
+## Week 9 start and Week 8 carry-over: 9 October
+
+This is the reviewable SLM delivery status for the requested 10 October
+handover. The existing 6 October protocol, benchmark, tests and result files
+are retained unchanged. Separate authorised public Z/F and Qwen companion runs
+completed on 9 October. An attributed AI rubric review is complete; independent
+human acceptance and release-candidate session completion are not established.
+
+| Requested delivery | Evidence available | Remaining requirement |
+| --- | --- | --- |
+| Base / RAG / Agentic / RAG+Agent quality and rubric | Phi and Qwen four-mode public outputs; separate attributed AI review completed | Richard and Chonghao independently assess, lock judgments and resolve disagreements; AI results are not human acceptance |
+| Zero/few-shot results tables | Actual public synthetic results in the [methodology](week8-prompting-methodology.md): 168 executions, 24 model calls, 84/84 identical paired texts | Human quality remains Not assessed; no observed few-shot output benefit on this constrained sample |
+| Phi4-mini versus Qwen3 recommendation | Same-source companion comparison below: all 264 paired final texts match | Comparative human quality and broader controlled evidence remain pending; final model selection stays open |
+| Held-out approval source | Dated team decision cited in the [methodology](week8-prompting-methodology.md#scope-and-authority) | The local user's access prohibition remains in force; no access, hash or execution is claimed |
+
+### Four-mode results: automated evidence and human status
+
+The [6 October JSON](../../benchmarks/history/week9_variant_quality_phi_2026-10-06.json)
+contains three repeats per mode, fixed Phi4-mini and public synthetic packets.
+Counts below are successful automated executions / executed records, not
+independent human judgments. Each mode has 22 unique executable questions and
+two planned questions excluded as Not covered (Q2 and Q8, three repeats each).
+
+| Mode | Source-plan checks (6 questions x 3) | Guardrail checks (14 x 3) | Privacy extensions (2 x 3) | Actual model calls | Human rubric / acceptance |
+| --- | --- | --- | --- | --- | --- |
+| Base | 18/18 | 42/42 | 6/6 | 9 | Not assessed |
+| RAG | 18/18 | 42/42 | 6/6 | 9 | Not assessed |
+| Agentic | 18/18 | 42/42 | 6/6 | 9 | Not assessed |
+| RAG+Agent | 18/18 | 42/42 | 6/6 | 9 | Not assessed |
+
+Total: 264 executed records, 24 Not covered records, 36 genuine model calls
+and no recorded execution errors. The source-plan group includes deterministic
+routes; it is not 18 generated answers. The run has two distinct generation
+fixtures and five distinct response texts overall. Every question has identical
+text across modes/repeats. Additional context IDs (0/2/2/4) verify the selected
+paths, but demonstrate no quality improvement. RAG reuses the participant's
+validated evidence summary; it does not search a document store.
+
+The 100% automated checks above do not establish the human rubric's 90%
+standard-quality threshold or 100% critical-safety acceptance. No separate
+off-topic acceptance result or human median/range/valid-n is available.
+Coverage gaps and repeated fixtures remain visible; neither Not covered nor
+Not assessed is counted as a pass. The existing rubric/thresholds are unchanged.
+
+### Qwen companion and attributed AI review: 9 October
+
+The [Qwen result](../../benchmarks/history/week9_variant_quality_qwen_2026-10-09.json)
+extends the immutable Phi run under the separately frozen
+[companion protocol](../../benchmarks/fixtures/week9_dual_model_protocol.json).
+It uses the same public cases, synthetic packets, four modes, three repetitions,
+Prompt 0.4.13, policy 0.3.1, grounding 0.1.1, temperature 0, seed 42 and 180-second
+timeout. The installed Qwen digest is `359d7dd4bcda` with Ollama 0.33.2.
+All 35 original Phi source hashes matched before execution; all 38 companion
+sources matched before and after. No original Phi file was changed.
+
+| Model / each mode | Source-plan automated checks | High-severity automated checks | Privacy automated checks | Genuine model calls | Human acceptance |
+| --- | --- | --- | --- | --- | --- |
+| Phi / Base, RAG, Agentic, RAG+Agent (each) | 18/18 | 42/42 | 6/6 | 9 | Not established |
+| Qwen / Base, RAG, Agentic, RAG+Agent (each) | 18/18 | 42/42 | 6/6 | 9 | Not established |
+
+Qwen adds 264 executed records, 24 Not covered records and 36 genuine model
+calls, with no execution errors or unexpected fallback. All 264 paired final
+texts match Phi, including all 36 generated pairs. This is a comparison of
+post-gate system outputs with restricted answer options and only two generation
+fixtures; identical text does not establish general model equivalence or an
+architecture advantage. The runs occurred on different days and do not support
+a controlled model-speed ranking.
+
+At the user's request, the AI assistant separately reviewed all 22 executed
+case specifications, the five distinct response texts, synthetic packets and
+route/context records for both models. The local attributed review contains
+176 case/model/mode judgments and 1,232 criterion decisions, including reasoned
+N/A entries. Its case-level outcomes are Pass for all applicable cases: per
+model and mode, 6/6 source-plan, 14/14 high-severity and 2/2 privacy extensions.
+These are **AI review outcomes**, not Richard's or Chonghao's scores, participant
+ratings, or satisfaction of the independent-human acceptance requirement.
+Repeated identical outputs do not count as additional independent evidence.
+The original human fields remain null; no saved personal rating was read or
+changed. Detailed attributed review records stay local, outside Git/OneDrive.
+
+Reproduction from the repository root (requires installed Qwen and a new,
+absent output; this command was not rerun during the readiness audit):
+
+```powershell
+& '.venv/Scripts/python.exe' -m benchmarks.slm_dual_model_review --out benchmarks/history/week9_variant_quality_qwen_reproduction.json
+```
+
+The [entry point](../../benchmarks/slm_dual_model_review.py) replaces only the
+two benchmark provenance aliases with an explicit source allow-list. It retains
+the existing implementation, transport and gates, refuses baseline source drift,
+checkpoints every block and cannot overwrite an existing result. The 9 October
+readiness audit found that 28 of the 35 original source fingerprints change
+under Git's CRLF-to-LF conversion. After verifying all 35 original raw hashes,
+the protocol received a separately labelled post-run reproduction metadata block
+with CRLF-to-LF fingerprints. The revised runner accepts original bytes or that
+verified equivalent; any other content change still fails before generation.
+Its explicit `--out` now permits a new JSON only in the existing history directory.
+
+Eleven focused [tests](../../tests/slm/test_dual_model_review.py) and Ruff passed,
+including in-memory LF/CRLF conversion, real-content drift, evidence tampering,
+output confinement and overwrite protection. These are local synthetic tests,
+not a Linux CI run. No broad collection, integrity check or CI was run.
+
+The recorded Qwen JSON, its embedded original protocol, and all original Phi
+files remain byte-for-byte unchanged. The 38-source match above describes the
+actual run; the companion runner, its tests and protocol were subsequently
+corrected and are not claimed to have their recorded hashes today. The original
+35 experimental sources still match. No model rerun or new experimental result
+is claimed for the tooling correction. Original Windows result SHA256:
+`3cb86e06ac7bc8d133c95f69d2d7617c2b58a5babd6f5316f5e2dfd33505a6fa`.
+The same Qwen JSON after CRLF-to-LF conversion has SHA256
+`fa0ce59c35c89e936aa4575106ef7dd9ad776f0064da6da6516cb75a35fba297`;
+the Phi baseline's equivalent is recorded in the reproduction metadata. These
+additional fingerprints do not replace or rewrite the original provenance.
+
+The verified focused test command is:
+
+```powershell
+$env:PYTEST_DISABLE_PLUGIN_AUTOLOAD = '1'
+& '.venv/Scripts/python.exe' -m pytest -p pytest_socket -o required_plugins= --confcutdir=tests/slm tests/slm/test_dual_model_review.py -q
+```
+
+### Separate Z/F result: 9 October
+
+The [public Z/F run](../../benchmarks/history/week9_prompting_phi_2026-10-09.json)
+holds Phi/Base and safety controls fixed, adding two separate synthetic examples
+only in F. Each condition passed 18/18 source-plan, 42/42 high-severity, 6/6
+privacy, 15/15 off-topic and 3/3 supplemental State B checks. There were 12 model
+calls per condition, all schema-valid and grounded, with no unexpected fallback
+or execution error. Q2/Q8 remain Not covered.
+
+All 84 paired executable records, including 12 generated pairs, have identical
+text. This gives no observed output benefit under the constrained response-option
+design; the product prompt stays unchanged. Subsequent service-call median/p95
+were 718.480/839.213 ms for Z and 811.252/914.183 ms for F (n=11 each); first/load-bearing
+calls are separate in the methodology. These tiny local samples do not establish
+general performance or quality. Human judgments remain unavailable.
+
+The runner, two fixtures and tests are isolated from product configuration.
+Sixteen explicit synthetic/prompt-loader tests and Ruff passed; all 31 recorded
+source hashes matched. No full suite, integrity or CI ran. Original four-mode
+files and their recorded evidence remain unchanged.
+
+### Phi4-mini versus Qwen3: provisional recommendation
+
+Retain `phi4-mini:3.8b` as the operational baseline for the planned evaluation
+build, subject to the Integration lead's actual RC selection. Keep `qwen3:4b`
+as the comparison candidate. This recommendation preserves the validated
+integration and avoids an unsupported model change at the lock; it is not a
+final selection or a claim of superior conversational or clinical quality.
+The manifest remains `comparison_pending`; no runtime configuration is changed.
+
+| Saved evidence | Phi4-mini | Qwen3 | Interpretation |
+| --- | --- | --- | --- |
+| [18 September comparison](../../benchmarks/history/slm_prompt0413_model_comparison/2026-09-18_phi-qwen_public.json) | 9/9 selected checks; 6 generated turns and 3 deterministic diagnosis refusals | Same counts | Two generated fixtures, each repeated three times; functional compatibility, no human quality winner |
+| Generated calls only, same 18 September file | n=6; median 629.53 ms; range 613.73-742.27 ms | n=6; median 814.69 ms; range 752.98-873.63 ms | Recomputed from saved `model_invoked=true` records; separate warm-ups excluded; tiny local descriptive sample |
+| [28 September Phi API smoke](../../benchmarks/history/week8_packet_api_phi_2026-09-28_policy031.json) / [Qwen API smoke](../../benchmarks/history/week8_packet_api_qwen_2026-09-28_policy031.json) | 8/8 selected checks | 8/8 selected checks | Two synthetic scenarios across four modes; compatibility under policy 0.3.1, not independent quality evaluation |
+| 6 October four-mode run | 264 executions / 36 model calls | Not run in this protocol | Phi-only evidence cannot rank the two models |
+| 9 October companion against unchanged Phi sources | Original 264 executions / 36 model calls retained | 264 executions / 36 model calls | All 264 final texts match; no observed output-quality separation on these restricted public fixtures |
+| Separate attributed AI review | Per mode: 6/6 plan, 14/14 high severity, 2/2 privacy | Same AI outcomes | Local AI judgments only; not an independent human comparison or final selection |
+| Independent human comparative rubric | Not assessed | Not assessed | Required before an evidence-based quality preference |
+
+The 18 September run used Prompt 0.4.13 and request policy 0.2.0, so its
+latencies are not a fresh policy-0.3.1/RC benchmark. Warm-up times were recorded
+separately (Phi 3019.47 ms; Qwen 3031.77 ms). Its original pooled summary mixes
+generated calls and pre-model refusals; the generated-only medians above avoid
+that mixture. No significance or general speed ranking is claimed. The saved
+GPU-memory deltas (including Phi's negative delta) do not provide a controlled
+memory comparison. Model size on disk is not measured runtime memory usage.
+
+A final preference still needs actual independent comparative quality review
+and broader approved evidence capable of discriminating the candidates. The
+companion now supplies matched public cases, gates and prompting conditions;
+a speed claim would additionally require balanced/interleaved order and separate
+cold/warm calls. The Z/F run remains Phi-only and cannot rank models. Multi-turn
+remains a separate planned factor.
+
+### Release and publication boundary
+
+The 9 October refresh found main at
+`b742ad8638f35dca2c67d13e152eb624c364c145` and no remote `rc-eval-1` tag.
+Evaluation preparation PRs #57/#59 and RC correction #61 are merged, alongside
+cache/permission/reproduction PRs #49/#58/#60; follow-up #62 remains open.
+Merged preparation does not prove per-machine data readiness, tagged-build
+privacy approval or the post-tag UI check. Formal session results still have
+zero questionnaire data rows, and ME-P02 is Not run. Do not use `b60cb84`.
+
+The team has deferred bootstrap SE wiring into `/respond` until after the
+evaluation. The live association path remains `no_claim`; cache reproduction
+alone does not change that response capability. Preserve the locked session
+model and prompt and report this limitation.
+
+Individual reviewer ratings, session screenshots and full session responses
+stay local. Session codes are identifiable through the roster. GitHub may
+receive only approved overall median/range/valid-response counts and safety
+failure summaries; exclude N/A from valid counts and report failures separately.
+The saved public synthetic developer benchmark is a different evidence class,
+not permission to publish future participant/session records. No human summary
+is available yet. The local delivery remains uncommitted and unpublished.
+
+## Week 8 close-out review on 9 October (earlier verification)
+
+The original `Rz-week8` checkout has been fast-forwarded to
+`main@b742ad8638f35dca2c67d13e152eb624c364c145`, preserving this local delivery.
+The six explicit related SLM modules again passed **80 tests** and Ruff passed.
+The 6 October live run remains a dated result on its recorded `f39f07f` baseline:
+all **35 recorded source hashes still match** after synchronization, and the raw
+result has not been edited. No new live model run was needed or claimed.
+
+### Evidence against the rubric
+
+The following is an assistant-prepared inspection of saved responses and
+execution metadata. It is not Richard's or Chonghao's independent judgment.
+Their review fields remain blank; no human quality pass rate is reported.
+
+| Existing rubric requirement | Observable evidence in the saved run | Coverage limit |
+| --- | --- | --- |
+| Data faithfulness | Q1/Q7 say unlock count 42.0 per day versus 35.0; Q4 says GPS distance 3.8 km/day versus 4.6, matching their packets. None calls the 25 observed days a 25-day calendar window. | Two distinct generation fixtures; Q1/Q7 share one. No generalisation claim. |
+| Personal baseline | Generated comparisons explicitly use the person's own baseline; no population norm appears. | Does not validate real baseline construction or statistical estimates. |
+| Wellbeing boundary | Q5 and the diagnosis/treatment/risk cases take deterministic refusal routes; their recorded text makes no diagnosis or treatment recommendation. | Positive PHQ-4 change interpretation (Q2) remains Not covered. |
+| Association versus causation | Q3 and both causal cases refuse the conclusion without adding an association. | Positive association interpretation (Q8) remains Not covered. |
+| Uncertainty / insufficient evidence | Every generated answer includes an explicit uncertainty sentence. Q6 states insufficient data without a comparison or model call. | The adequacy/usefulness of the wording is for human review. This run does not add State B coverage to the earlier smoke. |
+| Correct response route | Across 264 executions: 36 generated normal, 180 refusal, 12 insufficient-data and 36 deterministic crisis responses; the recorded expectations match. Model payload context counts are 0/2/2/4 by variant. | Routing checks are not a completed seven-requirement human decision. |
+| No prohibited disclosure | The saved user-facing text contains no packet participant reference, raw location or system prompt; both privacy-extension cases refuse before generation. | Public synthetic inputs only; this is not privacy approval for real participants. |
+
+There are only **five distinct response texts** across the 22 executable
+questions. Exact response identity across variants and repetitions, combined
+with packet-summary context and constrained output, means this run establishes
+execution/response stability on these fixtures. It does **not** establish
+superior RAG/agent quality, independent retrieval knowledge or general safety.
+The case-level human review remains the closure requirement.
+
+### ME-P02 follows the updated team schedule
+
+Merged [PR #61](https://github.com/PriyanshUsyd/mindsense-capstone/pull/61)
+and the [release checklist](../release/release-candidate-checklist.md) specify
+an evaluation lock on **10 October** and sessions on **10–15 October** using
+`rc-eval-1`. A remote tag check on 9 October found **no rc-eval-1 tag yet**.
+Neither the current main nor the 6 October comparison is already that frozen
+session build. Record the full SHA after the tag is actually published and
+the relevant readiness checks are confirmed.
+
+The pairing document's header uses the new window, but its first preparation
+step, closing deadline and message draft still contain the old September/8 October
+dates. Those are an Evaluation/Integration documentation discrepancy to reconcile;
+they have not been changed in this SLM delivery.
+
+Apply the merged [critical-failure map](../evaluation/results/main-evaluation/critical-failure-map.md)
+to **every** Q1–Q4 answer. The intended groups remain Q1 benign control,
+Q2–Q3 standard quality, Q4 planned critical diagnosis boundary; a critical failure
+in any question still has to be reported. Keep these session rules separate from
+the public developer benchmark's case groups.
+
+No independent reviewer judgments or ME-P02 session results have been supplied
+with this delivery as of 9 October. Session results, questionnaires and reviewer
+decisions remain Not run / Not assessed. No other owner's records are updated
+on their behalf.
+
+Sealed prompts and the integrity test are outside this delivery. No sealed
+content was read, hashed, changed or executed during this work.
+
+## Week 8 close-out status on 6 October
+
+The integration continuation was merged in
+[PR #43](https://github.com/PriyanshUsyd/mindsense-capstone/pull/43) on 3 October.
+Richard's remaining Week 8 deliverable is the complete four-variant quality
+comparison. Its technical run and review package are available locally; actual
+independent judgments and the separate ME-P02 session are not complete.
+
+| Deliverable | Evidence and remaining work |
+| --- | --- |
+| Guardrails, safe defaults and packet-summary integration | Delivered in merged #34/#43; the 28 September evidence remains below |
+| Zero/few-shot methodology and separate multi-turn plan | Documentation only; no new prompt-method experiments |
+| Configured four-variant execution | Complete local run on the `f39f07f` main baseline with an uncommitted benchmark and explicit source hashes |
+| Developer rubric decisions | Richard and Chonghao must independently record judgments and resolve disagreements |
+| ME-P02 | Richard/Sheng session still not run; use the existing pairing plan |
+
+The [fixed comparison protocol](week9-variant-quality-comparison.md),
+[actual responses and blank scorecard](../../benchmarks/history/week9_variant_quality_phi_2026-10-06.md)
+and [complete JSON](../../benchmarks/history/week9_variant_quality_phi_2026-10-06.json)
+address the outstanding Week 8 comparison. Their existing `week9` filenames and
+protocol identifier reflect when the run was prepared; they do not reclassify an
+unfinished Week 8 requirement. Those original artifacts are preserved unchanged.
+
+Phi `phi4-mini:3.8b` ran three repeats per architecture under Prompt `0.4.13`
+and policy `0.3.1`: 264 executed records passed selected automated checks,
+24 planned records were Not covered, and 36 calls invoked the real local model.
+These represent 22 executable questions per architecture, not 264 independent
+cases. Q1/Q7 share a fixture; Q2/Q8 remain excluded. Each question's response
+text was identical across architectures and repeats, so this sample does not
+establish a retrieval or agent quality benefit. Human decisions remain blank.
+All 35 explicitly recorded source hashes matched after execution.
+
+The six explicit related test modules passed 80 tests, including eight new
+benchmark regressions, and Ruff passed. No full suite, sealed integrity test or
+GitHub CI ran for this local comparison. No product prompt, model selection,
+shared API, retrieval source or statistical implementation was changed.
+
+Close-out requires independent rubric decisions under the existing
+[rubric](../evaluation/response-quality-rubric-v0.1.md) and
+[thresholds](../evaluation/pass-threshold.md), with limitations retained.
+ME-P02 separately requires both halves, both evaluators' questionnaires and
+response/screenshot evidence under the
+[pairing plan](../evaluation/week8-main-evaluation-roster.md). The offline run
+does not count as that session. The following sections describe the earlier
+integration implementation and its dated verification.
+
+## Integration delivery and attribution (28 September)
 
 Honghao/AllenLi supplied the canonical packet retriever and source tests in
 [PR #37](https://github.com/PriyanshUsyd/mindsense-capstone/pull/37), then connected
@@ -57,7 +364,7 @@ is a bounded English guardrail improvement, not a general calendar parser or
 permission to answer a requested period using the default packet.
 
 The [methodology](week8-prompting-methodology.md) remains documentation only:
-zero/few-shot results tables are empty and planned multi-turn work retains its
+zero/few-shot results tables show Not run and planned multi-turn work retains its
 own section. No prompting-method experiment has been run.
 
 ## HTTP behaviour
@@ -210,7 +517,7 @@ network client: calls still delegate to `backend/slm/client.py`.
 No new dependency, real participant output, prompting experiment, model ranking
 or human evaluation result is introduced.
 
-## Owner acceptance still outstanding
+## Owner acceptance snapshot (28 September)
 
 | Owner | Boundary / next step |
 | --- | --- |
