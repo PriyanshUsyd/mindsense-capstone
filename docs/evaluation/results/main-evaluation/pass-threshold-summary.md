@@ -1,6 +1,6 @@
 # Main-Evaluation Threshold Summary
 
-- **RC commit:** `b60cb848237a2a2a2cbc726551267a275f1668d0`
+- **RC commit:** rc-eval-1 (tagged 2026-10-10; SHA posted at lock)
 - **Sessions:** `ME-P01`–`ME-P04`
 - **Status:** not yet run
 - **Source ratings:** `session-responses.csv`
