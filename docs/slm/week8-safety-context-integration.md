@@ -1,12 +1,12 @@
-# Week 8 SLM Safety and Context Integration
+# Week 9 SLM Comparison, Safety and Context Integration
 
 - Owner: Richard Zhao, SLM Integration Lead
 - Updated: 9 October 2026
 - Integration base (28 September): `main@9abda9b369def04de1d370550c8a3db966b78263`
-- Review branch: `Rz-week8`; Week 8 supplementary delivery following PR #34
+- Review branch: `Rz-week9`; Week 9 comparison and prompting results
 - Earlier delivery: [PR #34](https://github.com/PriyanshUsyd/mindsense-capstone/pull/34), merged 26 September
 
-## Week 9 start and Week 8 carry-over: 9 October
+## Week 9 delivery status: 9 October
 
 This is the reviewable SLM delivery status for the requested 10 October
 handover. The existing 6 October protocol, benchmark, tests and result files
@@ -19,7 +19,7 @@ human acceptance and release-candidate session completion are not established.
 | Base / RAG / Agentic / RAG+Agent quality and rubric | Phi and Qwen four-mode public outputs; separate attributed AI review completed | Richard and Chonghao independently assess, lock judgments and resolve disagreements; AI results are not human acceptance |
 | Zero/few-shot results tables | Actual public synthetic results in the [methodology](week8-prompting-methodology.md): 168 executions, 24 model calls, 84/84 identical paired texts | Human quality remains Not assessed; no observed few-shot output benefit on this constrained sample |
 | Phi4-mini versus Qwen3 recommendation | Same-source companion comparison below: all 264 paired final texts match | Comparative human quality and broader controlled evidence remain pending; final model selection stays open |
-| Held-out approval source | Dated team decision cited in the [methodology](week8-prompting-methodology.md#scope-and-authority) | The local user's access prohibition remains in force; no access, hash or execution is claimed |
+| Held-out approval source | Priyansh's dated one-run approval and the engineering-check distinction in the [methodology](week8-prompting-methodology.md#scope-and-authority) | CI may verify integrity/structure/privacy; the formal model evaluation is not completed and sealed questions must not guide development |
 
 ### Four-mode results: automated evidence and human status
 
@@ -106,8 +106,9 @@ Its explicit `--out` now permits a new JSON only in the existing history directo
 
 Eleven focused [tests](../../tests/slm/test_dual_model_review.py) and Ruff passed,
 including in-memory LF/CRLF conversion, real-content drift, evidence tampering,
-output confinement and overwrite protection. These are local synthetic tests,
-not a Linux CI run. No broad collection, integrity check or CI was run.
+output confinement and overwrite protection. These were local synthetic tests,
+not a Linux CI run. Publication validation subsequently passed on the initial
+technical commit; its distinct scope is recorded below.
 
 The recorded Qwen JSON, its embedded original protocol, and all original Phi
 files remain byte-for-byte unchanged. The 38-source match above describes the
@@ -146,8 +147,8 @@ general performance or quality. Human judgments remain unavailable.
 
 The runner, two fixtures and tests are isolated from product configuration.
 Sixteen explicit synthetic/prompt-loader tests and Ruff passed; all 31 recorded
-source hashes matched. No full suite, integrity or CI ran. Original four-mode
-files and their recorded evidence remain unchanged.
+source hashes matched. No full suite, integrity or CI ran during that experiment.
+Original four-mode files and their recorded evidence remain unchanged.
 
 ### Phi4-mini versus Qwen3: provisional recommendation
 
@@ -204,7 +205,36 @@ receive only approved overall median/range/valid-response counts and safety
 failure summaries; exclude N/A from valid counts and report failures separately.
 The saved public synthetic developer benchmark is a different evidence class,
 not permission to publish future participant/session records. No human summary
-is available yet. The local delivery remains uncommitted and unpublished.
+is available yet. The initial 16-file technical package was published as
+`eda2b6f` on 9 October. This Week 9 Draft uses `Rz-week9` and adds documentation
+clarifications without rerunning or rewriting the experiments.
+
+### CI verification is separate from held-out evaluation
+
+The initial technical commit passed all four stages of the manual
+[sealed-excluded run](https://github.com/PriyanshUsyd/mindsense-capstone/actions/runs/37926288038):
+Python application/integration, real R runtime, frontend test/lint/build, and
+privacy/security. That result excludes sealed integrity and sealed-text scanning
+and must not be relabelled as full CI or final acceptance.
+
+For this Week 9 publication, the existing automatic full CI is permitted to
+perform read-only checksum, JSON-structure and privacy checks on the sealed
+files. There is no workflow change or skip marker. These checks do not call a
+model with the held-out questions and are separate from Priyansh's authorised
+one-off model evaluation. The exact publication result is reported in the PR
+checks; the earlier run does not certify a later SHA.
+
+After the public experiments, a read-only structural inspection on 9 October
+reported 24 entries and required fields without displaying any question text,
+IDs, category values or note content to the assistant or reviewer. It did not
+hash, modify or evaluate the set. This limited machine access must not be
+misreported as no access at all; the original experiments' no-access provenance
+is unchanged. Do not use sealed questions or later responses to select product
+changes during development.
+
+The sections below retain dated Week 8 records. Their documentation-only Z/F
+status and restricted-CI/skip procedure describe those earlier deliveries;
+they are not the current Week 9 publication instructions.
 
 ## Week 8 close-out review on 9 October (earlier verification)
 
@@ -264,8 +294,9 @@ with this delivery as of 9 October. Session results, questionnaires and reviewer
 decisions remain Not run / Not assessed. No other owner's records are updated
 on their behalf.
 
-Sealed prompts and the integrity test are outside this delivery. No sealed
-content was read, hashed, changed or executed during this work.
+Sealed prompts and the integrity test were outside that earlier verification.
+No sealed content was read, hashed, changed or executed during that stage;
+the later publication clarification above records the subsequent limited access.
 
 ## Week 8 close-out status on 6 October
 
@@ -363,9 +394,10 @@ crisis/diagnosis priority. The pre-fix scope run reproduced 13 failures. This
 is a bounded English guardrail improvement, not a general calendar parser or
 permission to answer a requested period using the default packet.
 
-The [methodology](week8-prompting-methodology.md) remains documentation only:
-zero/few-shot results tables show Not run and planned multi-turn work retains its
-own section. No prompting-method experiment has been run.
+At the 28 September integration delivery, the
+[methodology](week8-prompting-methodology.md) was documentation only: zero/few-shot
+results were Not run and multi-turn had its own planned section. The current
+9 October Z/F result is described above; multi-turn remains planned.
 
 ## HTTP behaviour
 
@@ -481,14 +513,13 @@ $env:MINDSENSE_CI_SCOPE = 'sealed-excluded'
 .venv/Scripts/python.exe -m pytest tests/slm tests/api tests/contracts tests/privacy/test_no_network_egress.py tests/privacy/test_api_response_privacy.py tests/privacy/test_analysis_output_privacy.py -q -p no:cacheprovider
 ```
 
-Never run broad pytest or the sealed integrity test. The scanner excludes the
-entire sealed directory before file access. The earlier PR #34 restricted CI
-result applies to its earlier head, not this local continuation. Automatic PR
-CI still selects full scope. Publication retains `[skip ci]` to prevent that
-automatic run; the existing manual `sealed-excluded` workflow is the permitted
-validation path. Its result must be checked on this supplementary PR's exact
-head, not inferred from PR #34. Workflow definitions are unchanged, and restricted
-checks do not establish sealed integrity or full acceptance.
+For the 28 September publication, broad pytest and the sealed integrity test
+were excluded under the access restriction then in force. Its scanner excluded
+the sealed directory before file access, and PR #43 used a skip marker followed
+by exact-head manual `sealed-excluded` validation. That historical procedure
+does not apply to this Week 9 PR. The current automatic full-CI scope is described
+above; neither historical restricted run establishes sealed integrity or human
+acceptance, and no workflow definition is changed by this delivery.
 
 The new functional smoke uses the real API, Data retriever, SLM tool/runner and
 local model. Only packet construction is replaced by public synthetic fixtures.
