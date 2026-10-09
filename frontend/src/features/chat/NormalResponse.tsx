@@ -34,6 +34,7 @@ const LOCAL_DEMO_PARTICIPANT_ALIAS = 'local-demo'
 // (backend/slm/request_policy.py's `infer_feature_from_question`), so the
 // frontend no longer sends a feature_id at all.
 const DEFAULT_QUESTION = 'How was my movement different from my recent baseline?'
+const COLD_START_NOTICE_DELAY_MS = 12_000
 
 interface ConversationTurn {
   id: number
@@ -61,6 +62,7 @@ export function NormalResponse() {
   const [draft, setDraft] = useState(DEFAULT_QUESTION)
   const [turns, setTurns] = useState<ConversationTurn[]>([])
   const [pendingQuestion, setPendingQuestion] = useState<string | null>(null)
+  const [showColdStartNotice, setShowColdStartNotice] = useState(false)
   const [requestFailure, setRequestFailure] = useState<RequestFailure | null>(null)
   const requestInFlight = useRef(false)
   const nextTurnId = useRef(1)
@@ -70,6 +72,16 @@ export function NormalResponse() {
     conversationEnd.current?.scrollIntoView?.({ behavior: 'smooth', block: 'end' })
   }, [pendingQuestion, requestFailure, turns])
 
+  useEffect(() => {
+    if (!pendingQuestion) return
+
+    const noticeTimer = window.setTimeout(
+      () => setShowColdStartNotice(true),
+      COLD_START_NOTICE_DELAY_MS,
+    )
+    return () => window.clearTimeout(noticeTimer)
+  }, [pendingQuestion])
+
   async function handleAsk(rawQuestion = draft) {
     const question = rawQuestion.trim()
     if (!question || requestInFlight.current) return
@@ -77,6 +89,7 @@ export function NormalResponse() {
     requestInFlight.current = true
     setDraft(question)
     setRequestFailure(null)
+    setShowColdStartNotice(false)
     setPendingQuestion(question)
 
     try {
@@ -113,6 +126,7 @@ export function NormalResponse() {
     setTurns([])
     setRequestFailure(null)
     setPendingQuestion(null)
+    setShowColdStartNotice(false)
     setDraft(DEFAULT_QUESTION)
     nextTurnId.current = 1
   }
@@ -144,7 +158,10 @@ export function NormalResponse() {
   const latestResponse = turns.at(-1)?.response
   const latestModelTag = turns.findLast((turn) => turn.response.model_tag)?.response.model_tag
   const status = pendingQuestion
-    ? { label: 'Reviewing evidence', tone: 'working' as const }
+    ? {
+        label: showColdStartNotice ? 'Local model warming up' : 'Reviewing evidence',
+        tone: 'working' as const,
+      }
     : requestFailure
       ? {
           label:
@@ -186,7 +203,12 @@ export function NormalResponse() {
           </div>
         ))}
 
-        {pendingQuestion && <LoadingState question={pendingQuestion} />}
+        {pendingQuestion && (
+          <LoadingState
+            question={pendingQuestion}
+            showColdStartNotice={showColdStartNotice}
+          />
+        )}
 
         {requestFailure && (
           <GenericFallbackState

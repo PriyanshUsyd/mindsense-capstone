@@ -12,11 +12,11 @@ found and corrected during the week; occasion counts independently
 reconciled with the Data Pipeline Lead. The results in Section 3 are real
 and stand as reported. **What is committed and runnable today differs from
 what this document originally described as built — see the correction note
-at the top of Section 1 before relying on any file path below.** A
-preregistration document now exists at `analysis/preregistration.md`, but it
-is a 2026-09-12 compilation of Moe's already-locked decisions by another
-contributor, not the file this section originally referred to — still
-pending her review (see Section 1's note).
+at the top of Section 1 before relying on any file path below.** The
+preregistration document is `docs/statistics/preregistration.md` (Moe's
+original local file, brought into the repository 2026-09-13). A duplicate
+2026-09-12 compilation at `analysis/preregistration.md` was deleted
+2026-10-06 (see Section 1's note).
 
 ---
 
@@ -46,10 +46,9 @@ on Moe Tanaka's own machine, to produce the results in Section 3. It does
   `backend/statistics/evidence.py`'s module docstring as pending Moe's own
   review before being treated as final (see that module's docstring for
   the specific open gap: per-person standard errors).
-- `preregistration.md` exists at `analysis/preregistration.md`, but as a
-  2026-09-12 compilation of Moe's already-locked decisions by another
-  contributor — not the file originally referred to in this row, and not
-  yet reviewed by her.
+- `preregistration.md` is now `docs/statistics/preregistration.md` (Moe's
+  original file). A duplicate compilation formerly at
+  `analysis/preregistration.md` was deleted 2026-10-06.
 
 Original table, describing the local pipeline that produced Section 3's
 results (run with `python analysis/run_week5_pipeline.py` **on that local
@@ -408,16 +407,21 @@ has not been checked.
 
 Week 4 defined a family for the user-facing weekly report (one person × up to
 three features). It did not define a family for the cohort-level per-person
-analysis (one feature × 213 people). Because that second family was
+analysis (one feature × all participants holding a slope). Because that second family was
 undefined, each participant's test was being treated as its own family of one,
 which makes both Holm and BH correction mathematically identical to the raw
 p-value — the correction was not doing anything.
 
-The cohort-level family is now defined as the 213 participants holding a
-per-person slope for this feature. This is a post-hoc decision, made after
-seeing the family-of-1 results, and is recorded as such.
+The cohort-level family is now defined as the participants holding a
+per-person slope for this feature. Its size is data-dependent, not a fixed
+constant: 214 for `loc_dist_ep_0` as of 2026-09-27. (The 213 in the table and
+figures below is the retired `analysis/` pipeline's result; its origin is
+suspected, not verified, to be the lag-1 term pushing one participant below
+the 3-occasion floor. The current primary has no lag-1 term and gives 214.)
+This is a post-hoc decision,
+made after seeing the family-of-1 results, and is recorded as such.
 
-**Benjamini–Hochberg FDR across 213 is adopted for the reported
+**Benjamini–Hochberg FDR across that family is adopted for the reported
 classification.** The question being answered is what proportion of the
 participants labelled as having evidence are false positives, which is exactly
 the quantity FDR controls. Holm–Bonferroni is retained as a sensitivity
@@ -725,7 +729,7 @@ signature of over-truncation, not of a stronger relationship.
 
 *(Figures supplied by the Data Pipeline Lead.)*
 
-**Cohort-level multiple-comparison family — defined as 213 (section 3.5).**
+**Cohort-level multiple-comparison family — defined as the participants holding a per-person slope (data-dependent; 214 for `loc_dist_ep_0`) (section 3.5).**
 
 **User-facing evidence output — collapsed to two values (section 3.7).**
 
@@ -782,7 +786,8 @@ signature of over-truncation, not of a stronger relationship.
 7. **Pre-computed source feature.** `loc_dist_ep_0` is supplied already
    aggregated, so the (0,0) "null island" hypothesis for extreme daily values
    cannot be checked against raw coordinates.
-8. **Family size is feature-specific.** The 213-participant family is defined
+8. **Family size is feature-specific.** The family (participants holding a
+   slope; 214 for `loc_dist_ep_0`, data-dependent) is defined
    for this single feature. Once additional Tier-1 features are modelled, the
    family must be redefined across person × feature rather than person alone.
    **[Confirmed 2026-09-14, now that `unlock_num_ep_0` is actually modelled]**
@@ -1014,7 +1019,7 @@ diminishing-returns correction, not evidence that 23 is unreliable.
 pre-registration specified BH-FDR correction over a single per-person test; it
 did not anticipate reconciling two different bootstrap SE estimators, because
 the SE gap itself was not foreseen as needing a bootstrap solution. Recorded in
-the same register as the cohort-level family size (213, section 3.5) and the
+the same register as the cohort-level family definition (participants holding a per-person slope; 214 currently, section 3.5) and the
 binary user-facing collapse (section 3.7) — see also
 `docs/statistics/preregistration.md` section 7's post-hoc log.
 
@@ -1105,12 +1110,14 @@ question even though it turned out not to be the one the sign-off needed.
   (section 1.5) and `unlock_num_ep_0` (section 1.6, added at the same
   check-in — no quality gate, zeros retained, no log transform; see that
   section for the skew/kurtosis figures ruling the log transform out).
-  Separately, `analysis/preregistration.md` (249 lines) was independently
+  Separately, `analysis/preregistration.md` (249 lines) had been independently
   compiled by another contributor's session (Priyansh Khandelwal, 2026-09-12)
-  from Moe's already-locked decisions, inside the now-archived `analysis/`
-  directory — not a document she drafted herself, and not yet reconciled
-  against the file above (see `CLAUDE.md`'s "Unreflected changes" for this
-  flagged, unresolved duplication).
+  from Moe's already-locked decisions. **Reconciled and deleted 2026-10-06:**
+  its one open item missing from the file above (the `term_phase` Dartmouth
+  calendar question) was moved to that file's section 9 item 6; its
+  directional-hypothesis item was already resolved there (section 1,
+  two-sided), and its 7-day-window robustness check already appears there
+  (section 6).
 - Remaining open items: PHQ-4 total as sole primary outcome vs. co-primary
   subscales; COVID-era handling; sign-off on the two previously-undocumented
   model-entry rules (limitation 10).

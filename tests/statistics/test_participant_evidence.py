@@ -100,6 +100,64 @@ def test_built_unlock_packet_values_are_whole_numbers():
         assert packet.baseline.value == int(packet.baseline.value)
 
 
+def _stub_r_engine(monkeypatch):
+    """R is not usable in every environment, and `_evidence_table` returns
+    before `reclassify_cohort_family` without it. Stub only the R-backed fit
+    (every uid in the real model frame gets a BLUP) and the availability
+    check, so the real dataset still decides the family size, and use a fresh
+    cache so no earlier test's table is reused."""
+    from backend.statistics import participant_evidence as pe
+    from backend.statistics.mixed_effects_model import Ar1EffectResult
+
+    def fake_fit_ar1_effect(frame, *args, **kwargs):
+        uids = frame["uid"].unique().tolist()
+        return Ar1EffectResult(
+            engine="stub",
+            ar1_coefficient=0.0,
+            used_random_slope=True,
+            fallback_reason=None,
+            n_observations=len(frame),
+            n_groups=len(uids),
+            params={"x_within": 0.0},
+            pvalues={"x_within": 1.0},
+            blups={uid: {"x_within": 0.0} for uid in uids},
+        )
+
+    monkeypatch.setattr(pe.r_bridge, "r_bridge_available", lambda: True)
+    monkeypatch.setattr(pe, "fit_ar1_effect", fake_fit_ar1_effect)
+    monkeypatch.setattr(pe, "_EVIDENCE_TABLE_CACHE", {})
+    return pe
+
+
+@requires_dataset
+def test_unlock_evidence_table_family_matches_expected_without_warning(monkeypatch):
+    """The unlock cohort is 216, which must match EXPECTED_FAMILY_SIZE's
+    `unlock_num_ep_0` entry — no family-size warning on this path."""
+    import warnings
+
+    pe = _stub_r_engine(monkeypatch)
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        table = pe._evidence_table("unlock_count")
+
+    assert table is not None
+    assert len(table) == 216
+    assert not [w for w in caught if "family size" in str(w.message)]
+
+
+@requires_dataset
+def test_unlock_evidence_table_warns_when_expected_size_changed(monkeypatch):
+    """Companion to the test above: with a different expected value the same
+    run must warn. Without this, "no warning" could just mean the check is
+    silently skipped on this path (e.g. feature_id not reaching it)."""
+    from backend.statistics import evidence
+
+    pe = _stub_r_engine(monkeypatch)
+    monkeypatch.setitem(evidence.EXPECTED_FAMILY_SIZE, "unlock_num_ep_0", 999)
+    with pytest.warns(UserWarning, match="family size"):
+        pe._evidence_table("unlock_count")
+
+
 @requires_dataset
 def test_unknown_participant_raises():
     with pytest.raises(UnknownParticipant):

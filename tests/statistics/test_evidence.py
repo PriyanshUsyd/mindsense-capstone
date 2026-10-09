@@ -5,6 +5,8 @@ port from analysis/evidence_model.py onto fit_ar1_effect's R-backed BLUPs.
 
 from __future__ import annotations
 
+import warnings
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -125,15 +127,54 @@ def test_reclassify_cohort_family_uses_bh_when_p_values_are_supplied():
 
 
 def test_reclassify_cohort_family_warns_on_family_size_mismatch():
-    """A family size other than EXPECTED_FAMILY_SIZE must warn (not raise —
-    a different cohort size can be legitimate) so drift is visibly worth a
-    second look instead of silently accepted."""
+    """A family size other than the feature's EXPECTED_FAMILY_SIZE entry must
+    warn (not raise — a different cohort size can be legitimate) so drift is
+    visibly worth a second look instead of silently accepted."""
     person_slopes = [
         PersonSlope(uid=f"p{i}", slope_i=-0.5, n_occasions=20) for i in range(3)
     ]
-    assert len(person_slopes) != EXPECTED_FAMILY_SIZE
+    assert len(person_slopes) != EXPECTED_FAMILY_SIZE["loc_dist_ep_0"]
     with pytest.warns(UserWarning, match="family size"):
+        reclassify_cohort_family(
+            person_slopes, outcome_sd=1.0, predictor_sd=1.0, feature_id="loc_dist_ep_0"
+        )
+
+
+def test_reclassify_cohort_family_does_not_warn_without_feature_id():
+    """No feature_id -> the family-size check is skipped silently."""
+    person_slopes = [
+        PersonSlope(uid=f"p{i}", slope_i=-0.5, n_occasions=20) for i in range(3)
+    ]
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
         reclassify_cohort_family(person_slopes, outcome_sd=1.0, predictor_sd=1.0)
+
+
+def test_reclassify_cohort_family_does_not_warn_for_uncalibrated_feature():
+    person_slopes = [
+        PersonSlope(uid=f"p{i}", slope_i=-0.5, n_occasions=20) for i in range(3)
+    ]
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        reclassify_cohort_family(
+            person_slopes, outcome_sd=1.0, predictor_sd=1.0, feature_id="not_a_feature"
+        )
+
+
+def test_reclassify_cohort_family_does_not_warn_when_size_matches():
+    """Matching entry -> silent; confirms the warning isn't unconditional for
+    a known feature. A size-matching dict entry is patched in for the 3-person
+    cohort."""
+    person_slopes = [
+        PersonSlope(uid=f"p{i}", slope_i=-0.5, n_occasions=20) for i in range(3)
+    ]
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setitem(EXPECTED_FAMILY_SIZE, "loc_dist_ep_0", 3)
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            reclassify_cohort_family(
+                person_slopes, outcome_sd=1.0, predictor_sd=1.0, feature_id="loc_dist_ep_0"
+            )
 
 
 def test_to_user_facing_evidence_collapses_four_to_two():
@@ -148,12 +189,13 @@ def test_to_user_facing_evidence_rejects_unrecognised_label():
         to_user_facing_evidence("extremely_strong")
 
 
-def test_expected_family_size_constant_reflects_real_gps_cohort():
-    """214, not CLAUDE.md's literal "213" — see EXPECTED_FAMILY_SIZE's
-    comment in evidence.py: 213 was the archived pipeline's lag-1/floor
-    interaction, which does not reproduce under the current, lag-1-free
-    primary spec. 214 is the real current GPS cohort size."""
-    assert EXPECTED_FAMILY_SIZE == 214
+def test_expected_family_size_reflects_real_cohorts():
+    """GPS is 214, not CLAUDE.md's literal "213" — see EXPECTED_FAMILY_SIZE's
+    comment in evidence.py: 213 was the archived pipeline's cohort size
+    (suspected, unverified, to come from its lag-1/floor interaction), which
+    is not reproduced under the current, lag-1-free primary spec. Unlock is
+    216. Both are current observed values, not fixed constants."""
+    assert EXPECTED_FAMILY_SIZE == {"loc_dist_ep_0": 214, "unlock_num_ep_0": 216}
 
 
 # --- reclassify_cohort_family SE passthrough / intersect_bootstrap_evidence -

@@ -235,7 +235,11 @@ def aggregated_key_dict(raw_keys: dict[str, object], repo_root: Path = REPO_ROOT
     keys["thresholds.classify_evidence_strength_sha256"] = hashlib.sha256(
         inspect.getsource(classify_evidence_strength).replace("\r\n", "\n").encode("utf-8")
     ).hexdigest()
-    keys["thresholds.expected_family_size"] = int(evidence.EXPECTED_FAMILY_SIZE)
+    # Per-feature since bf2fa82 (EXPECTED_FAMILY_SIZE became a dict keyed by
+    # feature name); fingerprint the whole mapping.
+    keys["thresholds.expected_family_size"] = {
+        name: int(size) for name, size in evidence.EXPECTED_FAMILY_SIZE.items()
+    }
     return keys
 
 

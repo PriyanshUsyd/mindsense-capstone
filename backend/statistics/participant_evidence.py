@@ -308,7 +308,10 @@ def _evidence_table(feature_id: str) -> pd.DataFrame | None:
     person_slopes = evidence_module.extract_person_slopes(ar1, frame)
     outcome_sd = float(frame["phq4_score"].std())
     predictor_sd = float(frame["x_within"].std())
-    table = evidence_module.reclassify_cohort_family(person_slopes, outcome_sd, predictor_sd)
+    # Statistics-side name (not the SLM-side feature_id) keys EXPECTED_FAMILY_SIZE.
+    table = evidence_module.reclassify_cohort_family(
+        person_slopes, outcome_sd, predictor_sd, feature_id=meta.spec.name
+    )
     table = table.set_index("uid")
     _EVIDENCE_TABLE_CACHE[feature_id] = table
     return table
