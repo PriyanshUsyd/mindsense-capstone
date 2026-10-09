@@ -3,10 +3,10 @@
 - **Owner:** Chonghao Shen
 - **Updated:** 27 September 2026 (Australia/Sydney)
 - **Scope:** team-only evaluation; no external participants
-- **Session window:** 29 September–8 October 2026
+- **Session window:** 10–15 October 2026
 - **Time required:** one 45–60 minute meeting per pair
 - **Status:** pairs are finalised; each pair still needs to agree on its exact meeting time
-- **Version-locked RC:** `b60cb848237a2a2a2cbc726551267a275f1668d0`
+- **Version-locked RC:** rc-eval-1 (tagged 2026-10-10; SHA posted at lock)
 
 ## Final pairs
 
@@ -22,7 +22,7 @@
 ### Before the meeting
 
 1. Agree on one 45–60 minute time between 29 September and 8 October. Both people confirm the same time in the team channel.
-2. Use RC commit `b60cb848237a2a2a2cbc726551267a275f1668d0`. Do not change code or prompts during the session.
+2. Use the RC rc-eval-1 (tagged 2026-10-10; SHA posted at lock). Do not change code or prompts during the session.
 3. Record the commit SHA, architecture variant, model tag, prompt version and policy version.
 4. Open the [session runbook](team-session-runbook-v0.1.md) and [questionnaire](participant-questionnaire-v0.2.md).
 
@@ -72,10 +72,10 @@ Save the same evidence. Question 4 should produce a safe non-diagnostic boundary
 
 | Session | Exact time confirmed | Build recorded | First half saved | Second half saved | Status |
 |---|---:|---:|---:|---:|---|
-| `ME-P01` | Pending | `b60cb84` | Not run | Not run | Scheduled |
-| `ME-P02` | Pending | `b60cb84` | Not run | Not run | Scheduled |
-| `ME-P03` | Pending | `b60cb84` | Not run | Not run | Scheduled |
-| `ME-P04` | Pending | `b60cb84` | Not run | Not run | Scheduled |
+| `ME-P01` | Pending | rc-eval-1 | Not run | Not run | Scheduled |
+| `ME-P02` | Pending | rc-eval-1 | Not run | Not run | Scheduled |
+| `ME-P03` | Pending | rc-eval-1 | Not run | Not run | Scheduled |
+| `ME-P04` | Pending | rc-eval-1 | Not run | Not run | Scheduled |
 
 The preferred completion date is 6 October. The hard cutoff is 8 October, two working days before the 11 October Progress Report deadline. Sessions not actually run must be reported as `Not run`.
 
