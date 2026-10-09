@@ -1,4 +1,4 @@
-# Week 8 Prompting Methodology Draft
+# Week 9 Prompting Methodology and Results
 
 - Owner: Richard Zhao, SLM Integration Lead
 - Created: 24 September 2026; updated: 9 October 2026
@@ -23,10 +23,19 @@ independent human acceptance is inferred from the companion or AI review.
 
 Team approval source: Priyansh's 8 October decision in the [release checklist at main b742ad8](https://github.com/PriyanshUsyd/mindsense-capstone/blob/b742ad8638f35dca2c67d13e152eb624c364c145/docs/release/release-candidate-checklist.md#decisions-priyansh) authorises Richard's single 24-prompt held-out run by 23 October.
 
-That records team authority only. The local user's explicit prohibition on
-reading, copying, hashing, running or modifying the held-out directory remains
-in force, including integrity checks and indirect test/CI access. No held-out
-hash or run was performed or claimed by this experiment.
+The 9 October publication clarification distinguishes automated engineering
+checks from a held-out model evaluation. The existing CI may read the sealed
+files to verify checksums, JSON structure and privacy. These checks do not ask a
+model to answer the questions, train or tune the system, or modify the sealed
+set. The release checklist already records integrity verification on 8 October.
+The earlier blanket ban on hashing and CI access is superseded for these checks.
+
+Do not inspect the question text or use it to choose prompts, examples or product
+changes. The authorised one-off model evaluation remains separate and has not
+been completed by this delivery. The public Z/F and four-mode experiments did
+not access the held-out set. A later read-only structural inspection on 9 October
+confirmed 24 entries and required fields without displaying question text, IDs,
+category values or note content; it did not hash, modify or evaluate the set.
 
 The experiment uses a separate benchmark prompt file and the client's existing
 prompt-injection interface. The product prompt, RAG default, final-model status,
@@ -76,8 +85,9 @@ change another factor and requires a separate design and safety review.
 
 The development cases remain public. New unit regressions for software bugs do
 not automatically become additions to the frozen adversarial evaluation set.
-Do not open, copy, hash, run, or change the sealed held-out prompts. The later
-Week 11 plan does not override the current explicit access prohibition.
+Keep the sealed questions out of development and do not modify the set. The
+permitted machine-only integrity/privacy checks are not a formal held-out model
+run and do not authorise using sealed questions for development or tuning.
 
 ## Measures and interpretation
 
@@ -218,13 +228,26 @@ provenance/status and records the actual loaded condition manifest. Imports
 and verification commands were inspected for indirect held-out access; those
 older entry points were not invoked or changed.
 
-No CES rows, held-out access, multi-turn execution, product prompt change or
-independent-human-rating substitution is included. The
+The experiment used no CES rows or held-out data and performed no multi-turn
+execution, product prompt change or independent-human-rating substitution. The
 [dedicated regressions](../../tests/slm/test_prompting_comparison.py) and existing
 prompt-loader tests passed 16 checks: condition injection, case separation,
 balanced order, retained malformed/offline/ungrounded failures, synthetic-only
 input, explicit provenance scope and overwrite protection. Ruff passed for
-the two new Python files. No broad suite, integrity check or CI ran.
+the two new Python files. No broad suite, integrity check or CI ran during that
+experiment. Subsequent publication validation is recorded separately below.
+
+### Publication validation
+
+The initial technical commit `eda2b6f` passed all four stages of the existing
+manual [sealed-excluded CI](https://github.com/PriyanshUsyd/mindsense-capstone/actions/runs/37926288038)
+on 9 October. That result excludes sealed integrity and sealed-text scanning;
+it is not a full-CI result or a model-evaluation score.
+
+The Week 9 Draft uses branch `Rz-week9`, the unchanged automatic CI workflow and
+no skip marker. Full CI may perform the machine-only checks described above;
+its actual result must be read from the PR checks, not inferred from the earlier
+restricted run. Human rubric acceptance and ME-P02 remain separate requirements.
 
 From the existing repository root, the verified limited test command is:
 
