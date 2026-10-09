@@ -51,7 +51,7 @@ What remains open on the statistics side is item 2 (the bootstrap SE is not in t
 - `backend/statistics/tier1_runner.py` runs cleaning → model frame → mixed-effects fit → AR(1) fit → per-person point estimates → classification, and stops there. `slope_se` / `slope_p` are `None`, so `reclassify_family213` labels **every** participant `insufficient` (→ `no_claim`). This is the intended fail-safe (module docstring of `evidence.py`), not a bug.
 - `backend/statistics/bootstrap.py` exists (parametric + cluster, B=500 each) and `evidence.build_person_slopes_from_bootstrap_se` / `intersect_bootstrap_evidence` can consume it, but `tier1_runner` does not call any of it. The docstring calls this "a deliberate extension point, not an oversight".
 - **The request path has the same gap.** `participant_evidence.build_evidence_packet` (the code `/respond` now calls, item 1) uses `extract_person_slopes` + `reclassify_family213` with `slope_se=None`, so `evidence_strength` resolves to `insufficient` (→ `no_claim`) for every participant regardless of their fitted slope. Its module docstring names this as the follow-up: wiring the real intersection result in "needs a precomputed/cached per-participant table".
-- The only real bootstrap run is the 2026-09-13 B=500 run on GPS distance: 23 of 214 participants `evidence_available` under the cross-method intersection (item 3, item 4). **That result is not reflected in any `/respond` response.** `unlock_num_ep_0` has no bootstrap SE at all (Week 5 §3.9: all 216 `insufficient`).
+- The only real bootstrap run is the 2026-09-13 B=500 run on GPS distance: 23 of 214 participants `evidence_available` under the cross-method intersection (item 3, item 4). **That result is not reflected in any `/respond` response.** `unlock_num_ep_0` has a B=500 cache as of 2026-10-10 (3 of 216 `evidence_available`, see Implementation status), but it is not read by `/respond` either.
 - Where a State C participant has no defensible per-person evidence, `participant_evidence.py` demotes the packet to `PARTIAL_DESCRIPTIVE_ONLY` (no baseline value shown), because `response_health.py` rejects `ELIGIBLE` without real `StatisticalEvidence` (`eligible_evidence_missing`). Under the current gap this applies to every State C participant. The code comments flag it for SLM review.
 
 **Why.** `nlme` has no per-person conditional-variance extraction and `simulate.lme` refuses models with a `corStruct`, so the SE had to come from bootstrapping. That costs about 30–40 minutes per feature per method on the real dataset (`tier1_runner` docstring), which is too expensive to run inside a routine pipeline invocation or lazily inside a request.
@@ -117,7 +117,23 @@ Decisions a–d cover the runner. Reading the cache from `participant_evidence` 
 
 **Full B=500 reproducibility check (2026-10-09, GPS `loc_dist_ep_0`):** the real B=500 rebuild was run on committed code (commit `2e46bd7`, R 4.6.1, `nlme` 3.1.169, `master_seed=20260913`; output in `outputs/bootstrap_cache/loc_dist_ep_0/`) and compared read-only with the 2026-09-13 archive. `raw_checkpoint.jsonl` has 1000 records (usable 1000, error 0), joining the archive one-to-one on `(method, iteration_index)`. **All 1000 records are bit-identical** on seed, `usable`/`error`/`used_random_slope`/`fallback_reason`, cluster `uid_map` and `selection_counts`, and `ar1_phi`, β and every BLUP (max abs diff 0.0; no iteration or method deviates). Per-person SE: max abs diff 5e-11 (max relative 1.1e-9 parametric, 6.1e-9 cluster), Spearman 1.0 for both methods; the difference comes from the archive CSVs being rounded to 10 decimal places, not from the fit. `evidence_available` is 23 of 214 under both, with an identical set (symmetric difference 0; `label_parametric` and `label_cluster` also identical). So the 2026-09-13 result is fully reproduced by the committed code, which closes the "bit-identical not verified" caveat; the archive README is updated accordingly.
 
-**Not done / still open:** `unlock_num_ep_0` as a separate B=500 run, and reading the cache from `/respond` (above). The comparison above covers GPS only.
+**`unlock_num_ep_0` B=500 run (completed 2026-10-10).** Run on committed code (HEAD `39b3804`, R 4.6.1, `nlme` 3.1.169, `master_seed=20260913`, no transform, output in `outputs/bootstrap_cache/unlock_num_ep_0/`).
+- **Run health.** `raw_checkpoint.jsonl` has 1000 records (parametric 500, cluster 500): all usable, 0 errors, 0 fallbacks to intercept-only (`used_random_slope` true in every record).
+- **Result.** Family 216. `evidence_available` (cross-method intersection) is **3 of 216** (small-cell note below); 213 `no_claim`. Parametric alone: 3 moderate; cluster alone: 39 moderate. Agreement 180/216 = **83.3%** (177 both `insufficient`, 3 both `moderate`). The 36 disagreements are **all cluster-only** (parametric-only: 0), the same direction as GPS. Holm (sensitivity): parametric 2, cluster 39.
+- **Comparison with GPS.**
+
+| Quantity | `unlock_num_ep_0` | GPS `loc_dist_ep_0` |
+|---|---|---|
+| SE ratio (parametric ÷ cluster), mean | 10.14 (median 6.83; range 1.06–98.9; parametric larger for 216/216) | 7.85 |
+| Spearman ρ(parametric SE, cluster SE) | −0.612 | −0.397 |
+| Spearman ρ(parametric SE, `n_occasions`) | +0.54 (Pearson +0.59) | +0.81 |
+| Spearman ρ(cluster SE, `n_occasions`) | −0.29 (Pearson −0.20) | −0.33 |
+
+  The same structure appears in both Tier-1 features (cluster-only asymmetry, parametric SE far larger, negative correlation between the two methods' SEs, opposite-signed dependence on occasion count), so it is a property of the two bootstrap methods, not a coincidence specific to GPS. Magnitudes differ: the negative cross-method correlation is stronger for unlock, and the parametric-SE/`n_occasions` correlation is weaker.
+- **Small-cell note.** 3/216 is below 5. In any published aggregate it is reported as "fewer than 5" (`preregistration.md` §5.3); the exact count above is for this internal document only.
+- **Family-size warning.** The run log was not kept, so whether the family-size warning fired could not be confirmed from the outputs. The family is 216 throughout (216 rows in the intersection table; 216 per method in the SE table), matching `EXPECTED_FAMILY_SIZE["unlock_num_ep_0"]` = 216, so the warning would not be expected.
+
+**Still open:** only reading the cache from `/respond` (above). The `unlock_num_ep_0` run is done.
 
 ---
 
@@ -134,7 +150,7 @@ Decisions a–d cover the runner. Reading the cache from `participant_evidence` 
 
 - **Occasions / participants:** 28,337 occasions, 214 participants. `n_occasions` in the archived output sums to 28,337, and rebuilding the GPS model frame with the current code matches all 214 participants' occasion counts exactly.
 - **Fallback to intercept-only:** 0/500 for both methods (parametric and cluster), all 1000 records usable, 0 errors.
-- **Scope:** GPS distance only. `unlock_num_ep_0` has no bootstrap SE (item 2).
+- **Scope:** GPS distance only (the `unlock_num_ep_0` run of 2026-10-10 is recorded under item 2).
 - **Documents:** agree with `Week5_Statistical_Analysis_Deliverable.md` §3.3 and `preregistration.md` §1.1, §1.2, §1.4.1. Commit `4af4d7a` (2026-09-15, "AR(1) as primary") changed only these two documents, no code, so the primary switch did not change the fitted model.
 
 **Why the dates look wrong.** The reindex fix is in commit `7509083`, dated 2026-09-14, but it was already in the working tree on the morning of 2026-09-13, before B=500 launched at 11:48. Evidence: `compare_before_after.py` (2026-09-13 11:19) already called the then-current working tree "AFTER the fix"; the 28,337 count above; the exact per-participant match. `bootstrap.py` was likewise first committed later (`a0c2780`, 2026-09-14) than the run that used it. The commit dates therefore do not reflect what code the run used.
