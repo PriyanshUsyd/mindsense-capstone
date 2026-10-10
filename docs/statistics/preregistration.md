@@ -501,6 +501,21 @@ This was already implemented on `main` before this entry; this entry is the
 missing pre-registration sign-off for that behaviour, not a request to build
 it.
 
+**Amendment — the 14-day window itself `[POST-HOC, 2026-10-10]`.** Requests
+that name the pre-registered 14-day window itself ("past two weeks", "fourteen
+days", "fortnight", "past couple of weeks") are answered on that window rather
+than refused, as of request policy 0.3.2 (fde16f0, 2026-10-10, following the
+ME-P01 session). This is consistent with the rationale above: the refusal
+exists because no statistic is defined for other windows, and the 14-day
+statistic is the one that is. Other windows — three days, last month,
+yesterday, past week — are still refused.
+
+Note that the comparison window is [-14, -1], ending the day before the
+assessment. A participant asking about "the past two weeks" on a given day is
+answered on the fourteen days ending the day before. This is close enough to be
+a fair answer but is not identical to the calendar fortnight they may have in
+mind.
+
 **History.** The 2026-09-20 rostered-pair pilot's Q2 ("What's changed in my
 behavior over the last 3 days?") found the opposite of this decision: the
 system silently returned the fixed 14-day window's result without confirming
@@ -865,6 +880,27 @@ outputs that stay inside the repository (`analysis/output/`, `outputs/`) are
 exempt, but the rule applies as soon as a table is transcribed from them into
 anything published.
 
+**Evaluation questionnaire ratings: why the rule is not applied, and what is published instead.**
+Evaluation questionnaire ratings come from team members acting
+as evaluators — participants in the evaluation, though their
+ratings are opinions of the system rather than health or
+behavioural data. The under-5 cell rule is not applied to them,
+since every cell is small by design (n ≈ 8) and suppression
+would blank the table. Instead, only cross-evaluator aggregates
+(per-item n, median, range) and critical failures by question
+are published; per-evaluator rows and the mapping from
+evaluator codes to people are not.
+
+Confirmed with the Privacy & Security Lead on 2026-10-10:
+ratings are published as per-item n, median and range across all
+evaluators, with no per-score counts. Items with fewer than five
+applicable ratings are marked as insufficient rather than summarised.
+Critical failures are reported by question and count, not by session —
+the evaluation roster links sessions to named evaluators, so a session
+identifier would identify the rater. Session-level detail, individual
+ratings and the evaluator-code mapping are kept only in restricted team
+records.
+
 ## 6. Exploratory family (BH-FDR, q=0.05)
 
 Other outcomes (PHQ-4 subscales, PAM, stress, sse3), lag 1 as a standalone
@@ -937,6 +973,21 @@ Resolved Week 4 open items (decisions, not post-hoc changes):
     repository). Not a Week 4 open item; added at the Privacy & Security
     Lead's request. In-repository outputs are exempt, but the rule applies when
     a table is transcribed from them.
+11. **Evaluation questionnaire ratings: no under-5 cell suppression; instead
+    cross-evaluator aggregates only, "insufficient" below five applicable
+    ratings, and critical failures by question, not by session** (section
+    5.3). Added following the Privacy & Security Lead's review (confirmed
+    2026-10-10) of `scripts/summarize_session_responses.py`: the roster
+    links sessions to named evaluators, so session IDs are not published.
+    Not a Week 4 open item; does not touch the Tier-1 analysis.
+12. **Requests naming the 14-day window itself are answered, not refused**
+    (section 3.1 amendment, 2026-10-10) — request policy 0.3.2 (fde16f0)
+    stops refusing "past two weeks" / "fourteen days" / "fortnight" / "past
+    couple of weeks". The answer is on `[-14, -1]`, which ends the day before
+    the assessment and so is not identical to the calendar fortnight the
+    participant may mean. Other windows (three days, last month, yesterday,
+    past week) are still refused. Not a Week 4 open item; follows the ME-P01
+    session.
 
 ## 8. Reference implementation
 
