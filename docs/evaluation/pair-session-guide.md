@@ -154,9 +154,14 @@ Test-Path .\dataset\Demographics\demographics.csv
 - A `FileNotFoundError` means the data is not set up. Follow the provisioning doc.
 - **Never** commit anything under `dataset/`.
 
-**Send to Honghao:** the three True/False results, the two numbers above, the OS, and the date.
-- Honghao commits the per-machine result. The release checklist says the preflight is "Deferred — run on each evaluation machine before its first session".
-- Do not paste any other part of the dataset.
+**Record the result (Decided by Priyansh, 2026-10-10).** Paste the **whole output** of the commands above into `docs/evaluation/evidence/main-evaluation/ME-P0x/notes.md`. That is the session-level file, next to the `Q1`–`Q4` folders. Include:
+- the three True/False lines;
+- the full `verify_ces.py` JSON block;
+- the laptop OS and the date.
+
+This file is committed with the session evidence (3.3), and it records the per-machine preflight that the release checklist lists as "Deferred — run on each evaluation machine before its first session".
+
+Paste only this command output. Never paste rows from the dataset files themselves.
 
 ### 1.5 Start the backend and frontend
 
@@ -267,15 +272,36 @@ Save these into `docs/evaluation/evidence/main-evaluation/ME-P0x/Qy/` on the lap
 |---|---|---|
 | `ui.png` | screenshot showing the exact question **and** the complete visible response | **No. Stays on the laptop** |
 | `response.json` | the `/respond` response, copied **without any change**. Get it from the browser DevTools → Network tab → the `respond` request → Response | **No. Stays on the laptop** |
-| `notes.md` | see the list below | **Yes** |
+| `notes.md` | the template below | **Yes** |
 
-`notes.md` contains:
-- date and time;
-- operator and evaluator **codes** (not names);
-- any failure or retry;
-- anything not in the JSON;
-- the copied values listed below;
-- both people's answers to the open questions (2.4).
+**`notes.md` template (Decided by Priyansh, 2026-10-10).**
+After each question, paste **both** the question text and the **full answer exactly as shown in the chat** into that question's `notes.md`, using this template:
+
+```text
+Session: ME-P0x
+Question number: Qy
+Typed by: E1 / E2
+Time:
+response_mode:
+rejection_reason:
+model_tag:
+policy_version:
+
+Question (pasted exactly as typed):
+<paste the question here>
+
+Answer (pasted exactly as shown):
+<paste the full answer here>
+
+Anything odd:
+Critical failure? Yes / No — if yes, what:
+```
+
+- Copy-paste the answer. Do not retype, shorten or fix it.
+- Below the template, also add:
+  - `Evidence-packet ID: N/A — not returned by /respond` (see below);
+  - both people's answers to the open questions O1–O3 (2.4), each labelled with the evaluator code (`E1:` / `E2:`).
+- Use evaluator codes only, never names.
 
 **What is committed (Decided by Priyansh, 2026-10-10):**
 - Commit **only** the `session-responses.csv` rows and the four `notes.md` files.
@@ -283,7 +309,7 @@ Save these into `docs/evaluation/evidence/main-evaluation/ME-P0x/Qy/` on the lap
 - This resolves the conflict between the evidence README and Sheng's [UI support log](../ui/week9-evaluation-ui-issues.md). Sheng's log says to "Keep individual ratings, session codes, screenshots, and full `/respond` request or response JSON local".
 - Keep the laptop copies until Chonghao says they are no longer needed.
 
-Because the JSON is not committed, copy these values from `response.json` into `notes.md` and the CSV: `response_mode`, `rejection_reason`, `model_tag`, `request_policy_version`.
+Because the JSON is not committed, copy these values from `response.json` into the `notes.md` template and the CSV: `response_mode`, `rejection_reason`, `model_tag`, `request_policy_version` (written as `policy_version`).
 - The possible `response_mode` values are `normal`, `insufficient_data`, `uncertainty`, `refusal`, `generic_fallback` and `crisis_aware_fallback`.
 
 The questionnaire also asks for an "evidence-packet identifier/hash". Write **`N/A — not returned by /respond`** (Decided by Priyansh, 2026-10-10).
@@ -421,7 +447,7 @@ ME-P01,Q2,ME-P01-E2,uncertainty,UC1=4;UC2=N/A,No,none,UC2 not applicable because
 git switch main
 git pull
 git switch -c eval/ME-P0x
-git add docs/evaluation/evidence/main-evaluation/ME-P0x/Q1/notes.md docs/evaluation/evidence/main-evaluation/ME-P0x/Q2/notes.md docs/evaluation/evidence/main-evaluation/ME-P0x/Q3/notes.md docs/evaluation/evidence/main-evaluation/ME-P0x/Q4/notes.md docs/evaluation/results/main-evaluation/session-responses.csv
+git add docs/evaluation/evidence/main-evaluation/ME-P0x/notes.md docs/evaluation/evidence/main-evaluation/ME-P0x/Q1/notes.md docs/evaluation/evidence/main-evaluation/ME-P0x/Q2/notes.md docs/evaluation/evidence/main-evaluation/ME-P0x/Q3/notes.md docs/evaluation/evidence/main-evaluation/ME-P0x/Q4/notes.md docs/evaluation/results/main-evaluation/session-responses.csv
 git status
 git commit -m "ME-P0x session evidence"
 git push -u origin eval/ME-P0x
@@ -429,7 +455,7 @@ git push -u origin eval/ME-P0x
 
 - Open a pull request titled **`ME-P0x session evidence`**.
 - Docs and evidence only: **never touch `backend/` or `frontend/`**. The release lock forbids those changes until all four sessions finish.
-- Before `git commit`, check `git status`. Only the four `notes.md` files and the CSV may be staged.
+- Before `git commit`, check `git status`. Only the session `notes.md`, the four question `notes.md` files and the CSV may be staged.
 - **Never add `ui.png` or `response.json`**, and do not use `git add .`.
 - If another pair's PR merges first and the CSV conflicts, keep both sets of rows.
 
@@ -439,15 +465,14 @@ git push -u origin eval/ME-P0x
 
 Replace `x` with your session number.
 
-- [ ] Session time confirmed by both people in the team channel
-- [ ] `git rev-parse HEAD` printed `687a50ea233ba7e3653b15d79ed84d5da7db6a91`
-- [ ] Preflight results sent to Honghao
 **Committed (in the PR):**
+- [ ] `docs/evaluation/evidence/main-evaluation/ME-P0x/notes.md` containing the whole data-check output from 1.4 (Decided by Priyansh, 2026-10-10)
 - [ ] `docs/evaluation/evidence/main-evaluation/ME-P0x/Q1/notes.md`
 - [ ] `docs/evaluation/evidence/main-evaluation/ME-P0x/Q2/notes.md`
 - [ ] `docs/evaluation/evidence/main-evaluation/ME-P0x/Q3/notes.md`
 - [ ] `docs/evaluation/evidence/main-evaluation/ME-P0x/Q4/notes.md`
-- [ ] Each `notes.md` has: time, codes, copied JSON values, evidence-packet ID `N/A — not returned by /respond`, any failure, and O1–O3 answers from both people
+- [ ] Each `notes.md` contains the pasted question and full answer (Decided by Priyansh, 2026-10-10)
+- [ ] Each `notes.md` follows the template: time, codes, copied JSON values, evidence-packet ID `N/A — not returned by /respond`, anything odd, critical failure Yes/No, and O1–O3 answers from both people
 - [ ] `session-responses.csv` has 9 category rows × 4 questions × 2 people (72 rows)
 - [ ] `session-responses.csv` has 2 `SESSION` / `usability` rows (E1 and E2) with commit SHA, date, start/end time and laptop OS
 - [ ] Every row has `critical_failure` filled in, and every N/A has a `na_reason`
@@ -458,7 +483,6 @@ Replace `x` with your session number.
 **Process:**
 - [ ] Session time confirmed by both people in the team channel
 - [ ] `git rev-parse HEAD` printed `687a50ea233ba7e3653b15d79ed84d5da7db6a91`
-- [ ] Preflight results sent to Honghao
 - [ ] No names, participant data, coordinates or CES rows in any committed file
 - [ ] PR `ME-P0x session evidence` opened from branch `eval/ME-P0x`, touching no `backend/` or `frontend/` file and containing no `ui.png` or `response.json`
 - [ ] Session folder path and one-sentence issue summary sent to Chonghao
