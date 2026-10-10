@@ -242,10 +242,14 @@ export function UncertaintyState({ message, question }: ResponseProps) {
   )
 }
 
-export function RefusalState({ message, question }: ResponseProps) {
+export function RefusalState({
+  label = 'Outside MindSense’s scope',
+  message,
+  question,
+}: ResponseProps & { label?: string }) {
   return (
     <StateCard
-      label="Outside MindSense’s scope"
+      label={label}
       message={message}
       mode="refusal"
       question={question}

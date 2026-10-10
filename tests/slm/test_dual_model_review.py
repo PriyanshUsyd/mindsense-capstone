@@ -39,6 +39,26 @@ def service(offline=False):
     return result
 
 
+def _sources_match_frozen_baseline() -> bool:
+    protocol = json.loads(companion.allowed_path(companion.PROTOCOL).read_text())
+    try:
+        companion.validate_baseline(protocol, companion.source_fingerprints())
+    except ValueError:
+        return False
+    return True
+
+
+# The 2026-10-09 companion is pinned to the rc-eval-1 sources (request policy
+# 0.3.1). rc-eval-2 changed request_policy.py/service.py (ME-P01 fixes), so a
+# rerun is correctly refused as source drift; that refusal is still tested by
+# test_source_drift_rejected_before_any_generation. These end-to-end replays
+# run again on a checkout of the pinned sources (e.g. tag rc-eval-1).
+requires_frozen_sources = pytest.mark.skipif(
+    not _sources_match_frozen_baseline(),
+    reason="Week 9 companion is pinned to rc-eval-1 sources; current sources drifted (policy 0.3.2)",
+)
+
+
 def test_provenance_git_status_is_always_path_scoped(monkeypatch):
     commands = []
 
@@ -71,6 +91,7 @@ def test_source_drift_rejected_before_any_generation():
         companion.validate_baseline(protocol, hashes)
 
 
+@requires_frozen_sources
 def test_qwen_companion_retains_all_cases_contexts_and_empty_human_ratings():
     slm = service()
     transport = slm.client.transport
@@ -98,6 +119,7 @@ def test_qwen_companion_retains_all_cases_contexts_and_empty_human_ratings():
         assert summary["model_invocations"] == 9
 
 
+@requires_frozen_sources
 def test_failures_are_retained_without_selective_retry():
     slm = service(offline=True)
     transport = slm.client.transport
@@ -119,6 +141,7 @@ def test_existing_output_is_never_overwritten(tmp_path, monkeypatch):
     assert output.read_text(encoding="utf-8") == "keep"
 
 
+@requires_frozen_sources
 @pytest.mark.parametrize("line_ending", [b"\n", b"\r\n"])
 def test_lf_and_crlf_checkouts_accept_same_baseline_content(monkeypatch, line_ending):
     # Model Git conversion in memory; never rewrite source/evidence on disk.

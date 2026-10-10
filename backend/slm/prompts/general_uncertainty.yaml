@@ -1,0 +1,31 @@
+# Deterministic answer to a feature-free question about the evidence's
+# limits (request policy 0.3.2, ME-P01 F3). No participant data is loaded and
+# no model is called for this route.
+
+template_id: general_uncertainty
+template_version: "1.0.0"
+response_mode: uncertainty
+allowed_claim_ids:
+  - uncertainty_disclosure
+  - not_enough_data
+  - non_diagnostic_boundary
+prohibited_claim_ids:
+  - diagnosis
+  - causal_explanation
+  - treatment_or_crisis_advice
+  - risk_prediction
+
+text: >
+  A few limits apply to anything MindSense tells you. It looks at a short
+  observation window of about two weeks. Phone sensors can miss days or
+  record noisy values, so some days may be missing or less reliable. A
+  comparison with your own longer history may not be available yet. A
+  pattern in your data is an observation, not an explanation of what caused
+  it, and none of this is a diagnosis. Ask about GPS distance or phone unlock
+  count to see the limits of that feature's evidence.
+
+review_note: >
+  Added 2026-10-10 after ME-P01 on rc-eval-1, where "What uncertainty should
+  I keep in mind?" received the feature-clarification template. Wording
+  approved by the Integration/QA lead for rc-eval-2; retain normal Evaluation
+  review.
