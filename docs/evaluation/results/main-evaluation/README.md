@@ -39,3 +39,12 @@ ME-P01,Q1,ME-P01-E1,accuracy_faithfulness,A1=4;A2=5;A3=No,No,none,,uncertainty,,
 The raw item values remain in the CSV. Moe's summary reports the valid
 denominator, median and range per item or dimension, excludes `N/A` from the
 denominator, and reports critical failures separately.
+
+## Summary script build check
+
+`scripts/summarize_session_responses.py` requires `--expected-commit <full SHA>`
+(rc-eval-2: `400883667657c8c70c025de4e1dbbc22cda3b074`). If any row's
+`commit_sha` is empty or differs, it prints the counts by kind and stops; it
+never excludes rows. Fix the CSV. With `--internal`, the CSV line numbers
+are also printed to stderr (no session IDs in either mode). The public report
+states `Build: rc-eval-2 (<SHA>)` right after the note.
