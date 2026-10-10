@@ -58,6 +58,13 @@ PROHIBITED_CLAIM_IDS = {
         "capability.yaml",
         "diagnosis_boundary.yaml",
         "general_uncertainty.yaml",
+        # Policy 0.3.3 deterministic templates (50-question dev test).
+        "treatment_boundary.yaml",
+        "clinical_score_boundary.yaml",
+        "app_info_data_use.yaml",
+        "app_info_data_storage.yaml",
+        "app_info_uncertain_evidence.yaml",
+        "app_info_baseline_unavailable.yaml",
     ]
 )
 def template(request):

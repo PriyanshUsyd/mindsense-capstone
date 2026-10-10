@@ -1,0 +1,25 @@
+# Deterministic boundary for clinical or mental-health score requests
+# (request policy 0.3.3, 50-question dev test Q35/Q39). Previously "What is
+# my PHQ-4 score?" received the feature-clarification template.
+
+template_id: clinical_score_boundary
+template_version: "1.0.0"
+response_mode: refusal
+allowed_claim_ids:
+  - non_diagnostic_boundary
+prohibited_claim_ids:
+  - diagnosis
+  - causal_explanation
+  - treatment_or_crisis_advice
+  - risk_prediction
+
+text: >
+  This app doesn't provide clinical scores, such as PHQ-4 results, or any
+  mental-health score. It only describes two tracked phone patterns, GPS
+  distance and phone unlock count, compared with your own history. If you'd
+  like to talk about how you've been feeling, a GP or a mental-health
+  professional can help.
+
+review_note: >
+  Added 2026-10-10 after the 50-question dev test on rc-eval-2. Requires
+  normal Integration/QA and Evaluation review.
