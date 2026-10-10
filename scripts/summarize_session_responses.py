@@ -44,6 +44,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import re
 import statistics
 import sys
 from collections import Counter, defaultdict
@@ -63,6 +64,9 @@ PROTECTED_OUTPUTS = (DEFAULT_INPUT, RESULTS_DIR / "pass-threshold-summary.md")
 
 MIN_VALID_N = 5
 INSUFFICIENT = f"insufficient ratings (n < {MIN_VALID_N})"
+
+BUILD_LABEL = "rc-eval-2"
+SHA_RE = re.compile(r"[0-9a-f]{40}")
 
 PUBLIC_NOTE = (
     "These are descriptive ratings from team members acting as evaluators, not results from "
@@ -185,6 +189,27 @@ def load_rows(path: Path) -> list[dict[str, str]]:
             for row in reader
             if any((v or "").strip() for v in row.values())
         ]
+
+
+def check_build(path: Path, expected: str) -> tuple[Counter, dict[str, list[int]]]:
+    """Compare every data row's ``commit_sha`` with ``expected``.
+
+    Returns (counts by kind, CSV line numbers by kind); kinds are "mismatch" and
+    "empty". Rows are never dropped: the caller stops on any finding.
+    """
+    counts: Counter = Counter()
+    lines: dict[str, list[int]] = {"mismatch": [], "empty": []}
+    with open(path, newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            if not any((v or "").strip() for v in row.values() if not isinstance(v, list)):
+                continue
+            sha = (row.get("commit_sha") or "").strip()
+            kind = "empty" if not sha else ("mismatch" if sha != expected else None)
+            if kind:
+                counts[kind] += 1
+                lines[kind].append(reader.line_num)
+    return counts, lines
 
 
 # ---------------------------------------------------------------------------
@@ -465,7 +490,8 @@ def _dimension_cells(likert: list[str], stats_by_item: dict[str, ItemStats]):
     return n_cell, med_cell, range_cell
 
 
-def build_report(rows: list[dict[str, str]], unit: str, split_threshold: int = 2, *, internal: bool = False) -> str:
+def build_report(rows: list[dict[str, str]], unit: str, split_threshold: int = 2, *, internal: bool = False,
+                 expected_commit: str | None = None, build_label: str = BUILD_LABEL) -> str:
     """Public report; with ``internal=True`` an appendix with session IDs is added."""
     warnings = Warnings()
     raw_answers = build_answers(rows, warnings)
@@ -484,6 +510,7 @@ def build_report(rows: list[dict[str, str]], unit: str, split_threshold: int = 2
         "",
         PUBLIC_NOTE,
         "",
+        *([f"Build: {build_label} ({expected_commit})", ""] if expected_commit else []),
         f"- **Sessions in data:** {n_sessions}",
         f"- **Aggregation unit:** `{unit}` — {unit_desc}",
         "- **N/A** is excluded from every denominator and counted separately. No significance tests; "
@@ -765,6 +792,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--unit", choices=("evaluator", "session"), default="evaluator", help="aggregation unit")
     ap.add_argument("--split-threshold", type=int, default=2, help="Likert points apart that count as a split")
     ap.add_argument("--output", type=Path, help="write the public markdown here instead of stdout")
+    ap.add_argument("--expected-commit", required=True,
+                    help="full 40-character SHA every commit_sha must equal (the evaluated build)")
+    ap.add_argument("--build-label", default=BUILD_LABEL, help="name printed with the SHA in the Build line")
     ap.add_argument("--internal", action="store_true",
                     help="session-bearing report to outputs/evaluation_summary/ only (owner-only; never stdout)")
     args = ap.parse_args(argv)
@@ -777,13 +807,29 @@ def main(argv: list[str] | None = None) -> int:
         if _inside(args.output, INTERNAL_DIR):
             ap.error("the public output must not be written into the internal output directory")
 
+    expected = args.expected_commit.strip().lower()
+    if not SHA_RE.fullmatch(expected):
+        ap.error("--expected-commit must be the full 40-character hexadecimal SHA")
+
+    counts, bad_lines = check_build(args.input, expected)
+    if counts:
+        print(f"STOPPED: commit_sha does not match --expected-commit {expected} "
+              f"({counts['mismatch']} mismatching row(s), {counts['empty']} empty row(s)). "
+              "Nothing was excluded or summarised; correct the CSV.", file=sys.stderr)
+        if args.internal:
+            for kind in ("mismatch", "empty"):
+                if bad_lines[kind]:
+                    print(f"  {kind}: CSV line(s) {', '.join(map(str, bad_lines[kind]))}", file=sys.stderr)
+        return 2
+
     rows = load_rows(args.input)
+    kw = dict(expected_commit=expected, build_label=args.build_label)
     if args.internal:
-        target = write_internal(build_report(rows, args.unit, args.split_threshold, internal=True))
+        target = write_internal(build_report(rows, args.unit, args.split_threshold, internal=True, **kw))
         print(f"internal summary written to {target} (owner-only)", file=sys.stderr)
         return 0
 
-    report = build_report(rows, args.unit, args.split_threshold)
+    report = build_report(rows, args.unit, args.split_threshold, **kw)
     if args.output is None:
         sys.stdout.reconfigure(encoding="utf-8")
         print(report)
