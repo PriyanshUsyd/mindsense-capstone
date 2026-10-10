@@ -42,8 +42,9 @@ def _forbid_data_load(monkeypatch):
     monkeypatch.setattr("backend.api.app.select_local_demo_participant", forbidden)
 
 
-def test_policy_version_is_bumped():
-    assert REQUEST_POLICY_VERSION == "0.3.2"
+def test_policy_version_is_current():
+    # 0.3.3 (50-question dev test) supersedes 0.3.2; see test_dev_50q.py.
+    assert REQUEST_POLICY_VERSION == "0.3.3"
 
 
 # --- F1: capability question ---------------------------------------------
@@ -202,7 +203,8 @@ def test_f4_diagnosis_question_gets_specific_boundary(question, eligible_packet)
         assert response.response_mode == ResponseMode.REFUSAL
         assert response.model_invoked is False
         assert response.fallback_prompt_sha256 == service.diagnosis_boundary.sha256
-        assert "can't tell whether you have depression" in response.text
+        # diagnosis_boundary 1.1.0 (policy 0.3.3) is condition-neutral.
+        assert "can't tell whether you have any mental-health condition" in response.text
         assert "GP or a mental-health professional" in response.text
         assert "reach out" in response.text
 
@@ -216,10 +218,11 @@ def test_f4_crisis_language_still_takes_precedence_over_diagnosis():
 
 
 def test_other_refusals_keep_the_generic_text():
+    # "What medication should I take?" moved to treatment_boundary.yaml in
+    # policy 0.3.3 (dev Q32); see test_dev_50q.py.
     service = SLMService(MustNotRun())
     for question in (
         "What is the capital of France?",
-        "What medication should I take?",
         "Did my phone use cause my low mood?",
     ):
         response = service.preflight_response(question, require_feature=True)

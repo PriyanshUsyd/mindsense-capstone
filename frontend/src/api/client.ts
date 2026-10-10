@@ -39,6 +39,8 @@ export interface SafeSLMResponse {
     | 'prompt_injection'
     | 'sensitive_data_request'
     | 'capability_question'
+    | 'clinical_score_request'
+    | 'app_information'
   request_policy_version: string
   model_invoked: boolean
 }

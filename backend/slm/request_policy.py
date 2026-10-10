@@ -19,7 +19,7 @@ from enum import Enum
 
 from pydantic import BaseModel, ConfigDict
 
-REQUEST_POLICY_VERSION = "0.3.2"
+REQUEST_POLICY_VERSION = "0.3.3"
 
 _logger = logging.getLogger(__name__)
 
@@ -41,6 +41,8 @@ class RequestCategory(str, Enum):
     PROMPT_INJECTION = "prompt_injection"
     SENSITIVE_DATA_REQUEST = "sensitive_data_request"
     CAPABILITY_QUESTION = "capability_question"
+    CLINICAL_SCORE_REQUEST = "clinical_score_request"
+    APP_INFORMATION = "app_information"
 
 
 class RequestPolicyDecision(BaseModel):
@@ -57,6 +59,38 @@ _CRISIS_PATTERNS = (
     re.compile(r"\b(?:suicide|suicidal|self[- ]harm)\b", re.IGNORECASE),
     re.compile(r"\b(?:end|take) my (?:own )?life\b", re.IGNORECASE),
     re.compile(r"\b(?:do not|don't|dont) want to (?:live|be alive)\b", re.IGNORECASE),
+    # Policy 0.3.3 (50-question dev test Q45): hopelessness, "no point",
+    # giving up, not wanting to be here and "can't go on". Broad on purpose:
+    # a false positive shows the crisis message, which is the safety default.
+    re.compile(r"\bhopeless(?:ness|ly)?\b|\bworthless\b", re.IGNORECASE),
+    re.compile(
+        r"\b(?:do not|don['’]?t|dont|can['’]?t|cannot|no longer) see (?:the |any )?point\b"
+        r"|\bno (?:point|reason) (?:in |to )?(?:living|life|going on|carrying on|"
+        r"trying|anything|being here|any ?more)\b"
+        r"|\bwhat['’]?s the point (?:of|in) (?:living|life|going on|anything|trying|"
+        r"it all|being here)\b"
+        r"|\bpoint (?:in )?(?:living|going on) any ?more\b"
+        r"|\b(?:no reason to live|nothing to live for)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\bgiv(?:e|ing) up on (?:life|living|everything|myself)\b"
+        r"|\b(?:i['’]?m|i am|i['’]?ve|i have) (?:just |completely )?(?:given|giving) up\b"
+        r"|\bwant to give up\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\b(?:do not|don['’]?t|dont|no longer) want to be (?:here|around|alive)\b"
+        r"|\bwish i (?:was|were)(?:n['’]?t| not) (?:here|alive|around|born)\b"
+        r"|\bwish i (?:was|were) dead\b|\bwant to die\b|\bbetter off (?:dead|without me)\b"
+        r"|\b(?:end|ending) it all\b|\bdisappear forever\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\b(?:can['’]?t|cannot|can not) (?:go on|keep going|carry on|cope any ?more|"
+        r"take (?:it|this) any ?more|take much more)\b",
+        re.IGNORECASE,
+    ),
 )
 
 _PROHIBITED_PATTERNS: tuple[
@@ -67,11 +101,11 @@ _PROHIBITED_PATTERNS: tuple[
         "prompt_injection_detected",
         (
             re.compile(
-                r"\bignore (?:all |the )?(?:previous|prior) instructions\b",
+                r"\bignore (?:all |the |your |any )?(?:previous|prior) instructions\b",
                 re.IGNORECASE,
             ),
             re.compile(
-                r"\b(?:reveal|show|print) (?:the )?(?:system|developer) prompt\b",
+                r"\b(?:reveal|show|print) (?:me )?(?:the |your )?(?:system|developer) prompt\b",
                 re.IGNORECASE,
             ),
             re.compile(
@@ -106,6 +140,34 @@ _PROHIBITED_PATTERNS: tuple[
                 re.IGNORECASE,
             ),
             re.compile(r"\bdoes (?:this|that).{0,80}\bmean i have\b", re.IGNORECASE),
+            # Policy 0.3.3 (dev Q38): asking the data to confirm a named
+            # condition, e.g. "My doctor says I'm depressed. Does my data
+            # confirm it?"
+            re.compile(
+                r"^(?=.*\b(?:depress\w*|anxi\w*|bipolar|adhd|ptsd|ocd|"
+                r"mental (?:illness|health condition|disorder))\b)"
+                r".*\b(?:confirm|prove|back (?:it|that|this) up|agree|consistent with)",
+                re.IGNORECASE,
+            ),
+        ),
+    ),
+    (
+        # Policy 0.3.3 (dev Q35/Q39): MindSense gives no clinical or
+        # mental-health score. Checked before scope so the PHQ-4 domain word
+        # no longer routes to the feature clarification.
+        RequestCategory.CLINICAL_SCORE_REQUEST,
+        "clinical_score_request_detected",
+        (
+            re.compile(r"\b(?:phq|gad)[- ]?\d+\b", re.IGNORECASE),
+            re.compile(
+                r"\b(?:mental[- ]health|depression|anxiety|mood|stress|well[- ]?being) "
+                r"(?:score|rating)\b",
+                re.IGNORECASE,
+            ),
+            re.compile(
+                r"\b(?:score|rate) my (?:mental health|mood|depression|anxiety)\b",
+                re.IGNORECASE,
+            ),
         ),
     ),
     (
@@ -121,6 +183,19 @@ _PROHIBITED_PATTERNS: tuple[
                 re.IGNORECASE,
             ),
             re.compile(r"\b(?:prescribe|prescription)\b", re.IGNORECASE),
+            # Policy 0.3.3 (dev Q31/Q40): whether to see a professional, or
+            # how to improve mood, is advice MindSense cannot give.
+            re.compile(
+                r"\bshould i (?:see|talk to|speak to|visit|go to|get) (?:a |an |my )?"
+                r"(?:therapist|psychologist|psychiatrist|counsell?or|doctor|gp|"
+                r"professional|mental[- ]health professional)\b",
+                re.IGNORECASE,
+            ),
+            re.compile(
+                r"\bhow (?:can|do|could|should) i (?:improve|boost|fix|lift|raise|help) "
+                r"my (?:mood|mental health|well[- ]?being|anxiety|depression|stress)\b",
+                re.IGNORECASE,
+            ),
         ),
     ),
     (
@@ -151,6 +226,12 @@ _PROHIBITED_PATTERNS: tuple[
             ),
             re.compile(r"\bwhy did.{0,80}\b(?:cause|make)\b", re.IGNORECASE),
             re.compile(r"\bis .{0,80}\bthe (?:reason|cause)\b", re.IGNORECASE),
+            # Policy 0.3.3 (dev Q29/Q47): "because"/"due to" questions and
+            # requests for proof; needed once a feature word alone is in scope.
+            # Any "because"/"due to" refuses (fail closed): MindSense never
+            # confirms or rejects a stated cause.
+            re.compile(r"\b(?:because|due to)\b", re.IGNORECASE),
+            re.compile(r"\bprov(?:e|es|ed|ing)\b|\bproof\b", re.IGNORECASE),
         ),
     ),
     (
@@ -163,6 +244,12 @@ _PROHIBITED_PATTERNS: tuple[
             ),
             re.compile(
                 r"\b(?:show|reveal|export|give me) (?:the )?(?:participant|subject|user) (?:id|identifier)\b",
+                re.IGNORECASE,
+            ),
+            # Policy 0.3.3 (dev Q50): only the person's own data is described.
+            re.compile(
+                r"\b(?:another|other|different) (?:participant|person|user|student)s?\b"
+                r"|\bother people\b|\b(?:someone|somebody|everyone|anyone) else\b",
                 re.IGNORECASE,
             ),
         ),
@@ -184,6 +271,60 @@ _CAPABILITY_PATTERNS = (
         re.IGNORECASE,
     ),
 )
+
+# Policy 0.3.3 (dev Q9/Q10/Q19/Q20): questions about the app itself get a
+# fixed informational text. Like the capability route they keep the REFUSE
+# disposition, so no participant data is loaded and no model is called. The
+# reason code selects the template in SLMService.
+_APP_INFORMATION_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
+    (
+        "app_info_data_storage",
+        re.compile(
+            r"\b(?:is|are) my (?:data|information|questions?|chats?|answers?) "
+            r"(?:stored|saved|kept|shared|sent|uploaded)\b"
+            r"|\bwhere (?:is|are) my (?:data|information) (?:stored|kept|saved|sent)\b"
+            r"|\b(?:do|does) (?:you|mindsense|the app|this app) (?:store|save|keep|share|"
+            r"send|upload) my (?:data|information|questions?|chats?)\b",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "app_info_data_use",
+        re.compile(
+            r"\bwhat (?:data|information|sensors?) (?:do|does) (?:you|mindsense|the app|"
+            r"this app) (?:use|collect|look at|need)\b"
+            r"|\bwhat data is used\b",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "app_info_uncertain_evidence",
+        re.compile(
+            r"\bwhat (?:does|do|is) [\"“'‘]?uncertain(?:ty)?(?: evidence)?[\"”'’]?"
+            r"(?: mean)?\s*[?.!]*\s*$",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "app_info_baseline_unavailable",
+        re.compile(
+            r"\bwhy (?:can['’]?t|cannot|can not|couldn['’]?t|won['’]?t|don['’]?t|"
+            r"didn['’]?t) you compare\b"
+            r"|\bwhy (?:is|isn['’]?t) (?:there (?:no|not a) )?(?:my )?baseline\b",
+            re.IGNORECASE,
+        ),
+    ),
+)
+
+
+def app_information_reason(question: str) -> str | None:
+    """Reason code of the matching app-information question, if any."""
+
+    for reason_code, pattern in _APP_INFORMATION_PATTERNS:
+        if pattern.search(question):
+            return reason_code
+    return None
+
 
 # The two-part rule is intentionally conservative: ordinary questions need a
 # MindSense feature plus evidence-analysis intent. Short contextual questions
@@ -217,6 +358,9 @@ _EVIDENCE_INTENT_PATTERNS = (
 _CONTEXTUAL_IN_SCOPE_PATTERNS = (
     re.compile(r"\bwhat changed\b", re.IGNORECASE),
     re.compile(r"\bhow am i doing\b", re.IGNORECASE),
+    # Policy 0.3.3 (dev Q17): names no single feature, so preflight asks
+    # which feature to use instead of refusing it as off-topic.
+    re.compile(r"\bhow active (?:have|had|was|am) i\b", re.IGNORECASE),
     re.compile(
         r"\b(?:describe|explain|compare) my (?:recent |tracked )?activity\b",
         re.IGNORECASE,
@@ -249,16 +393,28 @@ _UNLOCK_FEATURE_PATTERNS = (
     re.compile(r"\bphone (?:use|usage|activity)\b", re.IGNORECASE),
     re.compile(r"\bscreen time\b", re.IGNORECASE),
     re.compile(r"\bpick(?:s|ed|ing)?[- ]?up(?:s)?\b", re.IGNORECASE),
+    # Policy 0.3.3 (dev Q16): everyday wording for phone use.
+    re.compile(r"\b(?:on|use|used|using) my phone\b", re.IGNORECASE),
 )
 
-_GPS_FEATURE_PATTERNS = (
-    re.compile(r"\bgps\b", re.IGNORECASE),
+_GPS_NAMED_FEATURE_PATTERNS = (
     re.compile(r"\btravel(?:l?ed|ling|s)?\b", re.IGNORECASE),
     re.compile(r"\bdistance\b", re.IGNORECASE),
     re.compile(r"\bmovement\b", re.IGNORECASE),
     re.compile(r"\bmobility\b", re.IGNORECASE),
+    # Policy 0.3.3 (dev Q1/Q15): everyday wording for distance moved.
+    re.compile(r"\bmov(?:e|ed|es|ing)\b|\bhow far\b", re.IGNORECASE),
+)
+_GPS_FEATURE_PATTERNS = _GPS_NAMED_FEATURE_PATTERNS + (
+    re.compile(r"\bgps\b", re.IGNORECASE),
     re.compile(r"\blocation\b", re.IGNORECASE),
 )
+
+# Policy 0.3.3 (dev Q3/Q4/Q26): naming a feature is enough to be in scope
+# (answered from the observed window); no change or time word is needed.
+# Bare "gps" and "location" are excluded so place-seeking or off-topic
+# questions ("weather at my GPS location") still need evidence intent.
+_FEATURE_MENTION_PATTERNS = _UNLOCK_FEATURE_PATTERNS + _GPS_NAMED_FEATURE_PATTERNS
 
 
 def infer_feature_from_question(question: str) -> str | None:
@@ -358,6 +514,12 @@ _GENERAL_UNCERTAINTY_PATTERNS = (
         r"\bwhat (?:are|is) the (?:main )?(?:limitations?|uncertaint(?:y|ies))\b",
         re.IGNORECASE,
     ),
+    # Policy 0.3.3 (dev Q14).
+    re.compile(
+        r"\bhow (?:reliable|accurate|trustworthy|certain) (?:is|are) "
+        r"(?:this|that|these|the|your) (?:information|info|answers?|results?|evidence)\b",
+        re.IGNORECASE,
+    ),
 )
 
 
@@ -407,6 +569,8 @@ def _is_in_scope(question: str) -> bool:
         return True
     if any(pattern.search(question) for pattern in _GENERAL_UNCERTAINTY_PATTERNS):
         return True
+    if any(pattern.search(question) for pattern in _FEATURE_MENTION_PATTERNS):
+        return True
     return any(pattern.search(question) for pattern in _DOMAIN_PATTERNS) and any(
         pattern.search(question) for pattern in _EVIDENCE_INTENT_PATTERNS
     )
@@ -436,6 +600,14 @@ def classify_request(question: str) -> RequestPolicyDecision:
             disposition=RequestDisposition.REFUSE,
             category=RequestCategory.CAPABILITY_QUESTION,
             reason_code="capability_question_detected",
+        )
+
+    app_information = app_information_reason(clean_question)
+    if app_information:
+        return RequestPolicyDecision(
+            disposition=RequestDisposition.REFUSE,
+            category=RequestCategory.APP_INFORMATION,
+            reason_code=app_information,
         )
 
     if not clean_question or not _is_in_scope(clean_question):

@@ -278,6 +278,9 @@ describe('NormalResponse', () => {
   it.each([
     ['capability_question', 'What MindSense can do'],
     ['diagnosis_seeking', 'Not a diagnosis'],
+    ['treatment_advice_seeking', 'Not medical advice'],
+    ['clinical_score_request', 'No clinical scores'],
+    ['app_information', 'About MindSense'],
     ['off_topic', 'Outside MindSense’s scope'],
   ] as const)('labels a %s refusal as "%s"', async (category, label) => {
     const user = userEvent.setup()

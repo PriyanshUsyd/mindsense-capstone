@@ -25,7 +25,7 @@ category. Do not put teammate names in the CSV; use evaluator codes such as
 - Use the exact backend values for `response_mode` and `rejection_reason`.
 - `architecture_variant` must identify the actual build as `base`, `rag`,
   `agentic` or `rag_agent`. Do not infer a variant from the wording alone.
-- All rows in this round use the RC rc-eval-2 (`400883667657c8c70c025de4e1dbbc22cda3b074`), which replaced rc-eval-1 after ME-P01 attempt 1.
+- All rows in this round use the RC rc-eval-2 (`PENDING-rc-eval-2-SHA; merge commit of `priyansh-fix-50q`, policy 0.3.3`), which replaced rc-eval-1 after ME-P01 attempt 1.
   Record its full SHA in `commit_sha`.
 - `evidence_path` points to the saved question directory under
   `docs/evaluation/evidence/main-evaluation/`.

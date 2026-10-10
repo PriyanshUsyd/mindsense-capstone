@@ -1,0 +1,28 @@
+# Deterministic answer to "What data do you use?" (request policy 0.3.3,
+# 50-question dev test Q9). No participant data is loaded and no model is
+# called for this route.
+
+template_id: app_info_data_use
+template_version: "1.0.0"
+response_mode: refusal
+allowed_claim_ids:
+  - non_diagnostic_boundary
+prohibited_claim_ids:
+  - diagnosis
+  - causal_explanation
+  - treatment_or_crisis_advice
+  - risk_prediction
+
+text: >
+  MindSense uses two tracked patterns from phone sensor data: GPS distance
+  travelled each day and how many times the phone was unlocked each day. It
+  describes them over a recent observation window of about two weeks and,
+  when there is enough history, compares them with your own earlier
+  patterns. Answers give summary patterns, not the places you went. It can't
+  diagnose conditions, explain what caused a change, or give treatment
+  advice.
+
+review_note: >
+  Added 2026-10-10 after the 50-question dev test on rc-eval-2, where this
+  question received the off-topic refusal. Requires normal Integration/QA,
+  Evaluation and Privacy review.
