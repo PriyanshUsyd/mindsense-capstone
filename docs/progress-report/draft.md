@@ -33,13 +33,35 @@ A home-duration feature was also implemented and tested as a candidate feature. 
 
 ### 1.3 Personal Baseline and Statistical Modelling
 
-The statistical component uses within-person comparison rather than population-level norms. A 14-day feature window was selected to correspond to the PHQ-4 recall period. The modelling specification uses mixed-effects models with participant-level random intercepts and random slopes, together with a Mundlak within/between decomposition. This structure separates temporary deviations from an individual’s usual behaviour from stable differences between people.
+**Approach.** Every comparison is within the person, not against population norms. For each PHQ-4 assessment the behavioural feature is averaged over the 14 days ending the day before the assessment, matching the questionnaire's two-week recall period, and requires at least seven valid days. The person's own mean is re-entered as a separate between-person term (Mundlak decomposition), so stable differences between people are kept apart from a person's departure from their usual level; only the latter is used for personal comparisons. GPS distance enters as log(mean + 1,000 m). Unlock count enters untransformed: its distribution is only mildly skewed (skewness 1.73, against 160.5 for raw distance), and both log variants made it worse.
 
-Eligibility rules prevent the system from presenting comparisons before sufficient personal history is available. Comparative baseline statements require at least 28 calendar days, at least 20 valid sensor days and at least three completed assessments. Stronger historical-relationship claims require at least 56 days, at least 40 valid sensor days and eight assessments spanning at least 28 days.
+**Model.** The primary model is a linear mixed-effects model with a person-level random intercept and random slope on the within-person term, and an AR(1) residual structure (R nlme). The fixed effects are the within- and between-person terms only; the lag-1 term and study-week trend described in earlier plans are not in the primary fit. An lme4 fit without AR(1) is kept as a labelled sensitivity analysis. The two differ because daily behaviour is strongly autocorrelated within a person (phi = 0.61), which only the primary model accounts for.
 
-The system distinguishes three cold-start states. State A provides only a general templated response when there is too little sensing or wellbeing data. State B can describe recent observations but must state that it is too early to make a baseline comparison. State C permits personal-baseline comparisons, while historical relationship claims remain conditional on the stronger evidence gate.
+**Progress (completed).** On the de-identified CES data:
 
-Bootstrap standard-error caching has been implemented in the statistical runner and is stored locally outside Git. However, the completed cache is not yet connected to the live `/respond` pathway. Therefore, bootstrap-based `evidence_available` responses should not yet be described as part of the evaluated live system. A fresh full B=500 rebuild and final integration remain pending.
+| | GPS distance | Unlock count |
+|---|---|---|
+| Participants / assessment windows | 214 / 28,337 | 216 / 34,235 |
+| Within-person coefficient (primary) | −0.184, p < 0.001 | 0.001, p = 0.14 |
+| Sensitivity (lme4) | −0.277 [−0.337, −0.217] | 0.0004, p = 0.78 |
+
+The GPS coefficient is negative under both models: in weeks when a person travelled more than usual, their PHQ-4 tended to be lower. This is an association, not a cause. Unlock count showed no detectable association under either model or either preprocessing choice.
+
+**Per-person evidence (completed, not yet live).** Whether the chatbot may describe a relationship for an individual depends on that person's own slope. Standard errors for individual slopes were estimated by two bootstrap methods (parametric and cluster, 500 replicates each), which systematically disagree; a relationship is reported only where both agree. Multiple comparisons are controlled across all participants for a feature (Benjamini–Hochberg; Holm as sensitivity). Under this rule 23 of 214 participants qualify for GPS distance and fewer than five for unlock count. A full rerun from committed code reproduced the earlier GPS result exactly (all 1,000 replicates identical). Results are cached outside the repository with owner-only permissions. They are **not yet connected** to the live chatbot: during evaluation every participant receives a no-claim response, and connecting them is planned after the evaluation.
+
+**Baseline and cold-start.** A personal baseline uses the 28 days before the comparison window (56 days for longer-term statements). State is assessed at each assessment, not once per person, so a participant can move back from comparative to descriptive statements when recent data thins out.
+
+- **State A** — too little data: a fixed message, no numbers.
+- **State B** — enough recent data to describe, not to compare; the response says the baseline is not yet available.
+- **State C** — at least 28 calendar days, 20 valid sensor days and 3 assessments: comparisons with the person's own baseline are allowed. A relationship statement additionally needs 56 days, 40 valid days and 8 assessments, *and* per-person evidence as above.
+
+**Changes from the proposal.** The proposal described a random intercept only and an eligibility rule of 14 valid days in a 30-day window across at least four windows. The model now adds a random slope and AR(1) residuals, and eligibility is tied to the 14-day comparison window and the 28/56-day baseline above.
+
+**Calibration issues from the pilot (completed).** The Week 7 pilot exposed three issues, now resolved:
+
+- Values were shown at full floating-point precision. They are now rounded to whole numbers; day-to-day variation within a person is larger than the mean itself for GPS distance (median coefficient of variation 1.28), so decimals implied precision the data do not have.
+- A request about the "last 3 days" was answered with 14-day results. Requests for windows other than the observed 14 days are now declined, while phrasings that name that window ("the past two weeks") are answered.
+- The pilot never exercised a relationship statement, because the per-person evidence was not connected. This remains true for the main evaluation (see §2.2).
 
 ### 1.4 Local Language Model and Safety Controls
 
@@ -111,19 +133,27 @@ First, missing and inconsistent sensing data required explicit quality gates, mi
 
 Second, platform differences limited the usable feature set. Some candidate features, including call and SMS information, were not consistently available across iOS and Android. The project therefore retained only GPS distance and phone-unlock frequency as the locked cross-platform features.
 
-Third, personal-baseline inference is limited during cold start. The team addressed this through staged eligibility rules that prevent numerical or historical claims when the required amount of personal data is unavailable.
+Third, local model execution created hardware and latency constraints. Testing showed that the system could operate on the demo machine, but model loading and cold-start performance required additional hardening and careful preparation of evaluation machines.
 
-Fourth, local model execution created hardware and latency constraints. Testing showed that the system could operate on the demo machine, but model loading and cold-start performance required additional hardening and careful preparation of evaluation machines.
+Fourth, the pilot exposed integration problems that unit tests alone had not detected, including unsupported time-window handling and presentation precision. These findings led to further response-policy and interface work before the main evaluation.
 
-Fifth, the pilot exposed integration problems that unit tests alone had not detected, including unsupported time-window handling and presentation precision. These findings led to further response-policy and interface work before the main evaluation.
+### 2.2 Statistical and Evaluation Obstacles
 
-Finally, ethics approval for external participant recruitment was not available. The evaluation design was consequently changed to team-only rostered pairs. This reduced the generalisability of the human evaluation and means that the findings must be presented as internal proof-of-concept evidence rather than validation with an external user population.
+**Limited participant-level data.** All analysis uses one university's de-identified CES cohort with self-reported PHQ-4. The 220 sensing participants are mostly iOS users (188 iOS and 32 Android by the raw platform flag; source: `docs/data-pipeline/ces-reverification.md`). Feature coverage differs: GPS distance is available for 214 participants and unlock count for 216, so two participants can be told about one feature but not the other. A third candidate feature (time at home) was left out only because of the two-feature cap; whether it works across iOS and Android has not been assessed.
+
+**Cold-start.** In the historical data most assessments fall in State C, because participants contributed months of data. A deployed system would see far more new users in State B, so the proportion of comparative responses reported here overstates what a new user would receive.
+
+**Calibration and uncertainty.** Individual classifications are sensitive to reasonable modelling choices: in earlier analysis, a defensible change to preprocessing moved about one participant in eight across the claim/no-claim boundary. The two bootstrap methods disagree in a consistent direction, so the reported evidence rests on their intersection, which is deliberately conservative. Individual labels should be read as indicative.
+
+**Small pilot sample.** Evaluation is team-only: eight evaluators, who are also the developers, rating four fixed questions. Ratings are descriptive and are not results from independent users. None of the four questions exercises a relationship statement, so the evaluation cannot assess how the system communicates per-person evidence.
+
+**Held-out test restrictions.** The sealed held-out question set has not been used during development; fixes after the pilot were checked against a separate 50-question development set only.
 
 ## 3. Deviation to Timeline
 
 The project’s foundational components were implemented broadly in line with the proposal, but the evaluation schedule and some integration work changed.
 
-External participant evaluation was replaced with team-only rostered-pair sessions because external recruitment was not approved. The evaluation build was also locked to protect the validity of the sessions, which meant that some non-critical statistical wiring—particularly bootstrap standard errors in `/respond`—was deferred until after evaluation.
+External participant evaluation was replaced with team-only rostered-pair sessions because external recruitment was not approved. The B=500 per-person bootstrap is complete for both features and reproduces exactly from committed code. Connecting it to the live /respond path is deferred until after the evaluation, by agreement, so the SLM and prompt stay fixed during sessions.
 
 The RAG and agent comparison introduced additional implementation and documentation work. Although the four variants are available, their final quality comparison depends on the pending held-out evaluation. The main questionnaire analysis and final privacy sign-off were also moved later because they depend on completion of the rostered sessions and the release-candidate build.
 
