@@ -2,13 +2,13 @@
 
 **Prepared:** 2026-10-08 (Week 9) by Priyansh Khandelwal, Integration & QA Lead
 **Updated:** 2026-10-10 (evaluation lock). `rc-eval-1` tagged at `687a50e`. Earlier: 2026-10-08, candidate moved from `a498b3f` to `fcaadfb` after #48 and its repair (#53); lock date set to 2026-10-16, replaced the same day by the release timeline below (evaluation lock 2026-10-10).
-**Status:** `rc-eval-1` → `687a50ea233ba7e3653b15d79ed84d5da7db6a91` was the RC until the lock was reopened on 2026-10-10 (see below). **rc-eval-2 is pending.** The `Pending` items in Section 7 are sign-offs and readiness checks still open after the lock; they do not change the tagged build.
+**Status:** `rc-eval-1` → `687a50ea233ba7e3653b15d79ed84d5da7db6a91` was the RC until the lock was reopened on 2026-10-10 (see below). **rc-eval-2 → `4008836`.** The `Pending` items in Section 7 are sign-offs and readiness checks still open after the lock; they do not change the tagged build.
 
 > **This checklist update post-dates the tag and is docs-only.** It was committed after `rc-eval-1` was created and is not part of the tagged tree. The diff from `687a50e` to the main commit that merges it touches only this file: no `backend/`, `frontend/`, model or prompt/policy files.
 **Evaluation lock:** 2026-10-10 (Sat)
 
 > **Lock reopened 2026-10-10 by Priyansh after ME-P01 found F1–F5 on rc-eval-1; sessions re-run on rc-eval-2.**
-> F1 capability question refused as off-topic; F2 "past couple of weeks" refused as an unsupported window; F3 general uncertainty question asked for a feature; F4 diagnosis question got the generic off-topic text; F5 no `/respond` metadata visible to evaluators. Fixed on branch `priyansh-eval-fixes-rc2` (request policy 0.3.2, three new deterministic templates, per-answer Details line in the UI). The ME-P01 attempt on rc-eval-1 is kept as superseded evidence in `docs/evaluation/evidence/main-evaluation/ME-P01-attempt1-rc-eval-1/notes.md`. `rc-eval-1` stays as a historical tag; the rc-eval-2 SHA is recorded here after it is tagged.
+> F1 capability question refused as off-topic; F2 "past couple of weeks" refused as an unsupported window; F3 general uncertainty question asked for a feature; F4 diagnosis question got the generic off-topic text; F5 no `/respond` metadata visible to evaluators. Fixed on branch `priyansh-eval-fixes-rc2` (request policy 0.3.2, three new deterministic templates, per-answer Details line in the UI). The ME-P01 attempt on rc-eval-1 is kept as superseded evidence in `docs/evaluation/evidence/main-evaluation/ME-P01-attempt1-rc-eval-1/notes.md`. `rc-eval-1` stays as a historical tag. **rc-eval-2 → `400883667657c8c70c025de4e1dbbc22cda3b074`** (PR #68 merge; main push run `38013978898` passed all 4 stages). This docs-only update post-dates that SHA and is not part of the rc-eval-2 tree.
 
 ## Release timeline
 
