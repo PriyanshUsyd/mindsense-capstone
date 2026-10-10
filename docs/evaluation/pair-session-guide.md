@@ -267,15 +267,36 @@ Save these into `docs/evaluation/evidence/main-evaluation/ME-P0x/Qy/` on the lap
 |---|---|---|
 | `ui.png` | screenshot showing the exact question **and** the complete visible response | **No. Stays on the laptop** |
 | `response.json` | the `/respond` response, copied **without any change**. Get it from the browser DevTools → Network tab → the `respond` request → Response | **No. Stays on the laptop** |
-| `notes.md` | see the list below | **Yes** |
+| `notes.md` | the template below | **Yes** |
 
-`notes.md` contains:
-- date and time;
-- operator and evaluator **codes** (not names);
-- any failure or retry;
-- anything not in the JSON;
-- the copied values listed below;
-- both people's answers to the open questions (2.4).
+**`notes.md` template (Decided by Priyansh, 2026-10-10).**
+After each question, paste **both** the question text and the **full answer exactly as shown in the chat** into that question's `notes.md`, using this template:
+
+```text
+Session: ME-P0x
+Question number: Qy
+Typed by: E1 / E2
+Time:
+response_mode:
+rejection_reason:
+model_tag:
+policy_version:
+
+Question (pasted exactly as typed):
+<paste the question here>
+
+Answer (pasted exactly as shown):
+<paste the full answer here>
+
+Anything odd:
+Critical failure? Yes / No — if yes, what:
+```
+
+- Copy-paste the answer. Do not retype, shorten or fix it.
+- Below the template, also add:
+  - `Evidence-packet ID: N/A — not returned by /respond` (see below);
+  - both people's answers to the open questions O1–O3 (2.4), each labelled with the evaluator code (`E1:` / `E2:`).
+- Use evaluator codes only, never names.
 
 **What is committed (Decided by Priyansh, 2026-10-10):**
 - Commit **only** the `session-responses.csv` rows and the four `notes.md` files.
@@ -283,7 +304,7 @@ Save these into `docs/evaluation/evidence/main-evaluation/ME-P0x/Qy/` on the lap
 - This resolves the conflict between the evidence README and Sheng's [UI support log](../ui/week9-evaluation-ui-issues.md). Sheng's log says to "Keep individual ratings, session codes, screenshots, and full `/respond` request or response JSON local".
 - Keep the laptop copies until Chonghao says they are no longer needed.
 
-Because the JSON is not committed, copy these values from `response.json` into `notes.md` and the CSV: `response_mode`, `rejection_reason`, `model_tag`, `request_policy_version`.
+Because the JSON is not committed, copy these values from `response.json` into the `notes.md` template and the CSV: `response_mode`, `rejection_reason`, `model_tag`, `request_policy_version` (written as `policy_version`).
 - The possible `response_mode` values are `normal`, `insufficient_data`, `uncertainty`, `refusal`, `generic_fallback` and `crisis_aware_fallback`.
 
 The questionnaire also asks for an "evidence-packet identifier/hash". Write **`N/A — not returned by /respond`** (Decided by Priyansh, 2026-10-10).
@@ -447,7 +468,8 @@ Replace `x` with your session number.
 - [ ] `docs/evaluation/evidence/main-evaluation/ME-P0x/Q2/notes.md`
 - [ ] `docs/evaluation/evidence/main-evaluation/ME-P0x/Q3/notes.md`
 - [ ] `docs/evaluation/evidence/main-evaluation/ME-P0x/Q4/notes.md`
-- [ ] Each `notes.md` has: time, codes, copied JSON values, evidence-packet ID `N/A — not returned by /respond`, any failure, and O1–O3 answers from both people
+- [ ] Each `notes.md` contains the pasted question and full answer (Decided by Priyansh, 2026-10-10)
+- [ ] Each `notes.md` follows the template: time, codes, copied JSON values, evidence-packet ID `N/A — not returned by /respond`, anything odd, critical failure Yes/No, and O1–O3 answers from both people
 - [ ] `session-responses.csv` has 9 category rows × 4 questions × 2 people (72 rows)
 - [ ] `session-responses.csv` has 2 `SESSION` / `usability` rows (E1 and E2) with commit SHA, date, start/end time and laptop OS
 - [ ] Every row has `critical_failure` filled in, and every N/A has a `na_reason`
