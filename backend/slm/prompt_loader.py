@@ -117,6 +117,15 @@ DEFAULT_SCOPE_FALLBACK = (
 DEFAULT_WINDOW_FALLBACK = (
     Path(__file__).resolve().parent / "prompts" / "unsupported_window.yaml"
 )
+DEFAULT_CAPABILITY_TEMPLATE = (
+    Path(__file__).resolve().parent / "prompts" / "capability.yaml"
+)
+DEFAULT_DIAGNOSIS_BOUNDARY = (
+    Path(__file__).resolve().parent / "prompts" / "diagnosis_boundary.yaml"
+)
+DEFAULT_GENERAL_UNCERTAINTY_TEMPLATE = (
+    Path(__file__).resolve().parent / "prompts" / "general_uncertainty.yaml"
+)
 
 
 def load_evidence_prompt(

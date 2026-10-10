@@ -1,0 +1,27 @@
+# Deterministic answer to "what can you do?" (request policy 0.3.2, ME-P01
+# F1). Not an SLM-generated explanation: no participant data is loaded and no
+# model is called for this route.
+
+template_id: capability
+template_version: "1.0.0"
+response_mode: refusal
+allowed_claim_ids:
+  - non_diagnostic_boundary
+prohibited_claim_ids:
+  - diagnosis
+  - causal_explanation
+  - treatment_or_crisis_advice
+  - risk_prediction
+
+text: >
+  I can explain two tracked patterns from your phone: GPS distance travelled
+  and phone unlock count. For each one I can describe what was observed in
+  the recent observation window and, when there is enough history, how it
+  compares with your own past patterns. I can't diagnose conditions, explain
+  what caused a change, or give treatment advice. Try asking, for example,
+  "How has my phone-unlock activity changed recently?"
+
+review_note: >
+  Added 2026-10-10 after ME-P01 on rc-eval-1, where "What can you help me
+  with?" received the off-topic refusal. Wording approved by the
+  Integration/QA lead for rc-eval-2; retain normal Evaluation and UI review.
