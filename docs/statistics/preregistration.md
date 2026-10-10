@@ -63,6 +63,16 @@ collected in section 7. Everything else restates a Week 4 locked decision.
   draft's pre-sign-off state; see the 2026-09-13 migration note above for why
   that text is now corrected rather than kept as the record of what was
   proposed.)*
+
+  `loc_home_dur` was left out of Tier 1 because of the two-feature cap only,
+  not because it failed a cross-platform check (confirmed by the Integration &
+  QA Lead, 2026-10-10). It had 96.2% valid windows — higher than
+  `loc_dist_ep_0` — and a within-person correlation of r = −0.24 with
+  person-mean-centred log GPS distance, so it is not redundant with it. It
+  remains a candidate for later rounds. Its cross-platform status was never
+  assessed: no iOS/Android breakdown was done, so it should be described as
+  unassessed, not as passing.
+
 - **Primary outcome:** PHQ-4 total (0-12), `general_ema.csv`.
 - **Direction hypothesis for `loc_dist_ep_0`:** beta1 < 0 is not pre-specified by
   literature consensus in either direction strongly enough to commit to a

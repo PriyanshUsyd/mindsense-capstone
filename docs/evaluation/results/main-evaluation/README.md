@@ -36,6 +36,11 @@ Example only (do not copy it as a result):
 ME-P01,Q1,ME-P01-E1,accuracy_faithfulness,A1=4;A2=5;A3=No,No,none,,uncertainty,,base,<rc-eval-2 SHA>,phi4-mini:3.8b,<recorded prompt version>,<recorded policy version>,docs/evaluation/evidence/main-evaluation/ME-P01/Q1/,Example format only
 ```
 
+Evaluator is the confirmed unit: each evaluator writes their own `SESSION`
+row, two per session, per the [pair-session guide](../../pair-session-guide.md)
+(confirmed by the Integration & QA Lead, 2026-10-10). `--unit session` is kept
+for sensitivity only.
+
 The raw item values remain in the CSV. Moe's summary reports the valid
 denominator, median and range per item or dimension, excludes `N/A` from the
 denominator, and reports critical failures separately.

@@ -31,6 +31,11 @@ Aggregation unit (``--unit``):
              session x question x item (Likert: median of the evaluators'
              valid values; Yes/No: Yes if any evaluator said Yes, else No)
 
+Evaluator is the confirmed unit: each evaluator writes their own SESSION row,
+two per session, per the pair-session guide
+(docs/evaluation/pair-session-guide.md; confirmed by the Integration & QA
+Lead, 2026-10-10). --unit session is kept for sensitivity only.
+
 Critical failures are always per response (session x question), whatever
 ``--unit`` is: a disagreement between evaluators is resolved conservatively
 (any Yes = failure) and flagged in the data-quality section.
