@@ -25,7 +25,7 @@ category. Do not put teammate names in the CSV; use evaluator codes such as
 - Use the exact backend values for `response_mode` and `rejection_reason`.
 - `architecture_variant` must identify the actual build as `base`, `rag`,
   `agentic` or `rag_agent`. Do not infer a variant from the wording alone.
-- All rows in this round use the RC rc-eval-1 (tagged 2026-10-10; SHA posted at lock).
+- All rows in this round use the RC rc-eval-2 (`400883667657c8c70c025de4e1dbbc22cda3b074`), which replaced rc-eval-1 after ME-P01 attempt 1.
   Record its full SHA in `commit_sha`.
 - `evidence_path` points to the saved question directory under
   `docs/evaluation/evidence/main-evaluation/`.
@@ -33,7 +33,7 @@ category. Do not put teammate names in the CSV; use evaluator codes such as
 Example only (do not copy it as a result):
 
 ```csv
-ME-P01,Q1,ME-P01-E1,accuracy_faithfulness,A1=4;A2=5;A3=No,No,none,,uncertainty,,base,<rc-eval-1 SHA (tagged 2026-10-10; posted at lock)>,phi4-mini:3.8b,<recorded prompt version>,<recorded policy version>,docs/evaluation/evidence/main-evaluation/ME-P01/Q1/,Example format only
+ME-P01,Q1,ME-P01-E1,accuracy_faithfulness,A1=4;A2=5;A3=No,No,none,,uncertainty,,base,<rc-eval-2 SHA>,phi4-mini:3.8b,<recorded prompt version>,<recorded policy version>,docs/evaluation/evidence/main-evaluation/ME-P01/Q1/,Example format only
 ```
 
 The raw item values remain in the CSV. Moe's summary reports the valid

@@ -38,6 +38,7 @@ export interface SafeSLMResponse {
     | 'off_topic'
     | 'prompt_injection'
     | 'sensitive_data_request'
+    | 'capability_question'
   request_policy_version: string
   model_invoked: boolean
 }
