@@ -25,6 +25,7 @@ mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 
 SHA = "400883667657c8c70c025de4e1dbbc22cda3b074"
+LABEL = "rc-eval-2"
 OTHER_SHA = "687a50ea233ba7e3653b15d79ed84d5da7db6a91"
 INSUFFICIENT = "insufficient ratings (n < 5)"
 SESSIONS = ("ME-P90", "ME-P91", "ME-P92")
@@ -164,13 +165,13 @@ def test_na_excluded_from_denominator_and_counted_with_reason():
             r["item_scores"] = "CC1=N/A;CC2=No"
     cc1 = cells_of(report(rows), "| Correlation versus causation | CC1 ")
     assert cc1[2] == "5" and cc1[3] == "3"
-    assert cc1[5].startswith("1:") and "no relationship asked" in cc1[5]
+    assert cc1[5] == "1 (reasons in restricted record)" and "no relationship asked" not in report(rows)
 
 
 def test_all_na_item_has_no_median_and_zero_n():
     text = report(synth_rows())
     cc1 = cells_of(text, "| Correlation versus causation | CC1 ")
-    assert cc1[2] == "0" and cc1[3] == "–" and cc1[5].startswith("6:")
+    assert cc1[2] == "0" and cc1[3] == "–" and cc1[5] == "6 (reasons in restricted record)"
     assert "No valid ratings" in text
 
 
@@ -266,13 +267,68 @@ def test_public_output_has_no_evaluator_code_or_session_id(tmp_path):
     text = report(rows)
     for token in {r["evaluator_code"] for r in rows} | {r["session_id"] for r in rows}:
         assert token not in text
-    assert "[redacted]" in text
+    assert "said nothing was asked" not in text  # na_reason is never published
     assert "CSV line" not in text
     out = tmp_path / "out.md"
-    mod.main(["--input", str(write_csv(tmp_path / "s.csv", rows)), "--output", str(out), "--expected-commit", SHA])
+    mod.main(["--input", str(write_csv(tmp_path / "s.csv", rows)), "--output", str(out), "--expected-commit", SHA, "--build-label", LABEL])
     body = out.read_text(encoding="utf-8")
     for token in {r["evaluator_code"] for r in rows} | {r["session_id"] for r in rows}:
         assert token not in body
+
+
+PII = ("talked to Alice Smith about this", "see email from moet2244", "call 0412 345 678", "+61-2-9351-0000")
+
+
+@pytest.mark.parametrize("column", ["na_reason", "notes", "rejection_reason", "response_mode", "model_tag", "evidence_path"])
+@pytest.mark.parametrize("pii", PII)
+def test_free_text_columns_never_reach_the_public_output(column, pii, tmp_path):
+    rows = synth_rows()
+    for r in rows:
+        r[column] = pii
+        if column == "na_reason":  # make the reason matter: some N/A answers
+            r["item_scores"] = r["item_scores"].replace("A2=4", "A2=N/A")
+    body_text = report(rows)
+    out = tmp_path / "out.md"
+    mod.main(["--input", str(write_csv(tmp_path / "s.csv", rows)), "--output", str(out), "--expected-commit", SHA, "--build-label", LABEL])
+    for body in (body_text, out.read_text(encoding="utf-8")):
+        assert pii not in body
+        for fragment in ("Alice", "Smith", "moet2244", "0412", "9351"):
+            assert fragment not in body
+
+
+@pytest.mark.parametrize("pii", PII)
+def test_out_of_vocabulary_failure_type_is_counted_as_other_and_warned(pii):
+    rows = synth_rows()
+    for r in rows:
+        if r["session_id"] == SESSIONS[0] and r["question_id"] == "Q1":
+            r["critical_failure"], r["critical_failure_type"] = "Yes", f"unsupported_causation;{pii}"
+    text = report(rows)
+    assert pii not in text and "unlisted" not in text
+    assert "| other (value outside the defined types) | 1 |" in text
+    assert "| unknown critical_failure_type | 1 |" in text
+    internal = report(rows, internal=True)
+    assert pii in internal  # exact value only in the restricted record
+
+
+@pytest.mark.parametrize("pii", PII)
+def test_unknown_item_id_is_not_printed_publicly(pii):
+    rows = synth_rows()
+    rows[0]["item_scores"] += f";{pii}=3"
+    text = report(rows)
+    assert pii not in text and "Alice" not in text
+    assert "| unknown item ID | 1 |" in text
+
+
+def test_internal_output_has_na_reasons_public_does_not():
+    rows = synth_rows()
+    for r in rows:
+        if r["category"] == "accuracy_faithfulness":
+            r["item_scores"] = r["item_scores"].replace("A2=4", "A2=N/A")
+            r["na_reason"] = PII[0]
+    assert PII[0] not in report(rows)
+    inner = report(rows, internal=True)
+    assert PII[0] in inner and "A2 N/A: 6 (reasons in restricted record)" in inner
+    assert "| A2 | talked to Alice Smith about this | 6 |" in inner
 
 
 def test_public_note_is_at_the_top():
@@ -329,7 +385,7 @@ def test_internal_report_lists_sessions_but_never_evaluators():
 def test_internal_writes_owner_only_file_under_outputs_and_not_stdout(csv_path, internal_dir, capsys):
     from backend.statistics import private_files as pf
 
-    assert mod.main(["--input", str(csv_path), "--internal", "--expected-commit", SHA]) == 0
+    assert mod.main(["--input", str(csv_path), "--internal", "--expected-commit", SHA, "--build-label", LABEL]) == 0
     captured = capsys.readouterr()
     assert captured.out == ""                       # nothing on stdout
     target = internal_dir / mod.INTERNAL_FILENAME
@@ -347,15 +403,15 @@ def test_internal_fails_closed_when_permissions_cannot_be_restricted(csv_path, i
     monkeypatch.setattr(pf, "restrict_to_owner", boom)
     monkeypatch.setattr(pf, "is_owner_only", lambda path, *, is_dir: False)
     with pytest.raises(pf.PermissionRestrictionError):
-        mod.main(["--input", str(csv_path), "--internal", "--expected-commit", SHA])
+        mod.main(["--input", str(csv_path), "--internal", "--expected-commit", SHA, "--build-label", LABEL])
     assert not (internal_dir / mod.INTERNAL_FILENAME).exists()
 
 
 def test_internal_cannot_be_combined_with_output_and_public_cannot_target_internal_dir(csv_path, internal_dir, tmp_path):
     with pytest.raises(SystemExit):
-        mod.main(["--input", str(csv_path), "--internal", "--output", str(tmp_path / "o.md"), "--expected-commit", SHA])
+        mod.main(["--input", str(csv_path), "--internal", "--output", str(tmp_path / "o.md"), "--expected-commit", SHA, "--build-label", LABEL])
     with pytest.raises(SystemExit):
-        mod.main(["--input", str(csv_path), "--output", str(internal_dir / "public.md"), "--expected-commit", SHA])
+        mod.main(["--input", str(csv_path), "--output", str(internal_dir / "public.md"), "--expected-commit", SHA, "--build-label", LABEL])
 
 
 def test_default_internal_dir_is_under_gitignored_outputs():
@@ -387,7 +443,7 @@ def test_script_import_does_not_pull_in_backend_and_private_files_stays_off_esti
 def test_empty_input_does_not_crash(tmp_path):
     p = write_csv(tmp_path / "empty.csv", [])
     out = tmp_path / "o.md"
-    assert mod.main(["--input", str(p), "--output", str(out), "--expected-commit", SHA]) == 0
+    assert mod.main(["--input", str(p), "--output", str(out), "--expected-commit", SHA, "--build-label", LABEL]) == 0
     assert "No responses recorded yet" in out.read_text(encoding="utf-8")
 
 
@@ -400,13 +456,13 @@ def test_yes_item_without_critical_flag_is_counted_as_a_warning():
 def test_refuses_to_write_protected_files(csv_path):
     for target in mod.PROTECTED_OUTPUTS:
         with pytest.raises(SystemExit):
-            mod.main(["--input", str(csv_path), "--output", str(target), "--expected-commit", SHA])
+            mod.main(["--input", str(csv_path), "--output", str(target), "--expected-commit", SHA, "--build-label", LABEL])
 
 
 def test_real_responses_csv_is_not_modified_by_running_the_tests(csv_path, tmp_path):
     before = REAL_CSV.read_bytes() if REAL_CSV.exists() else None
-    mod.main(["--input", str(csv_path), "--output", str(tmp_path / "x.md"), "--expected-commit", SHA])
-    mod.main(["--input", str(csv_path), "--unit", "session", "--output", str(tmp_path / "y.md"), "--expected-commit", SHA])
+    mod.main(["--input", str(csv_path), "--output", str(tmp_path / "x.md"), "--expected-commit", SHA, "--build-label", LABEL])
+    mod.main(["--input", str(csv_path), "--unit", "session", "--output", str(tmp_path / "y.md"), "--expected-commit", SHA, "--build-label", LABEL])
     assert (REAL_CSV.read_bytes() if REAL_CSV.exists() else None) == before
 
 
@@ -418,9 +474,26 @@ def test_expected_commit_is_required(csv_path):
         mod.main(["--input", str(csv_path)])
 
 
+def test_build_label_is_required(csv_path):
+    with pytest.raises(SystemExit):
+        mod.main(["--input", str(csv_path), "--expected-commit", SHA])
+
+
+def test_build_label_must_not_be_blank(csv_path):
+    with pytest.raises(SystemExit):
+        mod.main(["--input", str(csv_path), "--expected-commit", SHA, "--build-label", "  "])
+
+
+def test_build_label_is_printed_as_given(csv_path, tmp_path):
+    out = tmp_path / "o.md"
+    assert mod.main(["--input", str(csv_path), "--output", str(out), "--expected-commit", SHA,
+                     "--build-label", "rc-eval-3"]) == 0
+    assert f"Build: rc-eval-3 ({SHA})" in out.read_text(encoding="utf-8")
+
+
 def test_matching_build_passes_and_public_output_names_the_build(csv_path, tmp_path):
     out = tmp_path / "o.md"
-    assert mod.main(["--input", str(csv_path), "--output", str(out), "--expected-commit", SHA]) == 0
+    assert mod.main(["--input", str(csv_path), "--output", str(out), "--expected-commit", SHA, "--build-label", LABEL]) == 0
     text = out.read_text(encoding="utf-8")
     assert f"Build: rc-eval-2 ({SHA})" in text
     lines = text.splitlines()
@@ -432,7 +505,7 @@ def test_mismatching_row_stops_without_output(tmp_path, capsys):
     rows[3]["commit_sha"] = OTHER_SHA
     out = tmp_path / "o.md"
     p = write_csv(tmp_path / "s.csv", rows)
-    assert mod.main(["--input", str(p), "--output", str(out), "--expected-commit", SHA]) == 2
+    assert mod.main(["--input", str(p), "--output", str(out), "--expected-commit", SHA, "--build-label", LABEL]) == 2
     err = capsys.readouterr().err
     assert "1 mismatching row(s), 0 empty row(s)" in err
     assert not out.exists()
@@ -444,7 +517,7 @@ def test_empty_commit_sha_stops(tmp_path, capsys):
     rows[0]["commit_sha"] = ""
     rows[1]["commit_sha"] = ""
     p = write_csv(tmp_path / "s.csv", rows)
-    assert mod.main(["--input", str(p), "--output", str(tmp_path / "o.md"), "--expected-commit", SHA]) == 2
+    assert mod.main(["--input", str(p), "--output", str(tmp_path / "o.md"), "--expected-commit", SHA, "--build-label", LABEL]) == 2
     assert "0 mismatching row(s), 2 empty row(s)" in capsys.readouterr().err
 
 
@@ -453,7 +526,7 @@ def test_internal_mode_gives_csv_line_numbers_but_no_session_ids(tmp_path, capsy
     rows[2]["commit_sha"] = OTHER_SHA
     rows[4]["commit_sha"] = ""
     p = write_csv(tmp_path / "s.csv", rows)
-    assert mod.main(["--input", str(p), "--internal", "--expected-commit", SHA]) == 2
+    assert mod.main(["--input", str(p), "--internal", "--expected-commit", SHA, "--build-label", LABEL]) == 2
     cap = capsys.readouterr()
     assert "mismatch: CSV line(s) 4" in cap.err and "empty: CSV line(s) 6" in cap.err
     assert "ME-P9" not in cap.err and cap.out == ""
@@ -461,4 +534,4 @@ def test_internal_mode_gives_csv_line_numbers_but_no_session_ids(tmp_path, capsy
 
 def test_expected_commit_must_be_full_sha(csv_path):
     with pytest.raises(SystemExit):
-        mod.main(["--input", str(csv_path), "--expected-commit", "400883"])
+        mod.main(["--input", str(csv_path), "--expected-commit", "400883", "--build-label", LABEL])
