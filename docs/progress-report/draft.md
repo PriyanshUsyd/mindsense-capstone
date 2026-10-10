@@ -57,7 +57,7 @@ The GPS coefficient is negative under both models: in weeks when a person travel
 
 **Changes from the proposal.** The proposal described a random intercept only and an eligibility rule of 14 valid days in a 30-day window across at least four windows. The model now adds a random slope and AR(1) residuals, and eligibility is tied to the 14-day comparison window and the 28/56-day baseline above.
 
-**Calibration issues from the pilot (completed).** The Week 7 pilot exposed three issues, now resolved:
+**Calibration issues from the pilot (fixed in rc-eval-2; confirmation pending in the main evaluation).** The Week 7 pilot exposed three issues, each addressed in the release candidate:
 
 - Values were shown at full floating-point precision. They are now rounded to whole numbers; day-to-day variation within a person is larger than the mean itself for GPS distance (median coefficient of variation 1.28), so decimals implied precision the data do not have.
 - A request about the "last 3 days" was answered with 14-day results. Requests for windows other than the observed 14 days are now declined, while phrasings that name that window ("the past two weeks") are answered.
@@ -145,7 +145,7 @@ Fourth, the pilot exposed integration problems that unit tests alone had not det
 
 **Calibration and uncertainty.** Individual classifications are sensitive to reasonable modelling choices: in earlier analysis, a defensible change to preprocessing moved about one participant in eight across the claim/no-claim boundary. The two bootstrap methods disagree in a consistent direction, so the reported evidence rests on their intersection, which is deliberately conservative. Individual labels should be read as indicative.
 
-**Small pilot sample.** Evaluation is team-only: eight evaluators, who are also the developers, rating four fixed questions. Ratings are descriptive and are not results from independent users. None of the four questions exercises a relationship statement, so the evaluation cannot assess how the system communicates per-person evidence.
+**Small pilot sample.** External recruitment was not approved, because ethics approval for external participants was not available, so evaluation is team-only: eight evaluators, who are also the developers, rating four fixed questions. Ratings are descriptive and are not results from independent users. None of the four questions exercises a relationship statement, so the evaluation cannot assess how the system communicates per-person evidence.
 
 **Held-out test restrictions.** The sealed held-out question set has not been used during development; fixes after the pilot were checked against a separate 50-question development set only.
 
