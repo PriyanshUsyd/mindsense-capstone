@@ -50,7 +50,16 @@ PROHIBITED_CLAIM_IDS = {
 }
 
 
-@pytest.fixture(params=["generic_fallback.yaml", "crisis_aware.yaml"])
+@pytest.fixture(
+    params=[
+        "generic_fallback.yaml",
+        "crisis_aware.yaml",
+        # Policy 0.3.2 deterministic templates (ME-P01 F1/F3/F4).
+        "capability.yaml",
+        "diagnosis_boundary.yaml",
+        "general_uncertainty.yaml",
+    ]
+)
 def template(request):
     path = TEMPLATE_DIR / request.param
     with open(path, "r", encoding="utf-8") as f:

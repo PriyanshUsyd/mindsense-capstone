@@ -152,7 +152,7 @@ def test_exact_evaluation_plan_diagnosis_question_stops_before_generation():
     )
     assert response.response_mode.value == "refusal"
     assert response.model_invoked is False
-    assert response.request_policy_version == REQUEST_POLICY_VERSION == "0.3.1"
+    assert response.request_policy_version == REQUEST_POLICY_VERSION == "0.3.2"
 
 
 # --- feature inference: which feature a question is actually about --------

@@ -1,0 +1,27 @@
+# Deterministic boundary for diagnosis-seeking requests (request policy
+# 0.3.2, ME-P01 F4). The classifier already routed these to
+# diagnosis_seeking, but the response reused the generic off-topic text.
+# Crisis language still takes precedence and uses crisis_aware.yaml.
+
+template_id: diagnosis_boundary
+template_version: "1.0.0"
+response_mode: refusal
+allowed_claim_ids:
+  - non_diagnostic_boundary
+prohibited_claim_ids:
+  - diagnosis
+  - causal_explanation
+  - treatment_or_crisis_advice
+  - risk_prediction
+
+text: >
+  I can't tell whether you have depression or any other condition. Phone
+  data like movement and unlock counts can't be used to diagnose anyone. If
+  you're worried about your mood, please talk to a GP or a mental-health
+  professional. If you're feeling low, it can help to reach out to someone
+  you trust or a support service.
+
+review_note: >
+  Added 2026-10-10 after ME-P01 on rc-eval-1. Wording approved by the
+  Integration/QA lead for rc-eval-2; retain normal Evaluation and Privacy
+  review.
