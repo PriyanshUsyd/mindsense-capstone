@@ -36,8 +36,10 @@ Critical failures are always per response (session x question), whatever
 (any Yes = failure) and flagged in the data-quality section.
 
 Usage:
-    python scripts/summarize_session_responses.py [--unit evaluator|session]
-        [--input PATH] [--output PATH | --internal] [--split-threshold 2]
+    python scripts/summarize_session_responses.py
+        --expected-commit <40-character SHA> --build-label <label>
+        [--unit evaluator|session] [--input PATH]
+        [--output PATH | --internal] [--split-threshold 2]
 """
 
 from __future__ import annotations
@@ -65,7 +67,6 @@ PROTECTED_OUTPUTS = (DEFAULT_INPUT, RESULTS_DIR / "pass-threshold-summary.md")
 MIN_VALID_N = 5
 INSUFFICIENT = f"insufficient ratings (n < {MIN_VALID_N})"
 
-BUILD_LABEL = "rc-eval-2"
 SHA_RE = re.compile(r"[0-9a-f]{40}")
 
 PUBLIC_NOTE = (
@@ -491,7 +492,7 @@ def _dimension_cells(likert: list[str], stats_by_item: dict[str, ItemStats]):
 
 
 def build_report(rows: list[dict[str, str]], unit: str, split_threshold: int = 2, *, internal: bool = False,
-                 expected_commit: str | None = None, build_label: str = BUILD_LABEL) -> str:
+                 expected_commit: str | None = None, build_label: str | None = None) -> str:
     """Public report; with ``internal=True`` an appendix with session IDs is added."""
     warnings = Warnings()
     raw_answers = build_answers(rows, warnings)
@@ -510,7 +511,7 @@ def build_report(rows: list[dict[str, str]], unit: str, split_threshold: int = 2
         "",
         PUBLIC_NOTE,
         "",
-        *([f"Build: {build_label} ({expected_commit})", ""] if expected_commit else []),
+        *([f"Build: {build_label} ({expected_commit})", ""] if expected_commit and build_label else []),
         f"- **Sessions in data:** {n_sessions}",
         f"- **Aggregation unit:** `{unit}` — {unit_desc}",
         "- **N/A** is excluded from every denominator and counted separately. No significance tests; "
@@ -794,7 +795,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--output", type=Path, help="write the public markdown here instead of stdout")
     ap.add_argument("--expected-commit", required=True,
                     help="full 40-character SHA every commit_sha must equal (the evaluated build)")
-    ap.add_argument("--build-label", default=BUILD_LABEL, help="name printed with the SHA in the Build line")
+    ap.add_argument("--build-label", required=True,
+                    help="name of the evaluated build (e.g. rc-eval-2), printed with the SHA in the Build line")
     ap.add_argument("--internal", action="store_true",
                     help="session-bearing report to outputs/evaluation_summary/ only (owner-only; never stdout)")
     args = ap.parse_args(argv)
@@ -811,6 +813,10 @@ def main(argv: list[str] | None = None) -> int:
     if not SHA_RE.fullmatch(expected):
         ap.error("--expected-commit must be the full 40-character hexadecimal SHA")
 
+    build_label = args.build_label.strip()
+    if not build_label:
+        ap.error("--build-label must not be empty")
+
     counts, bad_lines = check_build(args.input, expected)
     if counts:
         print(f"STOPPED: commit_sha does not match --expected-commit {expected} "
@@ -823,7 +829,7 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     rows = load_rows(args.input)
-    kw = dict(expected_commit=expected, build_label=args.build_label)
+    kw = dict(expected_commit=expected, build_label=build_label)
     if args.internal:
         target = write_internal(build_report(rows, args.unit, args.split_threshold, internal=True, **kw))
         print(f"internal summary written to {target} (owner-only)", file=sys.stderr)
