@@ -64,6 +64,10 @@ const responseLabels: Record<SafeSLMResponse['response_mode'], string> = {
 const refusalLabels: Partial<Record<SafeSLMResponse['request_category'], string>> = {
   capability_question: 'What MindSense can do',
   diagnosis_seeking: 'Not a diagnosis',
+  // Policy 0.3.3 (50-question dev test W4/W5/O4).
+  treatment_advice_seeking: 'Not medical advice',
+  clinical_score_request: 'No clinical scores',
+  app_information: 'About MindSense',
 }
 
 // ME-P01 F5: evaluators record these per answer. Only routing metadata from

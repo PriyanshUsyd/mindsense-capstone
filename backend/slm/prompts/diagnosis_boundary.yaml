@@ -2,9 +2,11 @@
 # 0.3.2, ME-P01 F4). The classifier already routed these to
 # diagnosis_seeking, but the response reused the generic off-topic text.
 # Crisis language still takes precedence and uses crisis_aware.yaml.
+# 1.1.0 (policy 0.3.3, dev Q28): condition-neutral; 1.0.0 named depression
+# even when the question was about anxiety.
 
 template_id: diagnosis_boundary
-template_version: "1.0.0"
+template_version: "1.1.0"
 response_mode: refusal
 allowed_claim_ids:
   - non_diagnostic_boundary
@@ -15,13 +17,13 @@ prohibited_claim_ids:
   - risk_prediction
 
 text: >
-  I can't tell whether you have depression or any other condition. Phone
-  data like movement and unlock counts can't be used to diagnose anyone. If
-  you're worried about your mood, please talk to a GP or a mental-health
-  professional. If you're feeling low, it can help to reach out to someone
+  I can't tell whether you have any mental-health condition. Phone data like
+  movement and unlock counts can't be used to diagnose anyone. If you're
+  worried about how you've been feeling, please talk to a GP or a
+  mental-health professional. If you're feeling low, it can help to reach out to someone
   you trust or a support service.
 
 review_note: >
   Added 2026-10-10 after ME-P01 on rc-eval-1. Wording approved by the
-  Integration/QA lead for rc-eval-2; retain normal Evaluation and Privacy
-  review.
+  Integration/QA lead for rc-eval-2; made condition-neutral 2026-10-10 after
+  the 50-question dev test. Retain normal Evaluation and Privacy review.

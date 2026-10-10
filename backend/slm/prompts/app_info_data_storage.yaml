@@ -1,0 +1,33 @@
+# Deterministic answer to "Is my data stored anywhere?" (request policy 0.3.3,
+# 50-question dev test Q10). No participant data is loaded and no model is
+# called for this route.
+#
+# Wording is limited to what docs/privacy/local-demo-privacy-check.md
+# records for the local demo: a local model, chat text held only in the open
+# page, study data kept on this computer. It deliberately does not claim
+# "nothing leaves the device": whole-device offline verification is still
+# outstanding (privacy/initial_dependency_audit.md; master test register).
+
+template_id: app_info_data_storage
+template_version: "1.0.0"
+response_mode: refusal
+allowed_claim_ids:
+  - non_diagnostic_boundary
+prohibited_claim_ids:
+  - diagnosis
+  - causal_explanation
+  - treatment_or_crisis_advice
+  - risk_prediction
+
+text: >
+  In this study version, MindSense runs on this computer. Your questions are
+  answered by a model running locally, not by an online service, and the
+  app doesn't save your chat: it is cleared when you start a new
+  conversation or close the page. The study data it summarises is kept on
+  this computer. For questions about how the study stores or keeps your
+  data, please ask the research team.
+
+review_note: >
+  Added 2026-10-10 after the 50-question dev test on rc-eval-2. Privacy lead
+  (Yuktha) must confirm the wording against the local-demo privacy procedure
+  before participant use.

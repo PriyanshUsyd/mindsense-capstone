@@ -16,12 +16,15 @@ from backend.slm.client import (
     SLMUnavailableError,
 )
 from backend.slm.prompt_loader import (
+    DEFAULT_APP_INFORMATION_TEMPLATES,
     DEFAULT_CAPABILITY_TEMPLATE,
+    DEFAULT_CLINICAL_SCORE_BOUNDARY,
     DEFAULT_CRISIS_FALLBACK,
     DEFAULT_DIAGNOSIS_BOUNDARY,
     DEFAULT_GENERAL_UNCERTAINTY_TEMPLATE,
     DEFAULT_INSUFFICIENT_DATA_TEMPLATE,
     DEFAULT_SCOPE_FALLBACK,
+    DEFAULT_TREATMENT_BOUNDARY,
     DEFAULT_WINDOW_FALLBACK,
     LoadedFallbackPrompt,
     load_fallback_prompt,
@@ -97,6 +100,15 @@ class SLMService:
         self.general_uncertainty_template = load_fallback_prompt(
             DEFAULT_GENERAL_UNCERTAINTY_TEMPLATE
         )
+        # Policy 0.3.3 deterministic texts (50-question dev test).
+        self.treatment_boundary = load_fallback_prompt(DEFAULT_TREATMENT_BOUNDARY)
+        self.clinical_score_boundary = load_fallback_prompt(
+            DEFAULT_CLINICAL_SCORE_BOUNDARY
+        )
+        self.app_information_templates = {
+            reason_code: load_fallback_prompt(path)
+            for reason_code, path in DEFAULT_APP_INFORMATION_TEMPLATES.items()
+        }
         if (
             self.generic_fallback.manifest.response_mode
             != ResponseMode.GENERIC_FALLBACK
@@ -279,6 +291,15 @@ class SLMService:
             response_mode = ResponseMode.REFUSAL
         elif decision.category == RequestCategory.CAPABILITY_QUESTION:
             template = self.capability_template
+            response_mode = ResponseMode.REFUSAL
+        elif decision.category == RequestCategory.TREATMENT_ADVICE_SEEKING:
+            template = self.treatment_boundary
+            response_mode = ResponseMode.REFUSAL
+        elif decision.category == RequestCategory.CLINICAL_SCORE_REQUEST:
+            template = self.clinical_score_boundary
+            response_mode = ResponseMode.REFUSAL
+        elif decision.category == RequestCategory.APP_INFORMATION:
+            template = self.app_information_templates[decision.reason_code]
             response_mode = ResponseMode.REFUSAL
         else:
             template = self.generic_fallback
