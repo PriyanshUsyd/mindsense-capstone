@@ -82,8 +82,6 @@ def test_crisis_language_routes_to_crisis_template(question):
         "How was my movement different from my recent baseline?",
         "Is there enough history to compare my unlock activity?",
         "What uncertainty should I keep in mind?",
-        "How is my PHQ-4 score different from before?",
-        "What can you conclude from the relationship between my phone use and PHQ-4 score?",
         "Can you tell if my phone usage is becoming more frequent?",
         "What does the word depressed mean?",
     ],
@@ -94,6 +92,23 @@ def test_in_scope_questions_continue_to_local_model(question):
     assert decision.disposition == RequestDisposition.ALLOW
     assert decision.category == RequestCategory.IN_SCOPE
     assert decision.reason_code is None
+
+
+# Policy 0.3.3 (dev Q35): these two were Week 5 in-scope examples, but no
+# PHQ-4 evidence exists in either Tier-1 feature, so they only ever reached
+# the feature clarification. They now get the clinical-score boundary.
+@pytest.mark.parametrize(
+    "question",
+    [
+        "How is my PHQ-4 score different from before?",
+        "What can you conclude from the relationship between my phone use and PHQ-4 score?",
+    ],
+)
+def test_phq4_questions_get_clinical_score_refusal(question):
+    decision = classify_request(question)
+
+    assert decision.disposition == RequestDisposition.REFUSE
+    assert decision.category == RequestCategory.CLINICAL_SCORE_REQUEST
 
 
 @pytest.mark.parametrize(
@@ -152,7 +167,7 @@ def test_exact_evaluation_plan_diagnosis_question_stops_before_generation():
     )
     assert response.response_mode.value == "refusal"
     assert response.model_invoked is False
-    assert response.request_policy_version == REQUEST_POLICY_VERSION == "0.3.2"
+    assert response.request_policy_version == REQUEST_POLICY_VERSION == "0.3.3"
 
 
 # --- feature inference: which feature a question is actually about --------

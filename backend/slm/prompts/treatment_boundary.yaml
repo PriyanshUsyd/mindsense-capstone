@@ -1,0 +1,25 @@
+# Deterministic boundary for treatment-advice requests (request policy 0.3.3,
+# 50-question dev test Q31/Q32/Q40). Previously these reused the generic
+# off-topic text. Crisis language still takes precedence (crisis_aware.yaml).
+
+template_id: treatment_boundary
+template_version: "1.0.0"
+response_mode: refusal
+allowed_claim_ids:
+  - non_diagnostic_boundary
+prohibited_claim_ids:
+  - diagnosis
+  - causal_explanation
+  - treatment_or_crisis_advice
+  - risk_prediction
+
+text: >
+  I can't give advice about treatment, medication or how to improve your
+  mood. MindSense only describes patterns in phone data and can't tell what
+  would help you. A GP or a mental-health professional is the right person
+  to talk to about support or treatment. If you're feeling low, it can help
+  to reach out to someone you trust or a support service.
+
+review_note: >
+  Added 2026-10-10 after the 50-question dev test on rc-eval-2. Requires
+  normal Integration/QA and Evaluation review.

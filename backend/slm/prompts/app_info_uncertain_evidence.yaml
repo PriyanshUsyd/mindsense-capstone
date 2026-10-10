@@ -1,0 +1,26 @@
+# Deterministic answer to 'What does "uncertain evidence" mean?' (request
+# policy 0.3.3, 50-question dev test Q19). No participant data is loaded and
+# no model is called for this route.
+
+template_id: app_info_uncertain_evidence
+template_version: "1.0.0"
+response_mode: refusal
+allowed_claim_ids:
+  - uncertainty_disclosure
+  - non_diagnostic_boundary
+prohibited_claim_ids:
+  - diagnosis
+  - causal_explanation
+  - treatment_or_crisis_advice
+  - risk_prediction
+
+text: >
+  "Uncertain evidence" means the data show a pattern, but not clearly enough
+  to say it is a real change from your usual behaviour. This can happen when
+  there are only a few days of data, when some days are missing, or when
+  your day-to-day values vary a lot. MindSense says so instead of guessing.
+  It is not a sign that anything is wrong, and it is not a diagnosis.
+
+review_note: >
+  Added 2026-10-10 after the 50-question dev test on rc-eval-2. Requires
+  normal Integration/QA and Evaluation review.

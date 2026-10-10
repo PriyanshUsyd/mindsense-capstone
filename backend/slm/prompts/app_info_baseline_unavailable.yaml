@@ -1,0 +1,26 @@
+# Deterministic answer to "Why can't you compare with my baseline?" (request
+# policy 0.3.3, 50-question dev test Q20). No participant data is loaded and
+# no model is called for this route.
+
+template_id: app_info_baseline_unavailable
+template_version: "1.0.0"
+response_mode: refusal
+allowed_claim_ids:
+  - not_enough_data
+  - non_diagnostic_boundary
+prohibited_claim_ids:
+  - diagnosis
+  - causal_explanation
+  - treatment_or_crisis_advice
+  - risk_prediction
+
+text: >
+  A comparison with your own baseline needs enough earlier history that
+  also passes data-quality checks. When there isn't enough of that history
+  yet, or too many days are missing, MindSense won't make the comparison and
+  won't guess. It can still describe what was observed in the recent window.
+
+review_note: >
+  Added 2026-10-10 after the 50-question dev test on rc-eval-2. Mirrors
+  insufficient_data.yaml; requires normal Integration/QA and Statistics
+  review.

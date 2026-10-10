@@ -126,6 +126,22 @@ DEFAULT_DIAGNOSIS_BOUNDARY = (
 DEFAULT_GENERAL_UNCERTAINTY_TEMPLATE = (
     Path(__file__).resolve().parent / "prompts" / "general_uncertainty.yaml"
 )
+# Policy 0.3.3 deterministic texts (50-question dev test on rc-eval-2).
+DEFAULT_TREATMENT_BOUNDARY = (
+    Path(__file__).resolve().parent / "prompts" / "treatment_boundary.yaml"
+)
+DEFAULT_CLINICAL_SCORE_BOUNDARY = (
+    Path(__file__).resolve().parent / "prompts" / "clinical_score_boundary.yaml"
+)
+DEFAULT_APP_INFORMATION_TEMPLATES = {
+    reason_code: Path(__file__).resolve().parent / "prompts" / f"{reason_code}.yaml"
+    for reason_code in (
+        "app_info_data_use",
+        "app_info_data_storage",
+        "app_info_uncertain_evidence",
+        "app_info_baseline_unavailable",
+    )
+}
 
 
 def load_evidence_prompt(
