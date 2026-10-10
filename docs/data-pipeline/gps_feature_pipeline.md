@@ -395,12 +395,13 @@ Because sufficiency is evaluated using rolling windows, a participant may move b
 
 ## 11. Additional Tier-1 Feature Validation
 
-GPS distance is one of three locked Tier-1 sensing features.
+GPS distance is one of two locked Tier-1 sensing features (`freeze-decision.md`,
+`feature-list-signoff.md`). The other is phone unlock count: `unlock_num_ep_0`.
 
-The other two are:
+Home duration (`loc_home_dur`) is validated below as a candidate feature only; it is
+not part of the locked Tier-1 set (see section 21).
 
-- home duration: `loc_home_dur`
-- phone unlock count: `unlock_num_ep_0`
+*Corrected 2026-10-10 by Priyansh to match the Tier-1 sign-off.*
 
 ### 11.1 Home Duration
 
@@ -504,7 +505,9 @@ Results:
 
 The absolute correlation is well below the provisional redundancy threshold of 0.6.
 
-GPS distance and home duration are therefore retained as distinct Tier-1 features rather than treating one as a substitute for the other.
+GPS distance and home duration are therefore distinct measures, and home duration would not be disqualified as a substitute for GPS distance on this basis. This does not make home duration a Tier-1 feature; it is a candidate only (see section 21).
+
+*Corrected 2026-10-10 by Priyansh to match the Tier-1 sign-off.*
 
 ---
 
@@ -740,11 +743,15 @@ therefore retained as the final GPS extreme-value policy.
 
 ## 21. Final Tier-1 Status
 
-The final locked Tier-1 features are:
+The final locked Tier-1 features are (`freeze-decision.md`, 706a599; hard cap of
+2 cross-platform features per `Weekly_Plan.md` Week 4):
 
 1. GPS distance travelled (`loc_dist_ep_0`)
-2. Home duration (`loc_home_dur`)
-3. Phone unlock count (`unlock_num_ep_0`)
+2. Phone unlock count (`unlock_num_ep_0`)
+
+`loc_home_dur` was not selected because of the two-feature cap; it was not rejected. It has 96.2% valid windows and r = −0.24 with GPS distance (`Week5_Statistical_Analysis_Deliverable.md` §7), so it remains a candidate for a future third feature. Its iOS/Android availability was never assessed.
+
+*Corrected 2026-10-10 by Priyansh to match the Tier-1 sign-off.*
 
 The Tier-1 pipeline is now implemented end-to-end from CES sensing data through cleaned PHQ-4-aligned FeatureWindow generation.
 
