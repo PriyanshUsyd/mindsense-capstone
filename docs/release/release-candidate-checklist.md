@@ -2,10 +2,13 @@
 
 **Prepared:** 2026-10-08 (Week 9) by Priyansh Khandelwal, Integration & QA Lead
 **Updated:** 2026-10-10 (evaluation lock). `rc-eval-1` tagged at `687a50e`. Earlier: 2026-10-08, candidate moved from `a498b3f` to `fcaadfb` after #48 and its repair (#53); lock date set to 2026-10-16, replaced the same day by the release timeline below (evaluation lock 2026-10-10).
-**Status:** **Final RC, tagged.** `rc-eval-1` → `687a50ea233ba7e3653b15d79ed84d5da7db6a91`. The `Pending` items in Section 7 are sign-offs and readiness checks still open after the lock; they do not change the tagged build.
+**Status:** `rc-eval-1` → `687a50ea233ba7e3653b15d79ed84d5da7db6a91` was the RC until the lock was reopened on 2026-10-10 (see below). **rc-eval-2 is pending.** The `Pending` items in Section 7 are sign-offs and readiness checks still open after the lock; they do not change the tagged build.
 
 > **This checklist update post-dates the tag and is docs-only.** It was committed after `rc-eval-1` was created and is not part of the tagged tree. The diff from `687a50e` to the main commit that merges it touches only this file: no `backend/`, `frontend/`, model or prompt/policy files.
 **Evaluation lock:** 2026-10-10 (Sat)
+
+> **Lock reopened 2026-10-10 by Priyansh after ME-P01 found F1–F5 on rc-eval-1; sessions re-run on rc-eval-2.**
+> F1 capability question refused as off-topic; F2 "past couple of weeks" refused as an unsupported window; F3 general uncertainty question asked for a feature; F4 diagnosis question got the generic off-topic text; F5 no `/respond` metadata visible to evaluators. Fixed on branch `priyansh-eval-fixes-rc2` (request policy 0.3.2, three new deterministic templates, per-answer Details line in the UI). The ME-P01 attempt on rc-eval-1 is kept as superseded evidence in `docs/evaluation/evidence/main-evaluation/ME-P01-attempt1-rc-eval-1/notes.md`. `rc-eval-1` stays as a historical tag; the rc-eval-2 SHA is recorded here after it is tagged.
 
 ## Release timeline
 
@@ -113,7 +116,7 @@ Local run on the same tree (`44b584b`, PR #53 head; Windows, Python 3.14.5): bac
 
 ## 5. SLM and prompt versions on the candidate
 
-Unchanged from `a498b3f`: no files under `backend/slm/` changed between `a498b3f` and `fcaadfb`, nor between `fcaadfb` and the RC `687a50e` (checked 2026-10-10). The table below therefore also describes `rc-eval-1`.
+Unchanged from `a498b3f`: no files under `backend/slm/` changed between `a498b3f` and `fcaadfb`, nor between `fcaadfb` and the RC `687a50e` (checked 2026-10-10). The table below therefore also describes `rc-eval-1`. For rc-eval-2, only the request policy (0.3.2) and the three added templates differ; the model, decoding and evidence-explainer prompt (0.4.13) are unchanged.
 
 | Component | Version on `fcaadfb` | Source |
 |---|---|---|
@@ -121,10 +124,10 @@ Unchanged from `a498b3f`: no files under `backend/slm/` changed between `a498b3f
 | Comparison candidate | `qwen3:4b` (Q4_K_M, digest prefix `359d7dd4bcda`). Manifest `selection_status: comparison_pending` | `backend/slm/model_manifest.yaml` |
 | Decoding | `schema_constrained_json`, temperature 0.0, seed 42 | `backend/slm/model_manifest.yaml` |
 | Evidence explainer prompt | `prompt_version: "0.4.13"` | `backend/slm/prompts/evidence_explainer.yaml` |
-| Request policy | `REQUEST_POLICY_VERSION = "0.3.1"` | `backend/slm/request_policy.py` |
+| Request policy | `REQUEST_POLICY_VERSION = "0.3.1"` on rc-eval-1; **`"0.3.2"` on rc-eval-2** (ME-P01 fixes) | `backend/slm/request_policy.py` |
 | Context policy | `CONTEXT_POLICY_VERSION = "0.1.0"` | `backend/slm/context_responder.py` |
 | Variant interface | `VARIANT_INTERFACE_VERSION = "0.2.0"` | `backend/slm/variants.py` |
-| Templates | `crisis_aware` 1.1.0; `generic_fallback`, `insufficient_data`, `request_scope`, `unsupported_window` 1.0.0 | `backend/slm/prompts/*.yaml` |
+| Templates | `crisis_aware` 1.1.0; `generic_fallback`, `insufficient_data`, `request_scope`, `unsupported_window` 1.0.0. **Added on rc-eval-2:** `capability`, `diagnosis_boundary`, `general_uncertainty` 1.0.0 | `backend/slm/prompts/*.yaml` |
 
 The final phi4-mini vs qwen3 selection is **not** made by this checklist. — Pending — Richard.
 

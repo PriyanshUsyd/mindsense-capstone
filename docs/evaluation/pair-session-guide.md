@@ -271,7 +271,7 @@ Save these into `docs/evaluation/evidence/main-evaluation/ME-P0x/Qy/` on the lap
 | File | Content (from the evidence README) | Committed to GitHub? |
 |---|---|---|
 | `ui.png` | screenshot showing the exact question **and** the complete visible response | **No. Stays on the laptop** |
-| `response.json` | the `/respond` response, copied **without any change**. Get it from the browser DevTools → Network tab → the `respond` request → Response | **No. Stays on the laptop** |
+| `response.json` | the `/respond` response, copied **without any change**, if you can capture it: open DevTools → Network **before** asking, filter `Fetch/XHR`, click the `respond` POST request → Response. Optional from rc-eval-2; see the Details line below | **No. Stays on the laptop** |
 | `notes.md` | the template below | **Yes** |
 
 **`notes.md` template (Decided by Priyansh, 2026-10-10).**
@@ -309,7 +309,12 @@ Critical failure? Yes / No — if yes, what:
 - This resolves the conflict between the evidence README and Sheng's [UI support log](../ui/week9-evaluation-ui-issues.md). Sheng's log says to "Keep individual ratings, session codes, screenshots, and full `/respond` request or response JSON local".
 - Keep the laptop copies until Chonghao says they are no longer needed.
 
-Because the JSON is not committed, copy these values from `response.json` into the `notes.md` template and the CSV: `response_mode`, `rejection_reason`, `model_tag`, `request_policy_version` (written as `policy_version`).
+Copy these values into the `notes.md` template and the CSV: `response_mode`, `rejection_reason`, `model_tag`, `request_policy_version` (written as `policy_version`).
+
+**Where to read them (from rc-eval-2, Decided by Priyansh, 2026-10-10).** Under every answer the app now shows a small line:
+`Details: response_mode=… · rejection_reason=… · model_tag=… · policy=…`.
+Copy the values from that line. It holds no participant identifier.
+- Why: in ME-P01 on rc-eval-1 the DevTools Network panel showed no `/respond` request. The app does call `http://127.0.0.1:8000/respond` directly with `fetch` (`frontend/src/api/client.ts`); there is no proxy or service worker. The cause on that laptop was not confirmed. Chrome's Network panel records only requests made while DevTools is open, and a filter such as "Doc" hides `fetch` requests, so open DevTools and select `Fetch/XHR` before asking if you also want `response.json`.
 - The possible `response_mode` values are `normal`, `insufficient_data`, `uncertainty`, `refusal`, `generic_fallback` and `crisis_aware_fallback`.
 
 The questionnaire also asks for an "evidence-packet identifier/hash". Write **`N/A — not returned by /respond`** (Decided by Priyansh, 2026-10-10).
@@ -406,12 +411,12 @@ session_id,question_id,evaluator_code,category,item_scores,critical_failure,crit
 | `critical_failure` | `Yes` or `No`. Never blank. Each person uses the same value on all of their own category rows for that question |
 | `critical_failure_type` | `none`, or the exact type(s) |
 | `na_reason` | why an item is N/A; otherwise empty |
-| `response_mode`, `rejection_reason` | exact values from `response.json` (empty if `rejection_reason` is null) |
+| `response_mode`, `rejection_reason` | exact values from the Details line (empty if `rejection_reason` is `none`) |
 | `architecture_variant` | `rag`. The Ollama default and the 2026-10-08 decision; see 1.3 |
 | `commit_sha` | `687a50ea233ba7e3653b15d79ed84d5da7db6a91` |
-| `model_tag` | value from `response.json` (expected `phi4-mini:3.8b`) |
+| `model_tag` | value from the Details line (`phi4-mini:3.8b` when the model answered; empty if `none`) |
 | `prompt_version` | `0.4.13` (`backend/slm/prompts/evidence_explainer.yaml`, release checklist §5) |
-| `policy_version` | `0.3.1` (`request_policy_version` in `response.json`) |
+| `policy_version` | `0.3.2` (`policy=` in the Details line) |
 | `evidence_path` | `docs/evaluation/evidence/main-evaluation/ME-P0x/Qy/` |
 | `notes` | short free text without commas, or wrap it in double quotes |
 
@@ -430,7 +435,7 @@ ME-P01,SESSION,ME-P01-E1,usability,US1=4;US2=4;US3=5;US4=4,No,none,,,,,687a50ea2
 **Worked example: format only, not a real result.**
 
 ```csv
-ME-P01,Q2,ME-P01-E2,uncertainty,UC1=4;UC2=N/A,No,none,UC2 not applicable because evidence was sufficient,normal,,rag,687a50ea233ba7e3653b15d79ed84d5da7db6a91,phi4-mini:3.8b,0.4.13,0.3.1,docs/evaluation/evidence/main-evaluation/ME-P01/Q2/,EXAMPLE FORMAT ONLY
+ME-P01,Q2,ME-P01-E2,uncertainty,UC1=4;UC2=N/A,No,none,UC2 not applicable because evidence was sufficient,normal,,rag,687a50ea233ba7e3653b15d79ed84d5da7db6a91,phi4-mini:3.8b,0.4.13,0.3.2,docs/evaluation/evidence/main-evaluation/ME-P01/Q2/,EXAMPLE FORMAT ONLY
 ```
 
 ### 3.2 Rules
