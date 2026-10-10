@@ -58,6 +58,26 @@ const responseLabels: Record<SafeSLMResponse['response_mode'], string> = {
   uncertainty: 'Uncertain evidence',
 }
 
+// Policy 0.3.2 (ME-P01 F1/F4): a refusal's badge follows the backend's
+// request_category, so a capability answer or a diagnosis boundary is not
+// labelled as off-topic.
+const refusalLabels: Partial<Record<SafeSLMResponse['request_category'], string>> = {
+  capability_question: 'What MindSense can do',
+  diagnosis_seeking: 'Not a diagnosis',
+}
+
+// ME-P01 F5: evaluators record these per answer. Only routing metadata from
+// the response is shown; no participant identifier or evidence value.
+function ResponseDetails({ response }: { response: SafeSLMResponse }) {
+  return (
+    <p className="technical-detail response-details" data-testid="response-details">
+      Details: response_mode={response.response_mode} · rejection_reason=
+      {response.rejection_reason ?? 'none'} · model_tag={response.model_tag ?? 'none'} ·
+      policy={response.request_policy_version}
+    </p>
+  )
+}
+
 export function NormalResponse() {
   const [draft, setDraft] = useState(DEFAULT_QUESTION)
   const [turns, setTurns] = useState<ConversationTurn[]>([])
@@ -141,7 +161,13 @@ export function NormalResponse() {
       case 'uncertainty':
         return <UncertaintyState message={response.text} question={question} />
       case 'refusal':
-        return <RefusalState message={response.text} question={question} />
+        return (
+          <RefusalState
+            label={refusalLabels[response.request_category]}
+            message={response.text}
+            question={question}
+          />
+        )
       case 'generic_fallback':
         return (
           <GenericFallbackState
@@ -200,6 +226,7 @@ export function NormalResponse() {
         {turns.map((turn) => (
           <div className="conversation-turn" key={turn.id}>
             {renderTurn(turn)}
+            <ResponseDetails response={turn.response} />
           </div>
         ))}
 

@@ -398,7 +398,11 @@ lag-1 term pushing one participant below the 3-occasion floor — see
 has no lag-1 term and gives 214.) This definition is post-hoc.
 `unlock_num_ep_0` is 216 as of 2026-10-06; `evidence.EXPECTED_FAMILY_SIZE` is
 a per-feature dict of such current observed values (a visibility check that
-warns on change, not a constraint).
+warns on change, not a constraint). Both entry points pass the statistics-side
+name (`FeatureSpec.name`) as `feature_id` so the check runs:
+`participant_evidence` and, since 2026-10-09, the cached aggregation
+(`bootstrap_cache.aggregate_checkpoint`, which previously passed none and so
+skipped the check silently).
 
 - **Reported values use BH-FDR across that family (n = 214 currently).**
 - **Holm-Bonferroni across the same family is reported alongside as a
@@ -640,6 +644,25 @@ does not. Intersection yields **23 of 214** participants — this session's
 available as standalone sensitivity views; the intersection does not replace
 either.
 
+**Replication on `unlock_num_ep_0` `[POST-HOC, 2026-10-10]`.** The same B=500 procedure (both methods, `master_seed=20260913`) was run on the second Tier-1 feature: 1000/1000 records usable, 0 fallbacks, family 216. Side by side with GPS:
+
+| | `loc_dist_ep_0` (GPS) | `unlock_num_ep_0` |
+|---|---|---|
+| Family | 214 | 216 |
+| Intersection `evidence_available` | 23 | fewer than 5 (see small-cell note) |
+| Cluster-only / parametric-only | 28 / 0 | 36 / 0 |
+| Agreement rate | 86.9% (186/214) | 83.3% (180/216) |
+| SE ratio, parametric ÷ cluster (mean) | 7.85× | 10.14× |
+| Spearman ρ(parametric SE, cluster SE) | −0.397 | −0.612 |
+| Spearman ρ(parametric SE, occasion count) | +0.81 | +0.54 |
+| Spearman ρ(cluster SE, occasion count) | −0.33 | −0.29 |
+
+The pattern (one-directional disagreement, parametric SE larger, negatively correlated SE rankings, opposite-signed dependence on occasion count) appears in both features. This supports reading it as a property of the two bootstrap methods rather than of GPS, and strengthens the case for requiring both to agree (the intersection). Magnitudes are not identical (the cross-method correlation is stronger and the parametric/occasion-count correlation weaker for unlock). The figures here are from the unlock run's `aggregated_cache.json`; the per-feature cache is the reference.
+
+**Small-cell note (section 5.3).** The unlock intersection count (3 of 216) is below 5. In any *published* aggregate it is written "fewer than 5", and the corresponding cell of the 2×2 agreement table (both `evidence_available`) is likewise suppressed or merged; the exact count appears only in repository-internal documents. The GPS counts (23, 28, 163) are all at least 5.
+
+**Family-size warning.** The unlock run's log was not kept, so whether the `EXPECTED_FAMILY_SIZE` warning fired could not be checked from the outputs. The family is 216 throughout and equals the dict's expected value for `unlock_num_ep_0`, so no warning is expected.
+
 **Stability check** (run before considering raising B beyond 500): splitting
 the 500 replicates by `iteration_index` into two halves (0–249, 250–499) and
 recomputing the intersection on each independently gives **24** participants
@@ -832,16 +855,25 @@ forbids the model from computing a percentage. `current` and `baseline`
 remain the only two values ever surfaced, shown side by side, each rounded
 independently by the same rule.
 
-### 5.3 Evaluation questionnaire ratings: small-cell handling and evaluator privacy
+### 5.3 Small-cell suppression in published aggregates `[POST-HOC, 2026-10-09]`
 
+Any aggregate table that is published — in a report, in slides, or as a table
+leaving the repository — must either suppress (hide) every cell with a count
+below 5 or merge it into an adjacent category so that no published cell is
+below 5. This was added at the Privacy & Security Lead's request. Analysis
+outputs that stay inside the repository (`analysis/output/`, `outputs/`) are
+exempt, but the rule applies as soon as a table is transcribed from them into
+anything published.
+
+**Evaluation questionnaire ratings: why the rule is not applied, and what is published instead.**
 Evaluation questionnaire ratings come from team members acting
 as evaluators — participants in the evaluation, though their
 ratings are opinions of the system rather than health or
 behavioural data. The under-5 cell rule is not applied to them,
 since every cell is small by design (n ≈ 8) and suppression
 would blank the table. Instead, only cross-evaluator aggregates
-(per-item n, median, range) and critical failures by session and
-question are published; per-evaluator rows and the mapping from
+(per-item n, median, range) and critical failures by question
+are published; per-evaluator rows and the mapping from
 evaluator codes to people are not.
 
 Confirmed with the Privacy & Security Lead on 2026-10-10:
@@ -920,7 +952,13 @@ Resolved Week 4 open items (decisions, not post-hoc changes):
    documentation correction to match what was actually run — the primary
    β_W = −0.184 and the B=500 bootstrap were already computed from the
    two-term formula; no analysis changed.
-10. **Evaluation questionnaire ratings: no under-5 cell suppression; instead
+10. **Small-cell suppression in published aggregates** (section 5.3,
+    2026-10-09) — cells below 5 are suppressed or merged into an adjacent
+    category in anything published (report, slides, tables leaving the
+    repository). Not a Week 4 open item; added at the Privacy & Security
+    Lead's request. In-repository outputs are exempt, but the rule applies when
+    a table is transcribed from them.
+11. **Evaluation questionnaire ratings: no under-5 cell suppression; instead
     cross-evaluator aggregates only, "insufficient" below five applicable
     ratings, and critical failures by question, not by session** (section
     5.3). Added following the Privacy & Security Lead's review (confirmed

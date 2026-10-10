@@ -1036,6 +1036,15 @@ standalone sensitivity views (`reclassify_cohort_family`'s own `label_bh`/
 `label_holm` per method) — the intersection is an addition to the per-person
 table, not a replacement of either single-method view.
 
+**Family-size check on the cached path (2026-10-09).**
+`bootstrap_cache.aggregate_checkpoint` now takes the statistics-side feature
+name and passes it to `reclassify_cohort_family` as `feature_id`, so the
+`EXPECTED_FAMILY_SIZE` comparison (214 for `loc_dist_ep_0`, 216 for
+`unlock_num_ep_0`) runs during cache aggregation; before, it passed none and
+the check was silently skipped. No estimate or classification changes.
+
+`unlock_num_ep_0` was run in Week 9; results are in preregistration §4.1 and week7-calibration-concerns.md item 2.
+
 ---
 
 ## 6. Handover to other workstreams
