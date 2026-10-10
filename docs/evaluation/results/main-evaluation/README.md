@@ -42,9 +42,11 @@ denominator, and reports critical failures separately.
 
 ## Summary script build check
 
-`scripts/summarize_session_responses.py` requires `--expected-commit <full SHA>`
-(rc-eval-2: `d31e05db5560d3cfe109642c4e5675be5d68cb3a`). If any row's
+`scripts/summarize_session_responses.py` requires `--expected-commit <full SHA>` and
+`--build-label <label>` (no defaults, so a new build cannot reuse an old label;
+rc-eval-2: `--expected-commit d31e05db5560d3cfe109642c4e5675be5d68cb3a
+--build-label rc-eval-2`). If any row's
 `commit_sha` is empty or differs, it prints the counts by kind and stops; it
 never excludes rows. Fix the CSV. With `--internal`, the CSV line numbers
 are also printed to stderr (no session IDs in either mode). The public report
-states `Build: rc-eval-2 (<SHA>)` right after the note.
+states `Build: <label> (<SHA>)` right after the note.
