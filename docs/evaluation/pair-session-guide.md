@@ -154,9 +154,14 @@ Test-Path .\dataset\Demographics\demographics.csv
 - A `FileNotFoundError` means the data is not set up. Follow the provisioning doc.
 - **Never** commit anything under `dataset/`.
 
-**Send to Honghao:** the three True/False results, the two numbers above, the OS, and the date.
-- Honghao commits the per-machine result. The release checklist says the preflight is "Deferred — run on each evaluation machine before its first session".
-- Do not paste any other part of the dataset.
+**Record the result (Decided by Priyansh, 2026-10-10).** Paste the **whole output** of the commands above into `docs/evaluation/evidence/main-evaluation/ME-P0x/notes.md`. That is the session-level file, next to the `Q1`–`Q4` folders. Include:
+- the three True/False lines;
+- the full `verify_ces.py` JSON block;
+- the laptop OS and the date.
+
+This file is committed with the session evidence (3.3), and it records the per-machine preflight that the release checklist lists as "Deferred — run on each evaluation machine before its first session".
+
+Paste only this command output. Never paste rows from the dataset files themselves.
 
 ### 1.5 Start the backend and frontend
 
@@ -442,7 +447,7 @@ ME-P01,Q2,ME-P01-E2,uncertainty,UC1=4;UC2=N/A,No,none,UC2 not applicable because
 git switch main
 git pull
 git switch -c eval/ME-P0x
-git add docs/evaluation/evidence/main-evaluation/ME-P0x/Q1/notes.md docs/evaluation/evidence/main-evaluation/ME-P0x/Q2/notes.md docs/evaluation/evidence/main-evaluation/ME-P0x/Q3/notes.md docs/evaluation/evidence/main-evaluation/ME-P0x/Q4/notes.md docs/evaluation/results/main-evaluation/session-responses.csv
+git add docs/evaluation/evidence/main-evaluation/ME-P0x/notes.md docs/evaluation/evidence/main-evaluation/ME-P0x/Q1/notes.md docs/evaluation/evidence/main-evaluation/ME-P0x/Q2/notes.md docs/evaluation/evidence/main-evaluation/ME-P0x/Q3/notes.md docs/evaluation/evidence/main-evaluation/ME-P0x/Q4/notes.md docs/evaluation/results/main-evaluation/session-responses.csv
 git status
 git commit -m "ME-P0x session evidence"
 git push -u origin eval/ME-P0x
@@ -450,7 +455,7 @@ git push -u origin eval/ME-P0x
 
 - Open a pull request titled **`ME-P0x session evidence`**.
 - Docs and evidence only: **never touch `backend/` or `frontend/`**. The release lock forbids those changes until all four sessions finish.
-- Before `git commit`, check `git status`. Only the four `notes.md` files and the CSV may be staged.
+- Before `git commit`, check `git status`. Only the session `notes.md`, the four question `notes.md` files and the CSV may be staged.
 - **Never add `ui.png` or `response.json`**, and do not use `git add .`.
 - If another pair's PR merges first and the CSV conflicts, keep both sets of rows.
 
@@ -460,10 +465,8 @@ git push -u origin eval/ME-P0x
 
 Replace `x` with your session number.
 
-- [ ] Session time confirmed by both people in the team channel
-- [ ] `git rev-parse HEAD` printed `687a50ea233ba7e3653b15d79ed84d5da7db6a91`
-- [ ] Preflight results sent to Honghao
 **Committed (in the PR):**
+- [ ] `docs/evaluation/evidence/main-evaluation/ME-P0x/notes.md` containing the whole data-check output from 1.4 (Decided by Priyansh, 2026-10-10)
 - [ ] `docs/evaluation/evidence/main-evaluation/ME-P0x/Q1/notes.md`
 - [ ] `docs/evaluation/evidence/main-evaluation/ME-P0x/Q2/notes.md`
 - [ ] `docs/evaluation/evidence/main-evaluation/ME-P0x/Q3/notes.md`
@@ -480,7 +483,6 @@ Replace `x` with your session number.
 **Process:**
 - [ ] Session time confirmed by both people in the team channel
 - [ ] `git rev-parse HEAD` printed `687a50ea233ba7e3653b15d79ed84d5da7db6a91`
-- [ ] Preflight results sent to Honghao
 - [ ] No names, participant data, coordinates or CES rows in any committed file
 - [ ] PR `ME-P0x session evidence` opened from branch `eval/ME-P0x`, touching no `backend/` or `frontend/` file and containing no `ui.png` or `response.json`
 - [ ] Session folder path and one-sentence issue summary sent to Chonghao
