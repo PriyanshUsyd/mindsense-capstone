@@ -16,7 +16,10 @@ category. Do not put teammate names in the CSV; use evaluator codes such as
 - `item_scores` uses semicolon-separated item/value pairs, for example
   `A1=4;A2=5;A3=No`.
 - Record an inapplicable item explicitly, for example
-  `CC1=N/A;CC2=No`, and explain it in `na_reason`.
+  `CC1=N/A;CC2=No`, and explain it in `na_reason`. Free text (`na_reason`,
+  `notes`, `rejection_reason`) is never published: the public summary shows only
+  the N/A count and any `critical_failure_type` outside the defined seven appears
+  as "other"; the text is in the `--internal` output only.
 - `critical_failure` is `Yes` or `No`; it cannot be left blank. Apply the
   [critical-failure map](critical-failure-map.md) to every Q1–Q4 response,
   not only Q4.

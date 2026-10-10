@@ -909,7 +909,11 @@ Critical failures are reported by question and count, not by session —
 the evaluation roster links sessions to named evaluators, so a session
 identifier would identify the rater. Session-level detail, individual
 ratings and the evaluator-code mapping are kept only in restricted team
-records.
+records. Evaluators' free-text entries (`na_reason`, `notes`,
+`rejection_reason`, and any value outside a column's defined vocabulary)
+are never published: the public summary gives N/A as a count only and
+shows an undefined `critical_failure_type` value as "other"; the text
+appears only in the owner-only internal output.
 
 ## 6. Exploratory family (BH-FDR, q=0.05)
 

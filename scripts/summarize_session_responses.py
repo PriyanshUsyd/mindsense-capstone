@@ -127,6 +127,7 @@ FAILURE_TYPES = (
 
 LIKERT_RANGE = (1, 5)
 NA = "N/A"
+RESTRICTED_REASONS = "(reasons in restricted record)"
 REDACTED = "[redacted]"
 
 
@@ -348,10 +349,8 @@ class ItemStats:
         return fmt_num(lo) if lo == hi else f"{fmt_num(lo)}–{fmt_num(hi)}"
 
     def na_text(self) -> str:
-        if not self.na:
-            return "0"
-        reasons = "; ".join(f"{r} (×{c})" if c > 1 else r for r, c in sorted(self.na_reasons.items()))
-        return f"{self.na}: {reasons}"
+        """Public: the count only. na_reason is free text and stays in the restricted record."""
+        return f"{self.na} {RESTRICTED_REASONS}" if self.na else "0"
 
 
 class YesNoStats:
@@ -382,10 +381,9 @@ def table(header: list[str], rows: list[list[str]]) -> str:
 
 
 def category_items(category: str, present: set[str]) -> list[str]:
-    """Questionnaire items first (in order), then any unexpected ones that appear."""
-    known = next(items for c, _, items in DIMENSIONS if c == category)
-    extra = sorted(i for i in present if i not in known and ITEM_CATEGORY.get(i) is None)
-    return [*known, *extra]
+    """Questionnaire items only. Unknown item IDs come from free text in item_scores, so they are
+    never printed publicly; they are counted under "unknown item ID" in the data-quality table."""
+    return list(next(items for c, _, items in DIMENSIONS if c == category))
 
 
 # ---------------------------------------------------------------------------
@@ -547,7 +545,7 @@ def build_report(rows: list[dict[str, str]], unit: str, split_threshold: int = 2
                  str(scenarios) if item_answers and scenarios else ("session" if s.n else "–")]
             )
     out += [
-        table(["Dimension", "Item", "Valid n", "Median", "Range", "N/A (count: reason)", "Distinct scenarios"], item_rows),
+        table(["Dimension", "Item", "Valid n", "Median", "Range", "N/A (count)", "Distinct scenarios"], item_rows),
         "",
         "`Distinct scenarios` = number of different question IDs (Q1–Q4) the pooled ratings come from; "
         "ratings of the same question in different sessions are repeats of one fixture "
@@ -567,14 +565,14 @@ def build_report(rows: list[dict[str, str]], unit: str, split_threshold: int = 2
         present = {a.item for a in answers if a.category == category}
         likert = [i for i in category_items(category, present) if i not in YES_NO_ITEMS and i in stats_by_item]
         n_cell, med_cell, range_cell = _dimension_cells(likert, stats_by_item)
-        na_parts = [f"{i} {stats_by_item[i].na_text()}" for i in likert if stats_by_item[i].na]
+        na_parts = [f"{i} N/A: {stats_by_item[i].na_text()}" for i in likert if stats_by_item[i].na]
         notes = [
             f"{i} (Yes/No, not in median): {YesNoStats([a for a in answers if a.item == i]).note()}"
             for i in items
             if i in YES_NO_ITEMS
         ]
         dim_rows.append([label, n_cell, med_cell, range_cell, "; ".join(na_parts) or "None", "; ".join(notes)])
-    out += [table(["Dimension", "Valid n", "Median", "Range", "N/A and reason", "Notes"], dim_rows), ""]
+    out += [table(["Dimension", "Valid n", "Median", "Range", "N/A", "Notes"], dim_rows), ""]
 
     # --- 3. yes/no ---------------------------------------------------------
     out += [
@@ -654,8 +652,11 @@ def build_report(rows: list[dict[str, str]], unit: str, split_threshold: int = 2
 
     out += ["Failures by type, all of Q1–Q4 (a response with several types counts once under each):", ""]
     type_rows = [[t, str(sum(1 for ts in failure_types.values() if t in ts))] for t in FAILURE_TYPES]
-    for t in sorted({t for ts in failure_types.values() for t in ts} - set(FAILURE_TYPES)):
-        type_rows.append([f"{t} (unlisted type)", str(sum(1 for ts in failure_types.values() if t in ts))])
+    # critical_failure_type is a closed vocabulary: anything else is free text, so only a count of
+    # responses carrying an out-of-vocabulary value is shown (the value is internal-only).
+    n_other = sum(1 for ts in failure_types.values() if ts - set(FAILURE_TYPES))
+    if n_other:
+        type_rows.append(["other (value outside the defined types)", str(n_other)])
     out += [table(["Failure type", "Responses"], type_rows), ""]
 
     q4 = [k for k in failed if k[1] == "Q4"]
@@ -719,7 +720,7 @@ def build_report(rows: list[dict[str, str]], unit: str, split_threshold: int = 2
         out += ["None.", ""]
 
     if internal:
-        out += _internal_appendix(failed, failure_types, warnings)
+        out += _internal_appendix(failed, failure_types, warnings, raw_answers)
 
     text = "\n".join(out)
     codes = {r["evaluator_code"] for r in rows if r["evaluator_code"]}
@@ -727,7 +728,7 @@ def build_report(rows: list[dict[str, str]], unit: str, split_threshold: int = 2
     return _scrub(text, codes, sessions)
 
 
-def _internal_appendix(failed, failure_types, warnings: Warnings) -> list[str]:
+def _internal_appendix(failed, failure_types, warnings: Warnings, raw_answers: list[Answer]) -> list[str]:
     out = [
         "---",
         "",
@@ -747,7 +748,13 @@ def _internal_appendix(failed, failure_types, warnings: Warnings) -> list[str]:
     ]
     details = warnings.details()
     out += [f"- **{kind}** — {detail}" for kind, detail in details] or ["None."]
-    out.append("")
+    out += ["", "## C. N/A reasons (free text; not published)", ""]
+    reasons = Counter((a.item, a.na_reason or "(no reason recorded)") for a in raw_answers if a.value == NA)
+    out += [
+        table(["Item", "na_reason", "Count"], [[i, r, str(c)] for (i, r), c in sorted(reasons.items())])
+        if reasons else "None.",
+        "",
+    ]
     return out
 
 
