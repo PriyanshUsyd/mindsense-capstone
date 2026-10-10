@@ -518,7 +518,12 @@ than refused, as of request policy 0.3.2 (fde16f0, 2026-10-10, following the
 ME-P01 session). This is consistent with the rationale above: the refusal
 exists because no statistic is defined for other windows, and the 14-day
 statistic is the one that is. Other windows — three days, last month,
-yesterday, past week — are still refused.
+yesterday, past week — are still refused. Request policy 0.3.3 (5bd46f6,
+2026-10-10) does not change which windows are answered and which are refused;
+`tests/slm/test_dev_50q.py` cases 5 and 6 (two weeks → answered) and 21 and 22
+(last month, 3 days → refused) confirm this. Under 0.3.3 a question that names
+only a feature now also reaches the window check (W1/O1), but the rule itself
+is unchanged.
 
 Note that the comparison window is [-14, -1], ending the day before the
 assessment. A participant asking about "the past two weeks" on a given day is
