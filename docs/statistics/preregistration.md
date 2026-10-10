@@ -842,8 +842,17 @@ since every cell is small by design (n ≈ 8) and suppression
 would blank the table. Instead, only cross-evaluator aggregates
 (per-item n, median, range) and critical failures by session and
 question are published; per-evaluator rows and the mapping from
-evaluator codes to people are not. Pending confirmation with the
-Privacy & Security Lead.
+evaluator codes to people are not.
+
+Confirmed with the Privacy & Security Lead on 2026-10-10:
+ratings are published as per-item n, median and range across all
+evaluators, with no per-score counts. Items with fewer than five
+applicable ratings are marked as insufficient rather than summarised.
+Critical failures are reported by question and count, not by session —
+the evaluation roster links sessions to named evaluators, so a session
+identifier would identify the rater. Session-level detail, individual
+ratings and the evaluator-code mapping are kept only in restricted team
+records.
 
 ## 6. Exploratory family (BH-FDR, q=0.05)
 
@@ -911,6 +920,13 @@ Resolved Week 4 open items (decisions, not post-hoc changes):
    documentation correction to match what was actually run — the primary
    β_W = −0.184 and the B=500 bootstrap were already computed from the
    two-term formula; no analysis changed.
+10. **Evaluation questionnaire ratings: no under-5 cell suppression; instead
+    cross-evaluator aggregates only, "insufficient" below five applicable
+    ratings, and critical failures by question, not by session** (section
+    5.3). Added following the Privacy & Security Lead's review (confirmed
+    2026-10-10) of `scripts/summarize_session_responses.py`: the roster
+    links sessions to named evaluators, so session IDs are not published.
+    Not a Week 4 open item; does not touch the Tier-1 analysis.
 
 ## 8. Reference implementation
 
