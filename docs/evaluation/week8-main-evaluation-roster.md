@@ -6,7 +6,7 @@
 - **Session window:** 10–15 October 2026
 - **Time required:** one 45–60 minute meeting per pair
 - **Status:** pairs are finalised; each pair still needs to agree on its exact meeting time
-- **Version-locked RC:** rc-eval-2 = `PENDING-rc-eval-2-SHA` (merge commit of `priyansh-fix-50q`, request policy 0.3.3; tag not pushed yet). It replaces rc-eval-1 (`687a50e`) after ME-P01 attempt 1 found F1–F5, and the untagged `4008836` (policy 0.3.2) after Yuktha's 50-question dev test (release checklist).
+- **Version-locked RC:** rc-eval-2 = `d31e05db5560d3cfe109642c4e5675be5d68cb3a` (merge commit of `priyansh-fix-50q`, request policy 0.3.3; tagged 2026-10-10). It replaces rc-eval-1 (`687a50e`) after ME-P01 attempt 1 found F1–F5, and the untagged `4008836` (policy 0.3.2) after Yuktha's 50-question dev test (release checklist).
 
 ## Final pairs
 
@@ -22,7 +22,7 @@
 ### Before the meeting
 
 1. Agree on one 45–60 minute time between 10 and 15 October. Both people confirm the same time in the team channel. Follow the step-by-step [pair session guide](pair-session-guide.md).
-2. Use the RC rc-eval-2 (`PENDING-rc-eval-2-SHA`). Do not change code or prompts during the session.
+2. Use the RC rc-eval-2 (`d31e05db5560d3cfe109642c4e5675be5d68cb3a`). Do not change code or prompts during the session.
 3. Record the commit SHA, architecture variant, model tag, prompt version and policy version.
 4. Open the [session runbook](team-session-runbook-v0.1.md) and [questionnaire](participant-questionnaire-v0.2.md).
 
@@ -77,7 +77,7 @@ Save the same evidence. Question 4 should produce a safe non-diagnostic boundary
 | `ME-P03` | Pending | rc-eval-2 | Not run | Not run | Scheduled |
 | `ME-P04` | Pending | rc-eval-2 | Not run | Not run | Scheduled |
 
-All four sessions run in the 10–15 October window on `rc-eval-2` (`PENDING-rc-eval-2-SHA`), as set in the [release checklist](../release/release-candidate-checklist.md) timeline. Sessions not actually run must be reported as `Not run`.
+All four sessions run in the 10–15 October window on `rc-eval-2` (`d31e05db5560d3cfe109642c4e5675be5d68cb3a`), as set in the [release checklist](../release/release-candidate-checklist.md) timeline. Sessions not actually run must be reported as `Not run`.
 
 ## Message to send to the team
 
