@@ -165,13 +165,13 @@ def test_na_excluded_from_denominator_and_counted_with_reason():
             r["item_scores"] = "CC1=N/A;CC2=No"
     cc1 = cells_of(report(rows), "| Correlation versus causation | CC1 ")
     assert cc1[2] == "5" and cc1[3] == "3"
-    assert cc1[5].startswith("1:") and "no relationship asked" in cc1[5]
+    assert cc1[5] == "1 (reasons in restricted record)" and "no relationship asked" not in report(rows)
 
 
 def test_all_na_item_has_no_median_and_zero_n():
     text = report(synth_rows())
     cc1 = cells_of(text, "| Correlation versus causation | CC1 ")
-    assert cc1[2] == "0" and cc1[3] == "–" and cc1[5].startswith("6:")
+    assert cc1[2] == "0" and cc1[3] == "–" and cc1[5] == "6 (reasons in restricted record)"
     assert "No valid ratings" in text
 
 
@@ -267,13 +267,68 @@ def test_public_output_has_no_evaluator_code_or_session_id(tmp_path):
     text = report(rows)
     for token in {r["evaluator_code"] for r in rows} | {r["session_id"] for r in rows}:
         assert token not in text
-    assert "[redacted]" in text
+    assert "said nothing was asked" not in text  # na_reason is never published
     assert "CSV line" not in text
     out = tmp_path / "out.md"
     mod.main(["--input", str(write_csv(tmp_path / "s.csv", rows)), "--output", str(out), "--expected-commit", SHA, "--build-label", LABEL])
     body = out.read_text(encoding="utf-8")
     for token in {r["evaluator_code"] for r in rows} | {r["session_id"] for r in rows}:
         assert token not in body
+
+
+PII = ("talked to Alice Smith about this", "see email from moet2244", "call 0412 345 678", "+61-2-9351-0000")
+
+
+@pytest.mark.parametrize("column", ["na_reason", "notes", "rejection_reason", "response_mode", "model_tag", "evidence_path"])
+@pytest.mark.parametrize("pii", PII)
+def test_free_text_columns_never_reach_the_public_output(column, pii, tmp_path):
+    rows = synth_rows()
+    for r in rows:
+        r[column] = pii
+        if column == "na_reason":  # make the reason matter: some N/A answers
+            r["item_scores"] = r["item_scores"].replace("A2=4", "A2=N/A")
+    body_text = report(rows)
+    out = tmp_path / "out.md"
+    mod.main(["--input", str(write_csv(tmp_path / "s.csv", rows)), "--output", str(out), "--expected-commit", SHA, "--build-label", LABEL])
+    for body in (body_text, out.read_text(encoding="utf-8")):
+        assert pii not in body
+        for fragment in ("Alice", "Smith", "moet2244", "0412", "9351"):
+            assert fragment not in body
+
+
+@pytest.mark.parametrize("pii", PII)
+def test_out_of_vocabulary_failure_type_is_counted_as_other_and_warned(pii):
+    rows = synth_rows()
+    for r in rows:
+        if r["session_id"] == SESSIONS[0] and r["question_id"] == "Q1":
+            r["critical_failure"], r["critical_failure_type"] = "Yes", f"unsupported_causation;{pii}"
+    text = report(rows)
+    assert pii not in text and "unlisted" not in text
+    assert "| other (value outside the defined types) | 1 |" in text
+    assert "| unknown critical_failure_type | 1 |" in text
+    internal = report(rows, internal=True)
+    assert pii in internal  # exact value only in the restricted record
+
+
+@pytest.mark.parametrize("pii", PII)
+def test_unknown_item_id_is_not_printed_publicly(pii):
+    rows = synth_rows()
+    rows[0]["item_scores"] += f";{pii}=3"
+    text = report(rows)
+    assert pii not in text and "Alice" not in text
+    assert "| unknown item ID | 1 |" in text
+
+
+def test_internal_output_has_na_reasons_public_does_not():
+    rows = synth_rows()
+    for r in rows:
+        if r["category"] == "accuracy_faithfulness":
+            r["item_scores"] = r["item_scores"].replace("A2=4", "A2=N/A")
+            r["na_reason"] = PII[0]
+    assert PII[0] not in report(rows)
+    inner = report(rows, internal=True)
+    assert PII[0] in inner and "A2 N/A: 6 (reasons in restricted record)" in inner
+    assert "| A2 | talked to Alice Smith about this | 6 |" in inner
 
 
 def test_public_note_is_at_the_top():
