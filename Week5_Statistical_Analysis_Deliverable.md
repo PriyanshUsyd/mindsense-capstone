@@ -1107,6 +1107,9 @@ question even though it turned out not to be the one the sign-off needed.
   single non-home location while travelling almost nothing.
 
   *(Correlation supplied by the Data Pipeline Lead.)*
+
+  Why it was left out was confirmed on 2026-10-10: the two-feature cap only.
+  See preregistration §1.
 - Location entropy is **Tier 2**, not Tier 1, independent of the above: CES
   has no pre-computed entropy variable, and deriving it (Shannon entropy over
   per-cluster time shares) would need its own cleaning rules, sanity bounds
