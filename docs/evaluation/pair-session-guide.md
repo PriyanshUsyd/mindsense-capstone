@@ -1,7 +1,7 @@
 # Pair Session Guide — Main Evaluation ME-P01 to ME-P04
 
 - **Who this is for:** all four evaluation pairs
-- **Build:** `rc-eval-1` = `687a50ea233ba7e3653b15d79ed84d5da7db6a91` (tagged 2026-10-10)
+- **Build:** `rc-eval-2` = `400883667657c8c70c025de4e1dbbc22cda3b074` (tagged 2026-10-10 after the ME-P01 fixes; replaces rc-eval-1)
 - **Session window:** 10–15 October 2026, one 45–60 minute meeting per pair
 - **Evaluation owner:** Chonghao Shen
 
@@ -54,7 +54,7 @@ Mac:
 
 ```bash
 git fetch --tags
-git checkout rc-eval-1
+git checkout rc-eval-2
 git rev-parse HEAD
 ```
 
@@ -62,11 +62,11 @@ Windows (PowerShell), fallback only, unverified:
 
 ```powershell
 git fetch --tags
-git checkout rc-eval-1
+git checkout rc-eval-2
 git rev-parse HEAD
 ```
 
-The last command **must print** `687a50ea233ba7e3653b15d79ed84d5da7db6a91`. If it prints anything else, stop and tell Priyansh.
+The last command **must print** `400883667657c8c70c025de4e1dbbc22cda3b074`. If it prints anything else, stop and tell Priyansh.
 
 Do not change any code, prompt or setting from this point on. The roster and runbook both say: "Do not change code or prompts during the session."
 
@@ -413,7 +413,7 @@ session_id,question_id,evaluator_code,category,item_scores,critical_failure,crit
 | `na_reason` | why an item is N/A; otherwise empty |
 | `response_mode`, `rejection_reason` | exact values from the Details line (empty if `rejection_reason` is `none`) |
 | `architecture_variant` | `rag`. The Ollama default and the 2026-10-08 decision; see 1.3 |
-| `commit_sha` | `687a50ea233ba7e3653b15d79ed84d5da7db6a91` |
+| `commit_sha` | `400883667657c8c70c025de4e1dbbc22cda3b074` |
 | `model_tag` | value from the Details line (`phi4-mini:3.8b` when the model answered; empty if `none`) |
 | `prompt_version` | `0.4.13` (`backend/slm/prompts/evidence_explainer.yaml`, release checklist §5) |
 | `policy_version` | `0.3.2` (`policy=` in the Details line) |
@@ -421,7 +421,7 @@ session_id,question_id,evaluator_code,category,item_scores,critical_failure,crit
 | `notes` | short free text without commas, or wrap it in double quotes |
 
 **`SESSION` usability rows (Decided by Priyansh, 2026-10-10)** record the session date, start/end time, laptop OS and commit SHA:
-- `commit_sha` = `687a50ea233ba7e3653b15d79ed84d5da7db6a91`.
+- `commit_sha` = `400883667657c8c70c025de4e1dbbc22cda3b074`.
 - `notes` = date, start and end time, and laptop OS, in double quotes, e.g. `"2026-10-11; 14:00-14:55; macOS"`.
 - `critical_failure` = `No`, `critical_failure_type` = `none`.
 - Leave `na_reason`, `response_mode`, `rejection_reason`, `architecture_variant`, `model_tag`, `prompt_version`, `policy_version` and `evidence_path` empty.
@@ -429,13 +429,13 @@ session_id,question_id,evaluator_code,category,item_scores,critical_failure,crit
 Example (format only):
 
 ```csv
-ME-P01,SESSION,ME-P01-E1,usability,US1=4;US2=4;US3=5;US4=4,No,none,,,,,687a50ea233ba7e3653b15d79ed84d5da7db6a91,,,,,"2026-10-11; 14:00-14:55; macOS"
+ME-P01,SESSION,ME-P01-E1,usability,US1=4;US2=4;US3=5;US4=4,No,none,,,,,400883667657c8c70c025de4e1dbbc22cda3b074,,,,,"2026-10-11; 14:00-14:55; macOS"
 ```
 
 **Worked example: format only, not a real result.**
 
 ```csv
-ME-P01,Q2,ME-P01-E2,uncertainty,UC1=4;UC2=N/A,No,none,UC2 not applicable because evidence was sufficient,normal,,rag,687a50ea233ba7e3653b15d79ed84d5da7db6a91,phi4-mini:3.8b,0.4.13,0.3.2,docs/evaluation/evidence/main-evaluation/ME-P01/Q2/,EXAMPLE FORMAT ONLY
+ME-P01,Q2,ME-P01-E2,uncertainty,UC1=4;UC2=N/A,No,none,UC2 not applicable because evidence was sufficient,normal,,rag,400883667657c8c70c025de4e1dbbc22cda3b074,phi4-mini:3.8b,0.4.13,0.3.2,docs/evaluation/evidence/main-evaluation/ME-P01/Q2/,EXAMPLE FORMAT ONLY
 ```
 
 ### 3.2 Rules
@@ -487,7 +487,7 @@ Replace `x` with your session number.
 
 **Process:**
 - [ ] Session time confirmed by both people in the team channel
-- [ ] `git rev-parse HEAD` printed `687a50ea233ba7e3653b15d79ed84d5da7db6a91`
+- [ ] `git rev-parse HEAD` printed `400883667657c8c70c025de4e1dbbc22cda3b074`
 - [ ] No names, participant data, coordinates or CES rows in any committed file
 - [ ] PR `ME-P0x session evidence` opened from branch `eval/ME-P0x`, touching no `backend/` or `frontend/` file and containing no `ui.png` or `response.json`
 - [ ] Session folder path and one-sentence issue summary sent to Chonghao
