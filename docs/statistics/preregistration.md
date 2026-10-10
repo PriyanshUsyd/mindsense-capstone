@@ -63,6 +63,16 @@ collected in section 7. Everything else restates a Week 4 locked decision.
   draft's pre-sign-off state; see the 2026-09-13 migration note above for why
   that text is now corrected rather than kept as the record of what was
   proposed.)*
+
+  `loc_home_dur` was left out of Tier 1 because of the two-feature cap only,
+  not because it failed a cross-platform check (confirmed by the Integration &
+  QA Lead, 2026-10-10). It had 96.2% valid windows — higher than
+  `loc_dist_ep_0` — and a within-person correlation of r = −0.24 with
+  person-mean-centred log GPS distance, so it is not redundant with it. It
+  remains a candidate for later rounds. Its cross-platform status was never
+  assessed: no iOS/Android breakdown was done, so it should be described as
+  unassessed, not as passing.
+
 - **Primary outcome:** PHQ-4 total (0-12), `general_ema.csv`.
 - **Direction hypothesis for `loc_dist_ep_0`:** beta1 < 0 is not pre-specified by
   literature consensus in either direction strongly enough to commit to a
@@ -508,7 +518,12 @@ than refused, as of request policy 0.3.2 (fde16f0, 2026-10-10, following the
 ME-P01 session). This is consistent with the rationale above: the refusal
 exists because no statistic is defined for other windows, and the 14-day
 statistic is the one that is. Other windows — three days, last month,
-yesterday, past week — are still refused.
+yesterday, past week — are still refused. Request policy 0.3.3 (5bd46f6,
+2026-10-10) does not change which windows are answered and which are refused;
+`tests/slm/test_dev_50q.py` cases 5 and 6 (two weeks → answered) and 21 and 22
+(last month, 3 days → refused) confirm this. Under 0.3.3 a question that names
+only a feature now also reaches the window check (W1/O1), but the rule itself
+is unchanged.
 
 Note that the comparison window is [-14, -1], ending the day before the
 assessment. A participant asking about "the past two weeks" on a given day is
@@ -899,7 +914,11 @@ Critical failures are reported by question and count, not by session —
 the evaluation roster links sessions to named evaluators, so a session
 identifier would identify the rater. Session-level detail, individual
 ratings and the evaluator-code mapping are kept only in restricted team
-records.
+records. Evaluators' free-text entries (`na_reason`, `notes`,
+`rejection_reason`, and any value outside a column's defined vocabulary)
+are never published: the public summary gives N/A as a count only and
+shows an undefined `critical_failure_type` value as "other"; the text
+appears only in the owner-only internal output.
 
 ## 6. Exploratory family (BH-FDR, q=0.05)
 
