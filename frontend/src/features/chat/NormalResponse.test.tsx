@@ -273,4 +273,41 @@ describe('NormalResponse', () => {
     expect(await screen.findByText(exactBackendText)).toBeInTheDocument()
     expect(document.querySelector(`[data-response-mode="${mode}"]`)).toBeInTheDocument()
   })
+
+  // ME-P01 F1/F4: refusal badge follows request_category.
+  it.each([
+    ['capability_question', 'What MindSense can do'],
+    ['diagnosis_seeking', 'Not a diagnosis'],
+    ['off_topic', 'Outside MindSense’s scope'],
+  ] as const)('labels a %s refusal as "%s"', async (category, label) => {
+    const user = userEvent.setup()
+    mockedRespond.mockResolvedValueOnce({
+      ...responseFor('refusal', 'Deterministic boundary text'),
+      request_category: category,
+    })
+
+    render(<NormalResponse />)
+    await user.click(screen.getByRole('button', { name: /ask about my recent movement/i }))
+
+    expect(await screen.findByText('Deterministic boundary text')).toBeInTheDocument()
+    expect(screen.getByText(label)).toBeInTheDocument()
+  })
+
+  // ME-P01 F5: per-answer routing metadata for evaluators, no identifiers.
+  it('shows response_mode, rejection_reason, model_tag and policy version per answer', async () => {
+    const user = userEvent.setup()
+    mockedRespond.mockResolvedValueOnce({
+      ...responseFor('refusal', 'Boundary'),
+      request_policy_version: '0.3.2',
+    })
+
+    render(<NormalResponse />)
+    await user.click(screen.getByRole('button', { name: /ask about my recent movement/i }))
+
+    const details = await screen.findByTestId('response-details')
+    expect(details).toHaveTextContent(
+      'Details: response_mode=refusal · rejection_reason=prohibited_claim · model_tag=none · policy=0.3.2',
+    )
+    expect(details.textContent).not.toMatch(/local-demo|participant/i)
+  })
 })

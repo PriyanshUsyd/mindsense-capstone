@@ -16,8 +16,9 @@ class MustNotRun:
     "question",
     [
         "What's changed in my behavior over the last 3 days?",
-        "How has my phone-unlock activity changed over the past couple of weeks?",
-        "How did my GPS distance change in the last fourteen days?",
+        # Policy 0.3.2: "past couple of weeks" / "last fourteen days" name the
+        # observed 14-day window and are now allowed; see
+        # tests/slm/test_me_p01_regressions.py.
         "How is my GPS data today?",
         "How is my GPS data this month?",
         "How was my movement on 2026-09-20?",

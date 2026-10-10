@@ -16,7 +16,10 @@ from backend.slm.client import (
     SLMUnavailableError,
 )
 from backend.slm.prompt_loader import (
+    DEFAULT_CAPABILITY_TEMPLATE,
     DEFAULT_CRISIS_FALLBACK,
+    DEFAULT_DIAGNOSIS_BOUNDARY,
+    DEFAULT_GENERAL_UNCERTAINTY_TEMPLATE,
     DEFAULT_INSUFFICIENT_DATA_TEMPLATE,
     DEFAULT_SCOPE_FALLBACK,
     DEFAULT_WINDOW_FALLBACK,
@@ -28,6 +31,7 @@ from backend.slm.request_policy import (
     RequestDisposition,
     RequestPolicyDecision,
     classify_request,
+    is_general_uncertainty_question,
     request_scope_rejection,
 )
 from backend.slm.response_health import ResponseHealthReport, check_response_health
@@ -87,6 +91,12 @@ class SLMService:
         )
         self.scope_fallback = load_fallback_prompt(DEFAULT_SCOPE_FALLBACK)
         self.window_fallback = load_fallback_prompt(DEFAULT_WINDOW_FALLBACK)
+        # Policy 0.3.2 category-specific deterministic texts (ME-P01 F1/F3/F4).
+        self.capability_template = load_fallback_prompt(DEFAULT_CAPABILITY_TEMPLATE)
+        self.diagnosis_boundary = load_fallback_prompt(DEFAULT_DIAGNOSIS_BOUNDARY)
+        self.general_uncertainty_template = load_fallback_prompt(
+            DEFAULT_GENERAL_UNCERTAINTY_TEMPLATE
+        )
         if (
             self.generic_fallback.manifest.response_mode
             != ResponseMode.GENERIC_FALLBACK
@@ -210,6 +220,10 @@ class SLMService:
         decision = classify_request(question)
         if decision.disposition != RequestDisposition.ALLOW:
             return self._policy_response(decision)
+        if not feature_id and is_general_uncertainty_question(question):
+            return self._template_response(
+                decision, self.general_uncertainty_template
+            )
         scope_reason = request_scope_rejection(
             question, feature_id=feature_id, require_feature=require_feature
         )
@@ -260,6 +274,12 @@ class SLMService:
         if decision.disposition == RequestDisposition.CRISIS:
             template = self.crisis_fallback
             response_mode = ResponseMode.CRISIS_AWARE_FALLBACK
+        elif decision.category == RequestCategory.DIAGNOSIS_SEEKING:
+            template = self.diagnosis_boundary
+            response_mode = ResponseMode.REFUSAL
+        elif decision.category == RequestCategory.CAPABILITY_QUESTION:
+            template = self.capability_template
+            response_mode = ResponseMode.REFUSAL
         else:
             template = self.generic_fallback
             response_mode = ResponseMode.REFUSAL
@@ -282,9 +302,15 @@ class SLMService:
     def _insufficient_data_response(
         self, decision: RequestPolicyDecision
     ) -> SafeSLMResponse:
-        template = self.insufficient_data_template
+        return self._template_response(decision, self.insufficient_data_template)
+
+    def _template_response(
+        self, decision: RequestPolicyDecision, template: LoadedFallbackPrompt
+    ) -> SafeSLMResponse:
+        """Deterministic allowed-route text: no model call, no participant data."""
+
         return SafeSLMResponse(
-            response_mode=ResponseMode.INSUFFICIENT_DATA,
+            response_mode=template.manifest.response_mode,
             text=template.manifest.text,
             used_fallback=False,
             rejection_reason=None,

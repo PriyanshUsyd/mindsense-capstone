@@ -19,7 +19,7 @@ from enum import Enum
 
 from pydantic import BaseModel, ConfigDict
 
-REQUEST_POLICY_VERSION = "0.3.1"
+REQUEST_POLICY_VERSION = "0.3.2"
 
 _logger = logging.getLogger(__name__)
 
@@ -40,6 +40,7 @@ class RequestCategory(str, Enum):
     RISK_PREDICTION_SEEKING = "risk_prediction_seeking"
     PROMPT_INJECTION = "prompt_injection"
     SENSITIVE_DATA_REQUEST = "sensitive_data_request"
+    CAPABILITY_QUESTION = "capability_question"
 
 
 class RequestPolicyDecision(BaseModel):
@@ -91,6 +92,12 @@ _PROHIBITED_PATTERNS: tuple[
             re.compile(r"\bam i (?:depressed|anxious|mentally ill)\b", re.IGNORECASE),
             re.compile(
                 r"\bdo you think i(?: am|['’]m) (?:depressed|anxious|mentally ill)\b",
+                re.IGNORECASE,
+            ),
+            # Policy 0.3.2 (ME-P01 F4 near-variant).
+            re.compile(
+                r"\bdo you think i (?:have|might have) (?:depression|anxiety|"
+                r"a mental (?:illness|health condition))\b",
                 re.IGNORECASE,
             ),
             re.compile(
@@ -159,6 +166,22 @@ _PROHIBITED_PATTERNS: tuple[
                 re.IGNORECASE,
             ),
         ),
+    ),
+)
+
+# Policy 0.3.2 (ME-P01 F1): a whole-question "what can you do?" request gets
+# the deterministic capability template instead of the off-topic refusal. It
+# keeps the REFUSE disposition so no participant data is loaded and no model
+# or context is invoked. Anchored to the full question so evidence questions
+# such as "what can you tell me about my unlocks?" are not captured.
+_CAPABILITY_PATTERNS = (
+    re.compile(
+        r"^\s*(?:(?:hi|hello|hey)[\s,!.]+)?"
+        r"(?:what (?:can|could) you (?:help (?:me )?with|do(?: for me)?)|"
+        r"what do you do|how (?:can|could) you help(?: me)?|"
+        r"what are you (?:able to do|for)|what can i ask(?: you)?)"
+        r"\s*[?.!]*\s*$",
+        re.IGNORECASE,
     ),
 )
 
@@ -315,6 +338,38 @@ _EXPLICIT_WINDOW_PATTERNS = (
 )
 
 
+# Policy 0.3.2 (ME-P01 F2, lead decision 2026-10-10): the comparison window
+# is the trailing 14 days ([-14, -1], CLAUDE.md), so phrases naming that same
+# span refer to the observed window rather than a different calendar range.
+# They are removed before the explicit-window check; any other time phrase in
+# the question (e.g. "past 3 days", "last month", "yesterday") still refuses.
+_OBSERVED_WINDOW_PHRASES = re.compile(
+    r"\b(?:the\s+)?(?:past|last|previous)\s+(?:couple(?:\s+of)?|two|2)\s+weeks?\b"
+    r"|\b(?:the\s+)?(?:past|last|previous)\s+(?:fortnight|fourteen\s+days|14\s+days)\b",
+    re.IGNORECASE,
+)
+
+# Policy 0.3.2 (ME-P01 F3): a general question about the evidence's limits
+# needs no feature. Without a feature it gets the deterministic uncertainty
+# template; with a feature word it still goes to that feature's evidence.
+_GENERAL_UNCERTAINTY_PATTERNS = (
+    re.compile(r"\bwhat uncertainty should i keep in mind\b", re.IGNORECASE),
+    re.compile(
+        r"\bwhat (?:are|is) the (?:main )?(?:limitations?|uncertaint(?:y|ies))\b",
+        re.IGNORECASE,
+    ),
+)
+
+
+def is_general_uncertainty_question(question: str) -> bool:
+    """True for a feature-free question about the evidence's limitations."""
+
+    return any(p.search(question) for p in _GENERAL_UNCERTAINTY_PATTERNS) and not (
+        any(p.search(question) for p in _UNLOCK_FEATURE_PATTERNS)
+        or any(p.search(question) for p in _GPS_FEATURE_PATTERNS)
+    )
+
+
 def request_scope_rejection(
     question: str, *, feature_id: str | None = None, require_feature: bool = False
 ) -> str | None:
@@ -325,7 +380,8 @@ def request_scope_rejection(
     Unknown feature IDs remain the API/Statistics owner's validation concern.
     """
 
-    if any(pattern.search(question) for pattern in _EXPLICIT_WINDOW_PATTERNS):
+    window_text = _OBSERVED_WINDOW_PHRASES.sub(" ", question)
+    if any(pattern.search(window_text) for pattern in _EXPLICIT_WINDOW_PATTERNS):
         return "unsupported_time_window"
     matches_unlock = any(
         pattern.search(question) for pattern in _UNLOCK_FEATURE_PATTERNS
@@ -348,6 +404,8 @@ def request_scope_rejection(
 
 def _is_in_scope(question: str) -> bool:
     if any(pattern.search(question) for pattern in _CONTEXTUAL_IN_SCOPE_PATTERNS):
+        return True
+    if any(pattern.search(question) for pattern in _GENERAL_UNCERTAINTY_PATTERNS):
         return True
     return any(pattern.search(question) for pattern in _DOMAIN_PATTERNS) and any(
         pattern.search(question) for pattern in _EVIDENCE_INTENT_PATTERNS
@@ -372,6 +430,13 @@ def classify_request(question: str) -> RequestPolicyDecision:
                 category=category,
                 reason_code=reason_code,
             )
+
+    if any(pattern.search(clean_question) for pattern in _CAPABILITY_PATTERNS):
+        return RequestPolicyDecision(
+            disposition=RequestDisposition.REFUSE,
+            category=RequestCategory.CAPABILITY_QUESTION,
+            reason_code="capability_question_detected",
+        )
 
     if not clean_question or not _is_in_scope(clean_question):
         return RequestPolicyDecision(
