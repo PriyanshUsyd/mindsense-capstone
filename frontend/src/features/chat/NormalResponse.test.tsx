@@ -3,15 +3,23 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { ResponseMode, SafeSLMResponse } from '../../api/client'
-import { RespondError, respond } from '../../api/client'
+import { getModelCatalog, RespondError, respond } from '../../api/client'
 import { NormalResponse } from './NormalResponse'
 
 vi.mock('../../api/client', async () => {
   const actual = await vi.importActual<typeof import('../../api/client')>('../../api/client')
-  return { ...actual, respond: vi.fn() }
+  return { ...actual, getModelCatalog: vi.fn(), respond: vi.fn() }
 })
 
+const mockedGetModelCatalog = vi.mocked(getModelCatalog)
 const mockedRespond = vi.mocked(respond)
+
+const MODEL_CATALOG = {
+  runtime: 'ollama',
+  selection_enabled: true,
+  default_model_tag: 'phi4-mini:3.8b',
+  available_model_tags: ['phi4-mini:3.8b', 'qwen3:4b'],
+}
 
 function responseFor(
   responseMode: ResponseMode,
@@ -54,6 +62,8 @@ const NORMAL_RESPONSE = responseFor(
 )
 
 beforeEach(() => {
+  mockedGetModelCatalog.mockReset()
+  mockedGetModelCatalog.mockResolvedValue(MODEL_CATALOG)
   mockedRespond.mockReset()
 })
 
@@ -70,6 +80,67 @@ describe('NormalResponse', () => {
     ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /ask about my recent movement/i })).toBeEnabled()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('shows the backend-approved model selector and sends the selected exact tag', async () => {
+    const user = userEvent.setup()
+    mockedRespond.mockResolvedValueOnce({
+      ...NORMAL_RESPONSE,
+      model_tag: 'qwen3:4b',
+    })
+
+    render(<NormalResponse />)
+
+    const selector = await screen.findByRole('combobox', { name: /choose local model/i })
+    expect(selector).toHaveValue('phi4-mini:3.8b')
+    await user.selectOptions(selector, 'qwen3:4b')
+    await user.click(screen.getByRole('button', { name: /ask about my recent movement/i }))
+
+    await waitFor(() => {
+      expect(mockedRespond).toHaveBeenCalledWith(
+        'local-demo',
+        'How was my movement different from my recent baseline?',
+        undefined,
+        'qwen3:4b',
+      )
+    })
+  })
+
+  it('hides model selection when the backend runtime disables it', async () => {
+    mockedGetModelCatalog.mockResolvedValueOnce({
+      ...MODEL_CATALOG,
+      runtime: 'demo',
+      selection_enabled: false,
+    })
+
+    render(<NormalResponse />)
+
+    await waitFor(() => expect(mockedGetModelCatalog).toHaveBeenCalledTimes(1))
+    expect(screen.queryByRole('combobox', { name: /choose local model/i })).not.toBeInTheDocument()
+  })
+
+  it('refreshes the approved model list after a stale selection returns 422', async () => {
+    const user = userEvent.setup()
+    mockedGetModelCatalog
+      .mockResolvedValueOnce(MODEL_CATALOG)
+      .mockResolvedValueOnce({
+        ...MODEL_CATALOG,
+        default_model_tag: 'phi4-mini:3.8b',
+        available_model_tags: ['phi4-mini:3.8b'],
+      })
+    mockedRespond.mockRejectedValueOnce(new RespondError('request failed with status 422', 422))
+
+    render(<NormalResponse />)
+
+    const selector = await screen.findByRole('combobox', { name: /choose local model/i })
+    await user.selectOptions(selector, 'qwen3:4b')
+    await user.click(screen.getByRole('button', { name: /ask about my recent movement/i }))
+
+    expect(await screen.findByText(/selected local model is no longer available/i)).toBeInTheDocument()
+    expect(mockedGetModelCatalog).toHaveBeenCalledTimes(2)
+    expect(screen.getByRole('combobox', { name: /choose local model/i })).toHaveValue(
+      'phi4-mini:3.8b',
+    )
   })
 
   it('shows the seventh UI state, loading, while the request is in flight', async () => {
@@ -174,13 +245,15 @@ describe('NormalResponse', () => {
     mockedRespond.mockResolvedValueOnce(NORMAL_RESPONSE)
 
     render(<NormalResponse />)
+    await screen.findByRole('combobox', { name: /choose local model/i })
     await user.click(screen.getByRole('button', { name: /ask about my recent movement/i }))
 
     await waitFor(() => expect(mockedRespond).toHaveBeenCalledTimes(1))
-    const [participantId, question, featureId] = mockedRespond.mock.calls[0]
+    const [participantId, question, featureId, modelTag] = mockedRespond.mock.calls[0]
     expect(question).toBe('How was my movement different from my recent baseline?')
     expect(participantId).toBe('local-demo')
     expect(featureId).toBeUndefined()
+    expect(modelTag).toBe('phi4-mini:3.8b')
   })
 
   it('keeps earlier turns visible and sends a second normal question end to end', async () => {
