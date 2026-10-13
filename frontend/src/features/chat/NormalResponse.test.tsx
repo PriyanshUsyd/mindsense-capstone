@@ -82,6 +82,17 @@ describe('NormalResponse', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
+  it('shows only the implemented chat section in the sidebar', () => {
+    render(<NormalResponse />)
+
+    expect(screen.getByText('Chat')).toBeInTheDocument()
+    expect(screen.queryByText('Today')).not.toBeInTheDocument()
+    expect(screen.queryByText('My patterns')).not.toBeInTheDocument()
+    expect(screen.queryByText('Privacy')).not.toBeInTheDocument()
+    expect(screen.queryByText('Recent chats')).not.toBeInTheDocument()
+    expect(screen.getByText('Private by design')).toBeInTheDocument()
+  })
+
   it('shows the backend-approved model selector and sends the selected exact tag', async () => {
     const user = userEvent.setup()
     mockedRespond.mockResolvedValueOnce({
