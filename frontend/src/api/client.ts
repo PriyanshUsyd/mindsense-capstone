@@ -54,6 +54,13 @@ export interface GenerationMetrics {
   eval_duration_ns: number | null
 }
 
+export interface ModelCatalogResponse {
+  runtime: string
+  selection_enabled: boolean
+  default_model_tag: string
+  available_model_tags: string[]
+}
+
 // The evidence packet's exact shape is owned by backend/contracts/evidence.py
 // (a strict Pydantic model); the frontend does not re-validate it, it just
 // passes through whatever a validated packet from the backend looks like.
@@ -68,6 +75,20 @@ export class RespondError extends Error {
     super(message)
     this.status = status
   }
+}
+
+export async function getModelCatalog(): Promise<ModelCatalogResponse> {
+  const res = await fetch(`${API_BASE_URL}/models`, {
+    method: 'GET',
+    redirect: 'error',
+    cache: 'no-store',
+  })
+
+  if (!res.ok) {
+    throw new RespondError(`request failed with status ${res.status}`, res.status)
+  }
+
+  return (await res.json()) as ModelCatalogResponse
 }
 
 // FIXED 2026-09-16: this used to send a hardcoded EvidencePacket (the
@@ -88,6 +109,7 @@ export async function respond(
   participantId: string,
   question: string,
   featureId?: string,
+  modelTag?: string,
 ): Promise<SafeSLMResponse> {
   const res = await fetch(`${API_BASE_URL}/respond`, {
     method: 'POST',
@@ -97,6 +119,7 @@ export async function respond(
       participant_id: participantId,
       question,
       ...(featureId ? { feature_id: featureId } : {}),
+      ...(modelTag ? { model_tag: modelTag } : {}),
     }),
   })
 

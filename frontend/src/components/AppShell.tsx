@@ -7,6 +7,7 @@ type StatusTone = 'ready' | 'working' | 'normal' | 'caution' | 'boundary'
 interface AppShellProps {
   children: ReactNode
   modelLabel?: string
+  modelSelector?: ReactNode
   onNewConversation?: () => void
   statusLabel: string
   statusTone: StatusTone
@@ -22,6 +23,7 @@ const navigation = [
 export function AppShell({
   children,
   modelLabel = 'Processed locally',
+  modelSelector,
   onNewConversation,
   statusLabel,
   statusTone,
@@ -98,6 +100,7 @@ export function AppShell({
                 New conversation
               </button>
             )}
+            {modelSelector}
             <span className="local-badge">{modelLabel}</span>
             <span className="state-badge" data-tone={statusTone}>
               {statusLabel}
