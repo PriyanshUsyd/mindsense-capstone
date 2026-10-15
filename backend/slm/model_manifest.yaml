@@ -2,11 +2,11 @@
 # ("Pin the exact model tag ... Do not use a floating 'latest' tag in any
 # release script") and skills/slm-ollama.md.
 #
-# STATUS: comparison pending. Phi-4 Mini remains the Week 4 baseline, not a
-# final product decision. Qwen3 4B is the size-matched comparison candidate.
+# STATUS: Final model: phi4-mini:3.8b (selected 16 Oct 2026). Qwen3 4B was the
+# size-matched comparison candidate and stays listed below for the record.
 
 provider: ollama
-selection_status: comparison_pending
+selection_status: selected
 model_tag: "phi4-mini:3.8b"   # baseline candidate; never a floating latest tag
 model_size_gb: 2.5
 context_window_tokens: 131072  # 128K

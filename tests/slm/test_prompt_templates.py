@@ -169,7 +169,7 @@ def test_model_manifest_parses_and_pins_exact_tag():
 def test_model_manifest_marks_phi_and_qwen_as_comparison_candidates():
     with open(MANIFEST_PATH, "r", encoding="utf-8") as f:
         manifest = yaml.safe_load(f)
-    assert manifest["selection_status"] == "comparison_pending"
+    assert manifest["selection_status"] == "selected"
     tags = {candidate["model_tag"] for candidate in manifest["comparison_candidates"]}
     assert tags == {"phi4-mini:3.8b", "qwen3:4b"}
     assert all("latest" not in tag for tag in tags)
