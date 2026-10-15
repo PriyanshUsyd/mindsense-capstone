@@ -1,7 +1,7 @@
 # Main-Evaluation Threshold Summary
 
-- **RC commit:** rc-eval-1 (tagged 2026-10-10; SHA posted at lock)
-- **Sessions:** `ME-P01`–`ME-P04`
+- **RC commit:** rc-eval-2 (`d31e05db5560d3cfe109642c4e5675be5d68cb3a`, request policy 0.3.3; tagged 2026-10-10). Replaces rc-eval-1 (`687a50e`)
+- **Sessions:** 3 sessions involving all 8 team members (replaces the `ME-P01`–`ME-P04` pair plan; dates and session IDs TBC (team to confirm)). See the [roster](../../week8-main-evaluation-roster.md)
 - **Status:** not yet run
 - **Source ratings:** `session-responses.csv`
 
