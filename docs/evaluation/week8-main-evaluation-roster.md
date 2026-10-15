@@ -1,14 +1,38 @@
 # Week 8 Main-Evaluation Pairing Plan
 
 - **Owner:** Chonghao Shen
-- **Updated:** 27 September 2026 (Australia/Sydney)
+- **Updated:** 27 September 2026 (Australia/Sydney); evaluation format change recorded 16 October 2026
 - **Scope:** team-only evaluation; no external participants
 - **Session window:** 10–15 October 2026
 - **Time required:** one 45–60 minute meeting per pair
-- **Status:** pairs are finalised; each pair still needs to agree on its exact meeting time
+- **Status:** **format changed (recorded 2026-10-16).** The main evaluation ran as **3 sessions involving all 8 team members**, not the four pairs `ME-P01`–`ME-P04` planned below. The pair plan is kept as the superseded original plan.
 - **Version-locked RC:** rc-eval-2 = `d31e05db5560d3cfe109642c4e5675be5d68cb3a` (merge commit of `priyansh-fix-50q`, request policy 0.3.3; tagged 2026-10-10). It replaces rc-eval-1 (`687a50e`) after ME-P01 attempt 1 found F1–F5, and the untagged `4008836` (policy 0.3.2) after Yuktha's 50-question dev test (release checklist).
 
-## Final pairs
+## Actual evaluation format: 3 sessions, all 8 members
+
+Recorded 2026-10-16. Sessions ran on rc-eval-2 (`d31e05d`). Values not yet in the repository are marked TBC (team to confirm); nothing here is inferred.
+
+| Session | Date/time | Members present | Build | Evidence in repository | Status |
+|---|---|---|---|---|---|
+| Session 1 | TBC (team to confirm) | TBC (team to confirm) | rc-eval-2 | TBC (team to confirm) | TBC (team to confirm) |
+| Session 2 | TBC (team to confirm) | TBC (team to confirm) | rc-eval-2 | TBC (team to confirm) | TBC (team to confirm) |
+| Session 3 | TBC (team to confirm) | TBC (team to confirm) | rc-eval-2 | TBC (team to confirm) | TBC (team to confirm) |
+
+All 8 members took part across the three sessions; per-session attendance is TBC (team to confirm).
+
+### Existing evidence, kept under its original folder IDs
+
+The evidence below was saved under the original pair IDs before the format change. The folders keep those IDs; which of Sessions 1–3 each belongs to is TBC (team to confirm).
+
+| Evidence folder | Contents on main | Model tag shown in Details line | Maps to session |
+|---|---|---|---|
+| `evidence/main-evaluation/ME-P01/` (originally Priyansh/Yuktha) | `ME-P01.pdf`: transcript of a capability question and Q1–Q4 with Details lines (username/hostname redacted 2026-10-16) | `phi4-mini:3.8b` on Q1–Q2; `none` on the capability question, Q3 and Q4 (deterministic routes) | TBC (team to confirm) |
+| `evidence/main-evaluation/ME-P04/` (originally Moe/Honglin) | `Q1/`–`Q4/notes.md` with response text and Details lines; date/time and evaluator codes not recorded | `demo-stub:1.0` on Q1–Q2; `none` on Q3–Q4 | TBC (team to confirm) |
+| `evidence/main-evaluation/ME-P01-attempt1-rc-eval-1/` | Superseded attempt on rc-eval-1 (F1–F5) | — | Not part of the rc-eval-2 results |
+
+The two folders show different model runtimes on Q1–Q2 (Ollama `phi4-mini:3.8b` vs the deterministic demo stub). Whether both count toward the results is TBC (team to confirm). Questionnaire rows in `results/main-evaluation/session-responses.csv`: none recorded yet.
+
+## Original pair plan (superseded)
 
 | Session | Start as operator | Start as evaluator | Halfway role swap |
 |---|---|---|---|
@@ -55,7 +79,7 @@ Save the same evidence. Question 4 should produce a safe non-diagnostic boundary
 ### After the meeting
 
 1. Each evaluator completes the usability questions once for the half they evaluated.
-2. Put screenshots and JSON under `evidence/main-evaluation/<session_id>/<question_id>/`, and questionnaire rows in `results/main-evaluation/session-responses.csv`.
+2. Put `notes.md` (with the Details line) under `evidence/main-evaluation/<session_id>/<question_id>/`, and questionnaire rows in `results/main-evaluation/session-responses.csv`. Screenshots and full `/respond` JSON stay local and are not committed (updated 2026-10-16; see the [evidence README](evidence/main-evaluation/README.md)).
 3. Mark the session `Completed` only when both halves and both questionnaires are saved.
 4. Report failures exactly as observed. Do not silently retry and retain only a successful answer.
 5. Send Chonghao the session folder/path and a one-sentence summary of any issue found.
@@ -68,7 +92,7 @@ Save the same evidence. Question 4 should produce a safe non-diagnostic boundary
 - Do not run an additional crisis role-play during these sessions. The synthetic crisis and generic fallback routes were already checked in [Week 8 fallback verification](week8-fallback-e2e.md).
 - Stop and notify Chonghao and Yuktha if the app exposes a raw identifier/location, misses a safety boundary, or produces an unsupported diagnosis or causal claim.
 
-## Tracking table
+## Tracking table (original pair plan, superseded)
 
 | Session | Exact time confirmed | Build recorded | First half saved | Second half saved | Status |
 |---|---:|---:|---:|---:|---|
@@ -77,11 +101,11 @@ Save the same evidence. Question 4 should produce a safe non-diagnostic boundary
 | `ME-P03` | Pending | rc-eval-2 | Not run | Not run | Scheduled |
 | `ME-P04` | Pending | rc-eval-2 | Not run | Not run | Scheduled |
 
-All four sessions run in the 10–15 October window on `rc-eval-2` (`d31e05db5560d3cfe109642c4e5675be5d68cb3a`), as set in the [release checklist](../release/release-candidate-checklist.md) timeline. Sessions not actually run must be reported as `Not run`.
+This table belongs to the superseded pair plan; see "Actual evaluation format" above for the sessions that ran. The plan was that all four sessions run in the 10–15 October window on `rc-eval-2` (`d31e05db5560d3cfe109642c4e5675be5d68cb3a`), as set in the [release checklist](../release/release-candidate-checklist.md) timeline. Sessions not actually run must be reported as `Not run`.
 
-## Message to send to the team
+## Message sent to the team (original pair plan, historical)
 
-> Hi team — the main-evaluation pairs are now finalised: Priyansh/Yuktha, Richard/Sheng, Chonghao/Honghao, and Moe/Honglin. Each pair needs one 45–60 minute session between 10 and 15 October. Please agree on an exact time and have both people confirm it in the team channel. Follow `docs/evaluation/pair-session-guide.md` step by step: check out `rc-eval-2` (`4008836`), run the four questions in order, swap operator/evaluator roles halfway, save the evidence, and complete the questionnaire for the responses you evaluate. Use only the version-locked build and demo data; do not open the Week 11 held-out set or enter personal information. Please tell me early if your pair cannot meet in that window.
+> Hi team — the main-evaluation pairs are now finalised: Priyansh/Yuktha, Richard/Sheng, Chonghao/Honghao, and Moe/Honglin. Each pair needs one 45–60 minute session between 10 and 15 October. Please agree on an exact time and have both people confirm it in the team channel. Follow `docs/evaluation/pair-session-guide.md` step by step: check out `rc-eval-2` (`d31e05d`; the message originally said `4008836`, which was never tagged), run the four questions in order, swap operator/evaluator roles halfway, save the evidence, and complete the questionnaire for the responses you evaluate. Use only the version-locked build and demo data; do not open the Week 11 held-out set or enter personal information. Please tell me early if your pair cannot meet in that window.
 
 ## Reporting boundary
 
