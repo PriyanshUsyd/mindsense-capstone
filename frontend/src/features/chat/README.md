@@ -15,6 +15,13 @@ generation, output grounding, and fail-closed fallback path. Launching FastAPI
 with `MINDSENSE_SLM_RUNTIME=ollama` selects the real manifest-pinned local
 client without changing frontend code.
 
+In Ollama mode, the page loads `GET /models`, defaults to the backend-selected
+model, and lets the user choose another manifest-listed candidate for the next
+answer. The exact selected tag is sent as `model_tag` in `POST /respond`.
+Selection is locked while a request is running. A 422 response refreshes the
+catalog rather than retaining a stale model choice. Demo mode and a failed
+catalog request omit `model_tag`, preserving the backend's safe default.
+
 Implemented required UI states:
 
 1. loading/processing;
