@@ -7,61 +7,33 @@ type StatusTone = 'ready' | 'working' | 'normal' | 'caution' | 'boundary'
 interface AppShellProps {
   children: ReactNode
   modelLabel?: string
+  modelSelector?: ReactNode
   onNewConversation?: () => void
   statusLabel: string
   statusTone: StatusTone
 }
 
-const navigation = [
-  { symbol: '⌂', label: 'Today' },
-  { symbol: '◌', label: 'Chat', active: true },
-  { symbol: '▥', label: 'My patterns' },
-  { symbol: '◇', label: 'Privacy' },
-]
-
 export function AppShell({
   children,
   modelLabel = 'Processed locally',
+  modelSelector,
   onNewConversation,
   statusLabel,
   statusTone,
 }: AppShellProps) {
   return (
     <div className="app-shell">
-      <aside className="sidebar" aria-label="Primary navigation">
+      <aside className="sidebar" aria-label="MindSense sidebar">
         <BrandMark />
 
         <p className="eyebrow sidebar-heading">Your space</p>
-        <nav className="nav-list" aria-label="MindSense sections">
-          {navigation.map((item) => (
-            <div
-              className={`nav-item${item.active ? ' nav-item--active' : ''}`}
-              aria-current={item.active ? 'page' : undefined}
-              key={item.label}
-            >
-              <span className="nav-symbol" aria-hidden="true">
-                {item.symbol}
-              </span>
-              <span>{item.label}</span>
-            </div>
-          ))}
-        </nav>
-
-        <div className="sidebar-divider" />
-        <p className="eyebrow">Recent chats</p>
-        <div className="recent-chat recent-chat--active">
-          <span className="recent-chat-icon" aria-hidden="true">◯</span>
-          <span>
-            <strong>Activity this week</strong>
-            <small>Current conversation</small>
-          </span>
-        </div>
-        <div className="recent-chat">
-          <span className="recent-chat-icon" aria-hidden="true">◯</span>
-          <span>
-            <strong>Unlock pattern</strong>
-            <small>Previous conversation</small>
-          </span>
+        <div className="nav-list" aria-label="Current MindSense section">
+          <div className="nav-item nav-item--active" aria-current="page">
+            <span className="nav-symbol" aria-hidden="true">
+              ◌
+            </span>
+            <span>Chat</span>
+          </div>
         </div>
 
         <div className="sidebar-spirit" aria-hidden="true">
@@ -98,6 +70,7 @@ export function AppShell({
                 New conversation
               </button>
             )}
+            {modelSelector}
             <span className="local-badge">{modelLabel}</span>
             <span className="state-badge" data-tone={statusTone}>
               {statusLabel}

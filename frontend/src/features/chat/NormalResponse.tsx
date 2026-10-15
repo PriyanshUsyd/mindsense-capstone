@@ -1,7 +1,14 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
-import { RespondError, respond, type SafeSLMResponse } from '../../api/client'
+import {
+  getModelCatalog,
+  RespondError,
+  respond,
+  type ModelCatalogResponse,
+  type SafeSLMResponse,
+} from '../../api/client'
 import { AppShell } from '../../components/AppShell'
+import { ModelSelector } from '../../components/ModelSelector'
 import {
   CrisisAwareFallbackState,
   GenericFallbackState,
@@ -43,7 +50,7 @@ interface ConversationTurn {
 }
 
 interface RequestFailure {
-  kind: 'network' | 'server' | 'unknown'
+  kind: 'model' | 'network' | 'server' | 'unknown'
   message: string
   question: string
   status?: number
@@ -88,9 +95,51 @@ export function NormalResponse() {
   const [pendingQuestion, setPendingQuestion] = useState<string | null>(null)
   const [showColdStartNotice, setShowColdStartNotice] = useState(false)
   const [requestFailure, setRequestFailure] = useState<RequestFailure | null>(null)
+  const [modelCatalog, setModelCatalog] = useState<ModelCatalogResponse | null>(null)
+  const [selectedModelTag, setSelectedModelTag] = useState<string | null>(null)
+  const [refreshingModels, setRefreshingModels] = useState(false)
   const requestInFlight = useRef(false)
   const nextTurnId = useRef(1)
   const conversationEnd = useRef<HTMLDivElement>(null)
+
+  const applyModelCatalog = useCallback((catalog: ModelCatalogResponse) => {
+    setModelCatalog(catalog)
+    setSelectedModelTag((currentTag) => {
+      if (currentTag && catalog.available_model_tags.includes(currentTag)) {
+        return currentTag
+      }
+      return catalog.selection_enabled ? catalog.default_model_tag : null
+    })
+  }, [])
+
+  useEffect(() => {
+    let active = true
+    void getModelCatalog()
+      .then((catalog) => {
+        if (active) applyModelCatalog(catalog)
+      })
+      .catch(() => {
+        if (!active) return
+        // Model selection is optional. If the catalog is unavailable, omit
+        // model_tag and let the local API use its reviewed default.
+        setModelCatalog(null)
+        setSelectedModelTag(null)
+      })
+    return () => {
+      active = false
+    }
+  }, [applyModelCatalog])
+
+  const refreshModelCatalog = useCallback(async () => {
+    setRefreshingModels(true)
+    try {
+      const catalog = await getModelCatalog()
+      applyModelCatalog(catalog)
+      return catalog
+    } finally {
+      setRefreshingModels(false)
+    }
+  }, [applyModelCatalog])
 
   useEffect(() => {
     conversationEnd.current?.scrollIntoView?.({ behavior: 'smooth', block: 'end' })
@@ -117,13 +166,28 @@ export function NormalResponse() {
     setPendingQuestion(question)
 
     try {
-      const response = await respond(LOCAL_DEMO_PARTICIPANT_ALIAS, question)
+      const response = await respond(
+        LOCAL_DEMO_PARTICIPANT_ALIAS,
+        question,
+        undefined,
+        selectedModelTag ?? undefined,
+      )
       const turn = { id: nextTurnId.current, question, response }
       nextTurnId.current += 1
       setTurns((currentTurns) => [...currentTurns, turn])
       setDraft('')
     } catch (error) {
       if (error instanceof RespondError) {
+        if (error.status === 422 && selectedModelTag) {
+          await refreshModelCatalog().catch(() => undefined)
+          setRequestFailure({
+            kind: 'model',
+            message: 'The selected model is no longer available.',
+            question,
+            status: error.status,
+          })
+          return
+        }
         setRequestFailure({
           kind: 'server',
           message: error.message,
@@ -195,7 +259,9 @@ export function NormalResponse() {
     : requestFailure
       ? {
           label:
-            requestFailure.kind === 'network'
+            requestFailure.kind === 'model'
+              ? 'Model selection changed'
+              : requestFailure.kind === 'network'
               ? 'Local service unavailable'
               : 'Local processing failed',
           tone: 'caution' as const,
@@ -214,10 +280,24 @@ export function NormalResponse() {
         : { label: 'Ready', tone: 'ready' as const }
 
   const showWelcome = turns.length === 0 && !pendingQuestion && !requestFailure
+  const visibleModelTag = selectedModelTag ?? latestModelTag
+  const modelSelector =
+    modelCatalog?.selection_enabled && selectedModelTag ? (
+      <ModelSelector
+        disabled={pendingQuestion !== null || refreshingModels}
+        modelTags={modelCatalog.available_model_tags}
+        onChange={(modelTag) => {
+          setSelectedModelTag(modelTag)
+          setRequestFailure(null)
+        }}
+        value={selectedModelTag}
+      />
+    ) : undefined
 
   return (
     <AppShell
-      modelLabel={latestModelTag ? `Local model · ${latestModelTag}` : undefined}
+      modelLabel={visibleModelTag ? 'Processed locally' : undefined}
+      modelSelector={modelSelector}
       onNewConversation={
         turns.length > 0 && !pendingQuestion ? handleNewConversation : undefined
       }
@@ -244,7 +324,9 @@ export function NormalResponse() {
         {requestFailure && (
           <GenericFallbackState
             message={
-              requestFailure.kind === 'network'
+              requestFailure.kind === 'model'
+                ? 'The selected local model is no longer available. MindSense refreshed the approved model list. Choose a model and try again.'
+                : requestFailure.kind === 'network'
                 ? 'MindSense could not reach the local response service. Check that the local API is running, then try again. Your data was not sent to an external service.'
                 : 'The local response service received your request but could not complete it safely. You can try again after the local data or model service is ready. Your data was not sent to an external service.'
             }
