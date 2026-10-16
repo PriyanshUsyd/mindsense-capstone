@@ -142,6 +142,12 @@ export function NormalResponse() {
   }, [applyModelCatalog])
 
   useEffect(() => {
+    // An empty conversation shows the welcome state, which should be read from
+    // the top rather than scrolled to its end (on short screens that hid the heading).
+    if (turns.length === 0 && !pendingQuestion && !requestFailure) {
+      conversationEnd.current?.parentElement?.scrollTo?.({ top: 0 })
+      return
+    }
     conversationEnd.current?.scrollIntoView?.({ behavior: 'smooth', block: 'end' })
   }, [pendingQuestion, requestFailure, turns])
 
