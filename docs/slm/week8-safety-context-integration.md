@@ -181,11 +181,12 @@ human rubric scores or participant-session evidence. Individual ratings,
 screenshots and full session responses remain local. Any later session summary
 requires approval for publication.
 
-ME-P02 has not been run. It is separate from these developer benchmarks and
-requires the published, confirmed-ready `rc-eval-1` during 10-15 October;
-`b60cb84` is superseded. The application still reuses the participant's validated
+ME-P02 was not run as planned: the evaluation became three team sessions on
+rc-eval-2 (`d31e05d`; rc-eval-1 and `b60cb84` are historical), recorded in
+`docs/evaluation/week8-main-evaluation-roster.md`. It is separate from these
+developer benchmarks. The application still reuses the participant's validated
 evidence summary for RAG, and its live association path remains `no_claim`.
-Bootstrap SE wiring into `/respond` is outside this delivery.
+Bootstrap SE wiring into `/respond` was outside this delivery; it was added later by PR #80 (baseline comparison only; no association sentence is generated).
 
 ### CI verification is separate from held-out evaluation
 

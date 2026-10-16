@@ -167,7 +167,7 @@ Decisions a–d cover the runner. Reading the cache from `participant_evidence` 
 
 **Observed.** The raw checkpoint and everything derived from it (the data behind 23/214) lived only in a session scratchpad under `%LOCALAPPDATA%\Temp\claude\…`, outside the repository and any backup.
 
-Now archived (2026-09-20) to `C:\Users\[redacted]\mindsense-bootstrap-archive\` (outside the repository, OneDrive and temp directories), with a README. SHA-256 of every file was compared against the source and matched.
+Now archived (2026-09-20) to `C:\Users\<user>\mindsense-bootstrap-archive\` (outside the repository, OneDrive and temp directories), with a README. SHA-256 of every file was compared against the source and matched.
 
 - **Not committed:** the files contain `uid`, pending Yuktha Naveen's privacy review (item 2).
 - **Scripts:** copied unmodified. They hard-code the original scratchpad path, so they need path edits to run.

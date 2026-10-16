@@ -3,7 +3,7 @@
 Owner: Yuktha Naveen, Privacy and Security Lead
 Date: 2026-08-29
 Reviewed commit: `0c1bf0b`
-Scope: `[redacted]/Documents/SEM4/Capstone/Work/mindsense-capstone`
+Scope: `~/<project>`
 
 ## Method
 

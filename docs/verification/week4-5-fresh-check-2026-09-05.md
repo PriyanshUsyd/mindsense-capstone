@@ -30,13 +30,13 @@ never actually committed the work ("Honghao's now-real, working script",
 --format='%an'` shows the actual author is Priyansh. Three of eight roles have
 **zero self-authored commits anywhere in this repository's history**, under
 any name. One role (Honghao) turned out to have real work under a git
-identity (`AllenLi845`) that doesn't match his name — worth noting so this
+identity (`[redacted]`) that doesn't match his name — worth noting so this
 isn't mistaken for "no work" in a future check.
 
 ## Per-person, per-week findings
 
 ### Honghao Li — Data Pipeline Lead
-Git identity: `AllenLi845 <[redacted]>` — no branch, pushed straight to
+Git identity: `[redacted]` — no branch, pushed straight to
 `main`, bypassing PR review (`f30fce5`, parent `7cd6db0`).
 
 - **Week 4 — Done.** `scripts/validate_ces.py` (552 lines) and
@@ -46,12 +46,12 @@ Git identity: `AllenLi845 <[redacted]>` — no branch, pushed straight to
   (`d5406a3`).
 - **Week 5 — Not done.** `backend/data_pipeline/gps_distance_feature.py` and
   `backend/data_pipeline/ces_eligibility.py` have no commit by
-  Honghao/AllenLi845 anywhere — both are 100% Priyansh-authored (`634866c`,
+  Honghao/[redacted] anywhere — both are 100% Priyansh-authored (`634866c`,
   `67ec7ba`, `1e0bae8`), despite commit messages describing them as his. No
   real end-to-end GPS feature build from him this week.
 
 ### Moe Tanaka — Statistical Analysis Lead
-Git identity: `tanaka <[redacted]>`.
+Git identity: `[redacted]`.
 
 - **Week 4 — Done.** `origin/moet/week4_statistical_analysis` (`8eb4ca5`),
   self-authored, real 498-line deliverable naming the exact model (mixed
@@ -63,8 +63,8 @@ Git identity: `tanaka <[redacted]>`.
   as "Moe's mixed-effects model fitting."
 
 ### Richard Zhao — SLM Integration Lead
-Git identity: `T3MPOR4RY <[redacted]>` — same university
-email pattern as his likely real account; `T3MPOR4RY` looks like a leftover
+Git identity: `[redacted]` — same university
+email pattern as his likely real account; `[redacted]` looks like a leftover
 placeholder git username he never fixed, not a fake account.
 
 - **Week 4 — Done.** `origin/Rz` (`be5ba89`..`7d33de4`), self-pushed, 26 files
@@ -73,7 +73,7 @@ placeholder git username he never fixed, not a fake account.
 - **Week 5 — Done.** `origin/Rz-week5` (`22b4616`..`49dc73e`), self-pushed, 60
   files / ~21.5k lines including output grounding, request policy, shadow
   build, benchmarks, and tests. Merged via `9c2d317`.
-- Flag: the git username `T3MPOR4RY` should be fixed — it's currently
+- Flag: the git username `[redacted]` should be fixed — it's currently
   indistinguishable from a bot/placeholder account in `git log`.
 
 ### Sheng Wang — Conversational Interface Lead
@@ -96,7 +96,7 @@ Git identities: `[redacted]`, `[redacted]`.
   self-authored contributor across both weeks.
 
 ### Chonghao Shen — Evaluation Design Lead
-Git identity: `lostice0129 <[redacted]>`.
+Git identity: `[redacted]`.
 
 - **Week 4 — Mostly done.** `origin/chonghao/evaluation-week4` (`3c2f9ee`),
   self-authored `evaluation_plan_v0.1.md` genuinely covers the frozen

@@ -7,7 +7,7 @@
 > **This checklist update post-dates the tag and is docs-only.** It was committed after `rc-eval-1` was created and is not part of the tagged tree. The diff from `687a50e` to the main commit that merges it touches only this file: no `backend/`, `frontend/`, model or prompt/policy files.
 **Evaluation lock:** 2026-10-10 (Sat)
 
-> **2026-10-16: main has moved past rc-eval-2.** PR #78 (frontend local model selector, Sheng Wang; merge `acdc9ce`) was merged to main on 2026-10-16 (AEST), after the rc-eval-2 lock. It changes `frontend/` code, so main no longer matches the tagged build. **rc-eval-2 (`d31e05d`) remains the build that the recorded evaluation sessions ran on**, and evaluation records keep citing it. The **final build will be the final freeze tag** (planned 2026-10-25; SHA TBC (team to confirm)). The **sealed held-out safety check must run on that final build**, not on rc-eval-2. The final model is recorded as `phi4-mini:3.8b` (`backend/slm/model_manifest.yaml`, `selection_status: selected`, 16 Oct 2026).
+> **2026-10-16: main has moved past rc-eval-2.** PR #78 (frontend local model selector; merge `acdc9ce`) was merged to main on 2026-10-16 (AEST), after the rc-eval-2 lock. It changes `frontend/` code, so main no longer matches the tagged build. **rc-eval-2 (`d31e05d`) remains the build that the recorded evaluation sessions ran on**, and evaluation records keep citing it. The **final build will be the final freeze tag** (To do (assigned); see "Remaining before freeze"). The **sealed held-out safety check must run on that final build**, not on rc-eval-2. The final model is recorded as `phi4-mini:3.8b` (`backend/slm/model_manifest.yaml`, `selection_status: selected`, 16 Oct 2026).
 
 > **rc-eval-2 locked 2026-10-10; live re-check by Yuktha on d31e05d passed 23/23 previously failing questions; full 50-question dev set passes (tests/slm/test_dev_50q.py).** Tag `rc-eval-2` → `d31e05db5560d3cfe109642c4e5675be5d68cb3a` (annotated tag object `d2a3034`). This docs-only update post-dates that SHA and is not part of the rc-eval-2 tree.
 >
@@ -32,7 +32,7 @@ Every item is either backed by repository evidence (SHA, PR or path) or marked `
 
 | Item | Value | Evidence |
 |---|---|---|
-| RC SHA | `687a50ea233ba7e3653b15d79ed84d5da7db6a91` (origin/main, 2026-10-10 10:39 +11:00). **Final** | Merge commit of PR #62 |
+| RC SHA | `687a50ea233ba7e3653b15d79ed84d5da7db6a91` (origin/main, 2026-10-10 10:39 +11:00). **Historical: rc-eval-1, superseded the same day by rc-eval-2 (`d31e05d`)**, the build the evaluation sessions record | Merge commit of PR #62 |
 | CI on the RC's push run | **success**: all 4 stages passed | GitHub Actions run `38005471342` |
 | Local tests on the RC | Backend **752 passed, 19 skipped, 0 failed** (all 19 skips: "R + rpy2 + lme4/lmerTest/pbkrtest/nlme not usable in this environment", covered by CI Stage 2); frontend **28/28 passed**, lint and build passed | Windows local run, 2026-10-10 |
 | RC tag | **Done.** Annotated tag `rc-eval-1` (tag object `7cbf9c2`) → `687a50e`, created and pushed 2026-10-10: `git tag -a rc-eval-1 687a50ea233ba7e3653b15d79ed84d5da7db6a91 -m "Evaluation release candidate, lock 2026-10-10"`. Verified with `git ls-remote --tags origin` | Priyansh |
@@ -137,26 +137,26 @@ Unchanged from `a498b3f`: no files under `backend/slm/` changed between `a498b3f
 
 The final phi4-mini vs qwen3 selection is **not** made by this checklist. — **Done 2026-10-16:** `phi4-mini:3.8b` recorded as the final model in `backend/slm/model_manifest.yaml` (`selection_status: selected`).
 
-## 6. Deferred: per-person SE in `/respond`
+## 6. Per-person SE in `/respond`: wired in (PR #80)
 
-Agreed to be deferred until after evaluation. On `fcaadfb`:
+Deferred during evaluation, as agreed; the sessions ran before this change. PR #80 (2026-10-16) connects it:
 
-- `backend/statistics/participant_evidence.py` uses the non-bootstrapped SE (`slope_se=None`, module docstring lines 35–39). `evidence_strength` therefore resolves to `insufficient` → `no_claim` for every participant.
-- `backend/statistics/evidence.py:208` constructs `PersonSlope(..., slope_se=None)`.
-- No `/respond`-path module imports `bootstrap_cache`. Only `backend/statistics/tier1_runner.py` reads the cache, and `bootstrap.py` only mentions it.
+- `backend/statistics/participant_evidence.py` reads the cached B=500 bootstrap intersection label (`bootstrap_cache.load_aggregated_cache`; preregistration §4.1). A State C participant gets a comparison with their own baseline only when the label is `evidence_available` and the deviation is defined; other State C answers say the history is long enough but the comparison cannot be reported.
+- Any cache problem (no R, missing, stale, unreadable, malformed, not owner-only) fails closed to `no_claim`.
+- `backend/statistics/evidence.py:208` is unchanged (the per-request fit is no longer used on `/respond`).
 
-**Confirmed deferred.** Any change here after the lock date invalidates the RC.
+This is a post-session change and is part of the final build, not of rc-eval-2.
 
 ## 7. Sign-offs and readiness
 
 | Item | Status | Owner | Evidence so far |
 |---|---|---|---|
-| Privacy sign-off on **`fcaadfb`** | **Pending** | Yuktha Naveen | The Week 9 re-check in `docs/privacy/master-test-register.md` (commit `c7505c4`) was run on base `f39f07f`, before #46, #48, #49 and #53 were merged |
-| Dataset preflight on each evaluation machine | **Deferred** | Honghao Li | Run on each evaluation machine before its first session (procedure: `docs/data-pipeline/ces_local_provisioning.md`, "Preflight check"); results to be committed by Honghao |
+| Privacy sign-off on the **final build** (was: on `fcaadfb`) | **To do (assigned)** — see "Remaining before freeze" | Privacy & Security Lead | The Week 9 re-check in `docs/privacy/master-test-register.md` (commit `c7505c4`) was run on base `f39f07f`, before #46, #48, #49 and #53 were merged |
+| Dataset preflight on each evaluation machine | **Not recorded** | Data Pipeline Lead | No per-machine preflight results were committed (procedure: `docs/data-pipeline/ces_local_provisioning.md`, "Preflight check"). All three session machines returned the same values (29.0 km/day, 121.0 unlocks/day) |
 | `bootstrap_cache.py` `feature_id` decision | **Done** | Moe Tanaka | Fixed by `73f1620` (PR #62); now line 445 |
-| Session times confirmed; critical-failure mapping covers all questions | **Pending** | Chonghao Shen | `docs/evaluation/week8-main-evaluation-roster.md`: all four sessions show "Pending" times. See Section 8 for the mapping |
-| Frontend readiness on each evaluation machine | **Pending** | Sheng Wang | Template on unmerged branch `sheng-week9-evaluation-ui-support` (`fb11fd1`) |
-| Evaluation session records cite the tagged SHA | **Done** (templates) | Chonghao Shen | Templates cite `rc-eval-1` (PR #61); each session record must still state it |
+| Session times confirmed; critical-failure mapping covers all questions | **Done** | Evaluation Design Lead | Three sessions with dates (S1 13 Oct; S2, S3 re-run 16 Oct) in `docs/evaluation/week8-main-evaluation-roster.md`; mapping applied to all 12 answers (Section 8; `pass-threshold-summary.md`) |
+| Frontend readiness on each evaluation machine | **Superseded** | Conversational Interface Lead | All three sessions ran to completion on their machines (roster); no separate per-machine readiness record was committed |
+| Evaluation session records cite the tagged SHA | **Done** | Evaluation Design Lead | Every row of `session-responses.csv` records rc-eval-2 (`d31e05d`); the S2/S3 notes state that the 16 Oct checkout was not recorded and why the answers are rc-eval-2's |
 
 ## 8. Critical-safety definition used for scoring
 
@@ -168,11 +168,24 @@ From `docs/evaluation/pass-threshold.md` (line 10):
 
 ## 9. Lock
 
-- [ ] All `Pending` items above closed or explicitly waived (record who waived it and why)
+- [ ] All `Pending` items above closed or explicitly waived (record who waived it and why). Open: privacy sign-off and the held-out check (see "Remaining before freeze")
 - [x] PR #48 decision: merged (`b927571`), repaired by #53 (`fcaadfb`); provisional candidate SHA updated
 - [x] Every "Must land before lock" item (Section 1) landed or explicitly deferred (4 Done; Honghao's preflight Deferred to before each machine's first session)
 - [x] Both decisions recorded: RAG stays default; Richard authorised for one held-out run by 2026-10-23 (approved by Priyansh, 2026-10-08)
 - [x] On 2026-10-10: final RC SHA chosen (`687a50e`, green push run `38005471342`) and annotated tag `rc-eval-1` created and pushed
 - [x] Release timeline set: evaluation lock 2026-10-10, sessions 2026-10-10 to 2026-10-15, fixes 2026-10-16 to 2026-10-21, held-out check by 2026-10-23, final freeze 2026-10-25
-- [ ] No change to `backend/`, `frontend/`, the SLM model or prompt/policy files on main between 2026-10-10 and the end of sessions ME-P01–P04
+- [ ] No change to `backend/`, `frontend/`, the SLM model or prompt/policy files on main between 2026-10-10 and the end of the evaluation sessions. **Not met as written:** the lock was reopened twice on 2026-10-10 (#68, #72), and #78 (frontend selector) and #79 (manifest `selection_status`) merged on 2026-10-16, the day of the S2/S3 re-runs. Neither #78 nor #79 changes answer text or a Details line (`git diff d31e05d 3f49939 -- backend/` shows only the manifest status field)
 - [ ] No model, prompt or code change on main after 2026-10-25
+
+## 10. Review waiver
+
+PRs #76–#79 were merged by the group lead without a second review to meet the evaluation deadline; each passed all four CI stages. Group-lead waiver recorded 16 Oct 2026.
+
+## 11. Remaining before freeze
+
+| Item | Status | Owner |
+|---|---|---|
+| Held-out 24-prompt safety check, run once on the **final build**; commit the aggregate result together with the checksum `95acb455a8798c9941d0564efc9080883b0c222944b9725782d308d680c515b5` | To do (assigned) | SLM Integration Lead |
+| Privacy sign-off on the final build, plus either the whole-device offline test or softening "Processed locally, always" (`frontend/src/components/AppShell.tsx:51`) | To do (assigned) | Privacy & Security Lead |
+| Re-ask the 4 evaluation questions on the final build to show the baseline comparison (PR #80) and whole-number values | To do (assigned) | Group lead |
+| Final freeze tag on the final build | To do (assigned) | Group lead |
