@@ -35,6 +35,37 @@ is written to degrade gracefully (see its own docstring and
 this doc is about reproducing the R-available case, not a hard
 dependency of the codebase.
 
+## R is optional for the per-person evidence cache
+
+The bootstrap cache behind the baseline comparison on `/respond` can be
+built without R: `backend/statistics/lme_ar1_python.py` fits the same model
+in NumPy/SciPy, and `python -m backend.statistics.bootstrap_cache --all`
+uses R when it is usable and the Python engine otherwise (README, Setup
+step 3). The two engines were compared on the real dataset on 16 October
+2026; see `docs/statistics/preregistration.md` §4.1.
+
+## Checklist: why a machine with R installed still reports R as missing
+
+`r_bridge.r_bridge_available()` needs all of the following in the Python
+process. On the group lead's machine (16 October 2026) the full suite
+skipped the 19 R tests although R 4.6.1 and all four packages were installed
+under `C:\Users\<you>\R-4.6.1-mindsense`, because none of these held:
+
+1. `rpy2` installed in the venv. `scripts/setup_local_python_env.*` installs
+   `requirements.txt` only; R users also run
+   `python -m pip install -r requirements-r.txt`.
+2. `R_HOME` set to the R install folder.
+3. `<R_HOME>\bin\x64` on `PATH`.
+4. Python started from PowerShell or cmd, not git-bash (Gotcha 1 below).
+
+Check with:
+
+```powershell
+$env:R_HOME = "C:\Users\you\R-4.6.1-mindsense"
+$env:PATH = "C:\Users\you\R-4.6.1-mindsense\bin\x64;" + $env:PATH
+python -c "from backend.statistics import r_bridge; print(r_bridge.r_bridge_available())"
+```
+
 ## Required environment variables
 
 Whoever wants the R-backed primary path (rather than the automatic

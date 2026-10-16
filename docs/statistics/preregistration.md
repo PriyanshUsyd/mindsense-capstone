@@ -757,8 +757,8 @@ reader `tier1_runner.py` uses). No rule is added: the label is used exactly
 as computed above (both bootstrap methods agree after BH-FDR control over the
 section 2.2 family). The request process never fits or bootstraps anything.
 
-- **Fail closed.** No R engine, a missing, stale, unreadable, malformed or
-  not owner-only cache, or a participant without a row all give `no_claim`.
+- **Fail closed.** A missing, stale, unreadable, malformed or not
+  owner-only cache, or a participant without a row, gives `no_claim`.
   Nothing raises to the caller; the exception type alone is logged.
 - **What a participant is told.** State C with `evidence_available` and a
   defined deviation (section 5.1: at least 7 valid recent days, non-zero
@@ -779,6 +779,67 @@ section 2.2 family). The request process never fits or bootstraps anything.
 - **Contract fields.** `evidence_strength` is the weaker of the two methods'
   BH labels; the 95% interval uses the larger of the two bootstrap SEs. Neither
   is shown to participants or changes a label.
+- **Engines `[POST-HOC, 2026-10-16]`.** The cache can be built with R
+  (`nlme::lme`, the original engine) or with NumPy/SciPy
+  (`backend/statistics/lme_ar1_python.py`), which fits the same model — random
+  intercept and slope on `x_within`, `corAR1` by occasion index, REML — by
+  maximising the same restricted likelihood. Seeds, simulation and resampling
+  are shared code, so the engines differ only in the optimiser.
+  `python -m backend.statistics.bootstrap_cache --all` uses R when it is usable
+  and Python otherwise; `/respond` reads the R-built cache when R is usable and
+  the Python-built cache otherwise.
+
+  **Tolerance:** per-person bootstrap SE within a relative 1e-3 and BH q
+  within 1e-3 absolute, with identical labels for every participant.
+
+  **`loc_dist_ep_0`: full comparison.** Both caches built on the real dataset
+  on 2026-10-16 (B=500 per method, `master_seed` 20260913, identical
+  model-frame fingerprints) and compared replicate by replicate and
+  participant by participant:
+
+  | | R vs Python |
+  |---|---|
+  | Usable replicates, R / Python | 1000 / 1000 |
+  | Replicate pairs with identical seed and cluster draw | 1000 of 1000 (500 parametric, 500 cluster) |
+  | Max absolute difference in any fixed effect (`x_within` alone in brackets) | 4.4e-05 (3.1e-06) |
+  | Max relative difference in per-person bootstrap SE | 3.0e-05 |
+  | Max absolute difference in BH q | 4.6e-05 |
+  | Smallest distance of any q to a threshold (0.01 / 0.05 / 0.10) | 4.7e-04 |
+  | Same `label_parametric`, `label_cluster`, Holm labels and `label_intersection` | 214 of 214 |
+  | `evidence_available` (intersection), R / Python | 23 / 23 |
+
+  Both tolerances hold; the largest q difference is smaller than the smallest
+  q-to-threshold distance by a factor of 10.
+
+  **`unlock_num_ep_0`: partial comparison.** The Python cache is complete
+  (1000 of 1000 usable replicates; fewer than 5 of 216 `evidence_available`).
+  The R build was still running on 2026-10-16; the 272 R replicates
+  it had written (all parametric; the cluster replicates had not started)
+  were compared pair by pair with the Python replicates of the same seed:
+
+  | | R vs Python, 272 replicate pairs |
+  |---|---|
+  | Usable, R / Python | 272 / 272 |
+  | Max absolute difference in any fixed effect (`x_within` alone in brackets) | 3.6e-05 (5.1e-06) |
+  | Max absolute difference in a BLUP slope | 2.9e-04 |
+  | Max relative difference in per-person SE over these 272 replicates | 8.0e-04 |
+
+  Labels for `unlock_num_ep_0` were not compared across engines: they need
+  both complete methods.
+
+  **Singular resamples.** Both engines fall back to a random-intercept-only
+  model when the random-slope fit fails, but the failure criterion differs.
+  R falls back when `nlme::lme` raises, which includes `nlminb`'s internal
+  "singular convergence (7)" stop on a boundary covariance. The Python engine
+  falls back only when its optimiser does not converge. On a resample whose
+  random-effects covariance sits on the boundary (intercept-slope correlation
+  ±1), R can therefore fit intercept-only while Python keeps the random slope,
+  and that replicate differs between engines. A synthetic test frame shows
+  this (`tests/statistics/test_bootstrap.py`,
+  `test_engines_give_the_same_replicate_for_the_same_seed`, marked xfail with
+  that reason). On the real data it did not occur: both engines made the same
+  random-slope choice on every compared pair (1000 of 1000 GPS, 272 of
+  272 unlock), and the GPS labels were identical for all 214 participants.
 - **Expected counts.** With the B=500 caches present: 23 of 214 (GPS) and
   fewer than 5 of 216 (unlock) participants can receive a comparison, minus
   any whose deviation is undefined on the assessed occasion. Without the cache
@@ -1046,6 +1107,12 @@ Resolved Week 4 open items (decisions, not post-hoc changes):
     participant is shown a comparison with their own baseline; fails closed to
     `no_claim`. Narrower than section 5.1 for `C + no_claim` because of
     evidence contract 1.0.0 (recorded in section 4.1). No threshold changes.
+14. **Python engine for the bootstrap cache** (section 4.1, "Engines",
+    2026-10-16) — the same model, method, B and seed fitted with NumPy/SciPy
+    when R is not usable. Compared with the R-built cache on the real data:
+    `loc_dist_ep_0` in full (identical labels for all 214 participants);
+    `unlock_num_ep_0` over 272 replicate pairs. No threshold, model or
+    method changes.
 
 ## 8. Reference implementation
 
@@ -1061,6 +1128,11 @@ Tier-1 features are now implemented in
 `backend/statistics/eligibility.py` (cold-start state) — this is now the
 canonical engine each Tier-1 feature runs through, unchanged except for the
 feature-specific cleaning thresholds in sections 1.5/1.6.5.)*
+
+The per-person bootstrap (`backend/statistics/bootstrap.py`,
+`bootstrap_cache.py`) runs on either engine: R `nlme` through
+`backend/statistics/r_bridge.py`, or NumPy/SciPy through
+`backend/statistics/lme_ar1_python.py` (section 4.1, "Engines").
 
 Code that needs "the current outputs" reads `analysis/output/latest/`, never
 `analysis/output/` directly. *(Still accurate — `analysis/output/` was not

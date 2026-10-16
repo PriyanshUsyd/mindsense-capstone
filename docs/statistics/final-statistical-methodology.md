@@ -28,8 +28,11 @@ preregistration §1.2, §1.5, §1.6.
   imputed (`mixed_effects_model.OCCASION_MIN_VALID_SENSOR_DAYS = 7`).
 - Person-mean centring with the person mean re-entered (Mundlak).
 - Engine: R `nlme::lme` with `corAR1` (`backend/statistics/r_bridge.py`,
-  `mixed_effects_model.fit_ar1_effect`); the Python `statsmodels` fit is the
-  fallback when R is unavailable.
+  `mixed_effects_model.fit_ar1_effect`). For the bootstrap cache, the same
+  REML model is also fitted in NumPy/SciPy (`backend/statistics/lme_ar1_python.py`)
+  when R is not usable. On the real data the GPS caches built both ways give
+  identical labels for every participant; unlock was compared over a partial
+  set of R replicates (preregistration §4.1, "Engines").
 - Primary GPS estimate: β_W = −0.184 (AR(1), 28,337 occasions;
   [`Week5_Statistical_Analysis_Deliverable.md`](../../Week5_Statistical_Analysis_Deliverable.md) §3.3).
 - Test: two-sided. Confirmatory family: Holm-Bonferroni, FWER 0.05 (§2.1).
@@ -52,7 +55,8 @@ preregistration §1.2, §1.5, §1.6.
    unlocks fewer than 5 of 216 (small-cell rule, §5.3).
 7. **Cache:** results are written once to a fingerprinted, owner-only,
    git-ignored cache (`backend/statistics/bootstrap_cache.py`); a request never
-   runs the bootstrap.
+   runs the bootstrap. Build: `python -m backend.statistics.bootstrap_cache --all`
+   (R engine when usable, Python engine otherwise; README, Setup step 3).
 
 ## 4. Cold-start states (preregistration §3; `eligibility.classify_state`)
 
@@ -85,15 +89,23 @@ features or neither is answered with a request to name one feature
   to compare with your own baseline, but there is not enough statistical
   evidence to report a comparison" (or, with no defined deviation, that there
   are too few recorded days in the comparison periods).
-- **Fail closed:** no R engine, or a missing, stale, unreadable, malformed or
-  not owner-only cache, gives `no_claim` for that request. On a machine without
-  the cache the comparison count is 0 by design.
+- **Engines:** the R-built cache is read when R is usable, otherwise the
+  Python-built cache; its fingerprint does not depend on R.
+- **Fail closed:** a missing, stale, unreadable, malformed or not owner-only
+  cache gives `no_claim` for that request. On a machine without the cache the
+  comparison count is 0 by design.
 - **State A/B** keep "too early to compare".
 
 Observed on the final build (`95e3171`, 16 October 2026, Ollama,
 `phi4-mini:3.8b`, a machine without the R cache): the evaluation questions Q1
 and Q2 returned the State C sentence above with 121 unlocks/day and 29 km/day
 ([release checklist §11](../release/release-candidate-checklist.md#11-remaining-before-freeze)).
+Re-asked on 16 October 2026 with both B=500 caches built (Python engine,
+`phi4-mini:3.8b`): Q1 and Q2 return the same sentence with 121 unlocks/day and
+29 km/day, now from the cache. The local demonstration participant is
+`no_claim` for both features: for GPS the cluster method is `moderate` but the
+parametric method is `insufficient`, and for unlocks both methods are
+`insufficient`.
 
 Tests: `tests/statistics/test_participant_evidence_bootstrap.py`,
 `tests/statistics/test_participant_evidence.py`,

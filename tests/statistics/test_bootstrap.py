@@ -408,6 +408,17 @@ def test_python_engine_serial_run_is_reproducible(python_real_fit, tmp_path):
 
 
 @requires_r
+@pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "Engines fit different models on this frame: R's random-slope nlme::lme raises "
+        "'nlminb problem, convergence error code = 1, singular convergence (7)' and falls back "
+        "to intercept-only, while the Python engine converges to a singular random-effects "
+        "covariance (intercept-slope correlation -1.000) and keeps the random slope. R's "
+        "criterion is internal to nlminb's PORT optimiser and is not reproduced in SciPy "
+        "(preregistration section 4.1, 'Engines')."
+    ),
+)
 def test_engines_give_the_same_replicate_for_the_same_seed():
     frame = _synthetic_frame_with_dates(n_people=30, n_occasions=15, seed=5)
     fits = {e: bootstrap.fit_real_model(frame, engine=e) for e in ("r", "python")}

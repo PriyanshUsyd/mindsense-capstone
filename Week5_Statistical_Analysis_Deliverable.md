@@ -934,6 +934,16 @@ collapse in section 3.7.
 
 ### 5.4 Per-person SE via bootstrap and cross-method intersection (backend port, added 2026-09-13)
 
+> **Update 2026-10-16: R is no longer required to build the cache.** The same
+> model (random intercept and slope, `corAR1` by occasion index, REML) is also
+> fitted with NumPy/SciPy (`backend/statistics/lme_ar1_python.py`), and
+> `python -m backend.statistics.bootstrap_cache --all` uses it when R is not
+> usable. Built both ways on the real data (B=500, same seed), the GPS caches
+> give the same labels for all 214 participants (per-person SE within a
+> relative 3.0e-05); for unlock, 272 R replicates were compared pair by pair
+> with Python (fixed effects within 3.6e-05). Details:
+> `docs/statistics/preregistration.md` §4.1, "Engines".
+
 **[POST-HOC.]** `backend/statistics/evidence.py`'s per-person significance test
 had been left with `slope_se`/`slope_p` always `None` — the R `nlme` engine that
 module's AR(1) fit runs on (see section 4/section 3.4 of the correction log for
