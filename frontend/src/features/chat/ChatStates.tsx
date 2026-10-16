@@ -150,7 +150,7 @@ export function NormalState({ question, response }: NormalStateProps) {
           <span className="insight-icon" aria-hidden="true">◇</span>
           <span>
             <strong>Local evidence response</strong>
-            <small>Compared with your own recent patterns</small>
+            <small>Compared with your own baseline</small>
           </span>
           <span className="response-mode-badge">Normal response</span>
         </div>

@@ -100,62 +100,11 @@ def test_built_unlock_packet_values_are_whole_numbers():
         assert packet.baseline.value == int(packet.baseline.value)
 
 
-def _stub_r_engine(monkeypatch):
-    """R is not usable in every environment, and `_evidence_table` returns
-    before `reclassify_cohort_family` without it. Stub only the R-backed fit
-    (every uid in the real model frame gets a BLUP) and the availability
-    check, so the real dataset still decides the family size, and use a fresh
-    cache so no earlier test's table is reused."""
-    from backend.statistics import participant_evidence as pe
-    from backend.statistics.mixed_effects_model import Ar1EffectResult
-
-    def fake_fit_ar1_effect(frame, *args, **kwargs):
-        uids = frame["uid"].unique().tolist()
-        return Ar1EffectResult(
-            engine="stub",
-            ar1_coefficient=0.0,
-            used_random_slope=True,
-            fallback_reason=None,
-            n_observations=len(frame),
-            n_groups=len(uids),
-            params={"x_within": 0.0},
-            pvalues={"x_within": 1.0},
-            blups={uid: {"x_within": 0.0} for uid in uids},
-        )
-
-    monkeypatch.setattr(pe.r_bridge, "r_bridge_available", lambda: True)
-    monkeypatch.setattr(pe, "fit_ar1_effect", fake_fit_ar1_effect)
-    monkeypatch.setattr(pe, "_EVIDENCE_TABLE_CACHE", {})
-    return pe
-
-
-@requires_dataset
-def test_unlock_evidence_table_family_matches_expected_without_warning(monkeypatch):
-    """The unlock cohort is 216, which must match EXPECTED_FAMILY_SIZE's
-    `unlock_num_ep_0` entry — no family-size warning on this path."""
-    import warnings
-
-    pe = _stub_r_engine(monkeypatch)
-    with warnings.catch_warnings(record=True) as caught:
-        warnings.simplefilter("always")
-        table = pe._evidence_table("unlock_count")
-
-    assert table is not None
-    assert len(table) == 216
-    assert not [w for w in caught if "family size" in str(w.message)]
-
-
-@requires_dataset
-def test_unlock_evidence_table_warns_when_expected_size_changed(monkeypatch):
-    """Companion to the test above: with a different expected value the same
-    run must warn. Without this, "no warning" could just mean the check is
-    silently skipped on this path (e.g. feature_id not reaching it)."""
-    from backend.statistics import evidence
-
-    pe = _stub_r_engine(monkeypatch)
-    monkeypatch.setitem(evidence.EXPECTED_FAMILY_SIZE, "unlock_num_ep_0", 999)
-    with pytest.warns(UserWarning, match="family size"):
-        pe._evidence_table("unlock_count")
+# The per-request R fit (`_evidence_table` stubbed via `fit_ar1_effect`) was
+# replaced on 2026-10-16 by the cached bootstrap intersection table; its
+# family-size check now runs where the cache is aggregated
+# (tests/statistics/test_bootstrap_cache.py). Synthetic tests for the new path:
+# tests/statistics/test_participant_evidence_bootstrap.py.
 
 
 @requires_dataset
@@ -172,14 +121,11 @@ def test_unknown_feature_raises():
 
 @requires_dataset
 def test_long_history_participant_is_comparison_eligible_by_history():
-    """This participant has enough cumulative history to clear Moe's State C
-    cold-start gate (28 calendar days / 20 valid sensor-days / 3 EMAs), but
-    in THIS process (no R engine — see r_bridge.r_bridge_available()) no
-    per-person evidence can be classified, so `response_health.py`'s
-    ELIGIBLE-requires-evidence invariant means the packet is honestly
-    reported as PARTIAL_DESCRIPTIVE_ONLY rather than an ELIGIBLE packet
-    with no evidence attached (see build_evidence_packet's State C branch
-    docstring for the discovery this test pins)."""
+    """This participant clears the State C cold-start gate (28 calendar days /
+    20 valid sensor-days / 3 EMAs). The packet is ELIGIBLE only when the
+    cached bootstrap intersection labels them `evidence_available` and the
+    deviation is defined; otherwise (including no cache, as in CI or a
+    machine without R) it is PARTIAL_DESCRIPTIVE_ONLY with a State C reason."""
     packet = build_evidence_packet(LONG_HISTORY_UID, feature_id="gps_distance")
 
     assert packet.baseline.eligibility_status in (
@@ -205,24 +151,18 @@ def test_short_history_participant_is_state_a_insufficient():
 
 @requires_dataset
 def test_state_c_packet_never_fabricates_evidence_strength():
-    """The core safety property this module must uphold: without the
-    unreconciled bootstrap SE (evidence.py's flagged gap), evidence_strength
-    must never be populated on a real participant's packet — no_claim/
-    insufficient is the only honest outcome right now, per CLAUDE.md's
-    finalised decisions and evidence.py's own module docstring."""
+    """Evidence may only be attached to an ELIGIBLE packet with a baseline
+    value; every other State C packet carries a State C reason and no
+    evidence (fail closed)."""
+    from backend.contracts.comparison_reasons import STATE_C_REASONS
+
     packet = build_evidence_packet(LONG_HISTORY_UID, feature_id="gps_distance")
 
-    if (
-        packet.baseline.eligibility_status == EligibilityStatus.ELIGIBLE
-        and packet.evidence is not None
-    ):
-        # Evidence may be None (no_claim) but must never silently assert a
-        # strength value this codebase cannot yet defend.
-        pytest.fail(
-            "evidence_strength was populated without a real per-person "
-            "standard error — this should be structurally impossible "
-            "given evidence.py's current SE gap"
-        )
+    if packet.evidence is not None:
+        assert packet.baseline.eligibility_status == EligibilityStatus.ELIGIBLE
+        assert packet.baseline.value is not None
+    elif packet.baseline.eligibility_status == EligibilityStatus.PARTIAL_DESCRIPTIVE_ONLY:
+        assert packet.baseline.ineligible_reason in STATE_C_REASONS
 
 
 @requires_dataset

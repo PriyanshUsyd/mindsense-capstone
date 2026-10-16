@@ -6,8 +6,8 @@ interface ModelSelectorProps {
 }
 
 const modelNames: Record<string, string> = {
-  'phi4-mini:3.8b': 'Phi-4 Mini · 3.8B',
-  'qwen3:4b': 'Qwen 3 · 4B',
+  'phi4-mini:3.8b': 'Phi-4 Mini · 3.8B (final)',
+  'qwen3:4b': 'Qwen 3 · 4B (comparison only)',
 }
 
 function modelName(modelTag: string) {

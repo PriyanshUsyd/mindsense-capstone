@@ -11,6 +11,10 @@ import math
 import re
 from decimal import Decimal
 
+from backend.contracts.comparison_reasons import (
+    STATE_C_EVIDENCE_NOT_REPORTABLE,
+    STATE_C_TOO_FEW_RECORDED_DAYS,
+)
 from backend.contracts.evidence import (
     ApprovedClaimId,
     AssistantDraft,
@@ -19,8 +23,24 @@ from backend.contracts.evidence import (
     ResponseMode,
 )
 
-OUTPUT_GROUNDING_VERSION = "0.1.1"
+# 0.2.0 (2026-10-16): State C comparisons that cannot be reported get an
+# accurate sentence instead of "too early to compare"; values render as whole
+# numbers when they are whole.
+OUTPUT_GROUNDING_VERSION = "0.2.0"
 UNCERTAINTY_TEXT = "This estimate is uncertain and should be interpreted cautiously."
+TOO_EARLY_TEXT = "It is too early to compare with your own baseline."
+# PARTIAL_DESCRIPTIVE_ONLY sentence by `PersonalBaseline.ineligible_reason`
+# (backend/contracts/comparison_reasons.py); any other reason is State A/B.
+_PARTIAL_COMPARISON_TEXT = {
+    STATE_C_EVIDENCE_NOT_REPORTABLE: (
+        "Your history is long enough to compare with your own baseline, but "
+        "there is not enough statistical evidence to report a comparison."
+    ),
+    STATE_C_TOO_FEW_RECORDED_DAYS: (
+        "Your history is long enough to compare with your own baseline, but "
+        "there are too few recorded days in the comparison periods to report one."
+    ),
+}
 # Explicit mappings: never guess a unit or interpolate arbitrary upstream labels.
 _LABELS = {
     ("unlock_count", "count_per_day"): ("phone unlock count", "unlocks per day"),
@@ -77,8 +97,9 @@ def _shape(
         ):
             raise ValueError("grounding_invalid_packet")
         text = (
-            prefix + " in the observed window. "
-            "It is too early to compare with your own baseline."
+            prefix
+            + " in the observed window. "
+            + _PARTIAL_COMPARISON_TEXT.get(packet.baseline.ineligible_reason, TOO_EARLY_TEXT)
         )
         partial_claims = [
             ApprovedClaimId.TREND_DESCRIPTION,
@@ -93,10 +114,19 @@ def _shape(
     return text, claims, values
 
 
+def _display(value: float) -> str:
+    """Whole values as integers ("121", not "121.0"). Values arrive already
+    rounded on the packet (`participant_evidence._round_user_facing`,
+    preregistration section 5.2); this only formats them and never rounds
+    again. Validation compares with Decimal, so both spellings still match."""
+    number = float(value)
+    return str(int(number)) if number.is_integer() else str(value)
+
+
 def render_grounded_example(packet: EvidencePacket, mode: ResponseMode) -> str:
     """Example for synthetic test generators, NOT a replacement for model output."""
     template, _, values = _shape(packet, mode)
-    return template.format(**{key: str(value) for key, value in values.items()})
+    return template.format(**{key: _display(value) for key, value in values.items()})
 
 
 def render_grounded_response_option(
@@ -112,7 +142,7 @@ def render_grounded_response_option(
     template, claims, values = _shape(packet, mode)
     return {
         "response_mode": mode.value,
-        "text": template.format(**{key: str(value) for key, value in values.items()}),
+        "text": template.format(**{key: _display(value) for key, value in values.items()}),
         "claim_ids_used": [claim.value for claim in claims],
         "evidence_ids_referenced": [packet.feature_window.feature_id],
         "includes_uncertainty_statement": mode in _READY,
