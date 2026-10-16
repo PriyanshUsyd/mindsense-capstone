@@ -23,7 +23,10 @@ from pydantic import ValidationError
 
 from backend.contracts.evidence import AssistantDraft, EvidencePacket
 from backend.slm.client import OllamaClient, OllamaClientConfig, UrllibLoopbackTransport
-from backend.slm.output_grounding import OUTPUT_GROUNDING_VERSION
+from backend.slm.output_grounding import (
+    OUTPUT_GROUNDING_VERSION,
+    validate_output_grounding,
+)
 from backend.slm.prompt_loader import load_evidence_prompt
 from backend.slm.request_policy import REQUEST_POLICY_VERSION
 from backend.slm.safety_gate import validate_draft
@@ -283,7 +286,18 @@ def load_conditions(cases: list[dict]):
             **user["allowed_response_options"][0],
         }
         draft = AssistantDraft.model_validate_json(json.dumps(example["answer"]))
-        if example["answer"] != expected or not validate_draft(packet, draft)[0]:
+        # Metadata must match the offered option exactly; the text must bind
+        # the same values under the grounding grammar (Decimal equality), so
+        # the frozen "63.0" still matches the whole-number "63" rendered since
+        # output grounding 0.2.0 (2026-10-16).
+        same_metadata = {k: v for k, v in example["answer"].items() if k != "text"} == {
+            k: v for k, v in expected.items() if k != "text"
+        }
+        if (
+            not same_metadata
+            or validate_output_grounding(packet, draft) is not None
+            or not validate_draft(packet, draft)[0]
+        ):
             raise ValueError("demonstration answer is not valid under unchanged gates")
         states.append(packet.baseline.eligibility_status.value)
     if states != ["eligible", "partial_descriptive_only"]:

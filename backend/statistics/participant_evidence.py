@@ -32,33 +32,35 @@ comparison `PersonalBaseline` use CLAUDE.md's locked windows instead:
 comparison window `[-14, -1]` relative to `as_of`, baseline window
 `[-42, -15]`.
 
-Per-person `evidence_strength` (Section 7) goes through
-`evidence.extract_person_slopes` + `evidence.reclassify_cohort_family`
-UNCHANGED, using the non-bootstrapped SE (`slope_se=None`). This means
-`evidence_strength` resolves to `insufficient` (-> `no_claim`) for every
-participant here, REGARDLESS of the real AR(1) fit's point estimate.
+Per-person evidence (preregistration section 4.1, wired in 2026-10-16):
+`/respond` reads the precomputed B=500 bootstrap result from the
+fingerprinted aggregated cache (`bootstrap_cache.load_aggregated_cache`,
+the same reader `tier1_runner.py` uses) and uses its `label_intersection`
+column: `evidence_available` only where the parametric and cluster
+bootstrap SE estimates independently agree after BH-FDR control over the
+cohort family (section 2.2). No rule is added here; the label is used as
+computed. The bootstrap itself is never run from a request.
 
-**UPDATED 2026-09-16, after rebasing onto Moe's PR #20/#21:** the SE gap
-above is no longer an open methodology question — `backend.statistics
-.bootstrap` (parametric + cluster, B=500 replicates each) plus
-`evidence.intersect_bootstrap_evidence` is now the real, confirmed,
-production-intended per-person classification (23/214 participants
-`evidence_available` under intersection on the real dataset — see
-`evidence.py`'s module docstring and `docs/statistics/preregistration.md`
-section 4.1). This module deliberately does NOT call that path yet: B=500
-per method costs ~30-40 minutes per feature (`tier1_runner.py`'s
-docstring), which is an offline/batch computation, not something a
-request-serving process can run lazily on first request the way this
-module's existing `_evidence_table()` does for the cheap (non-bootstrap)
-fit. Wiring the real intersection result into `/respond` needs a
-precomputed/cached per-participant table (e.g. a batch job writing
-`bootstrap`'s output somewhere `build_evidence_packet` can look it up),
-which is a real follow-up, not done here — flagged rather than either
-silently left stale or hastily bolted on as a slow first-request path.
+Fail closed: no R engine, a missing, stale, unreadable, malformed or not
+owner-only cache, or a participant without a row all leave the packet at
+`no_claim` (no comparison value). Nothing is guessed and nothing raises to
+the caller. The non-bootstrapped per-request fit (`slope_se=None`, which
+could only ever produce `insufficient`) is no longer run.
+
+A State C participant is sent as `ELIGIBLE` (comparison with their own
+baseline, plus the uncertainty sentence) only when their intersection label
+is `evidence_available` AND the recent-vs-baseline deviation is defined this
+occasion (section 5.1: at least 7 valid days in the recent window and a
+non-zero baseline SD). Otherwise the packet is `PARTIAL_DESCRIPTIVE_ONLY`
+with a `backend.contracts.comparison_reasons` value, so the output grammar
+says the history is long enough but the comparison cannot be reported,
+instead of "too early to compare". That sentence stays for State A/B only.
 """
 
 from __future__ import annotations
 
+import logging
+import math
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 from decimal import ROUND_HALF_UP, Decimal
@@ -66,6 +68,10 @@ from pathlib import Path
 
 import pandas as pd
 
+from backend.contracts.comparison_reasons import (
+    STATE_C_EVIDENCE_NOT_REPORTABLE,
+    STATE_C_TOO_FEW_RECORDED_DAYS,
+)
 from backend.contracts.evidence import (
     ApprovedClaimId,
     ClaimPolicy,
@@ -83,8 +89,7 @@ from backend.contracts.evidence import (
     UncertaintyReasons,
 )
 from backend.data_pipeline.ces_eligibility import make_pseudonymizer
-from backend.statistics import evidence as evidence_module
-from backend.statistics import r_bridge
+from backend.statistics import bootstrap_cache, r_bridge
 from backend.statistics.eligibility import (
     ColdStartState,
     classify_state,
@@ -95,9 +100,35 @@ from backend.statistics.feature_specs import (
     UNLOCK_FREQUENCY_SPEC,
     FeatureSpec,
 )
-from backend.statistics.mixed_effects_model import build_model_frame, fit_ar1_effect
+from backend.statistics.mixed_effects_model import build_model_frame
 
 DATASET_DIR = Path(__file__).resolve().parents[2] / "dataset"
+logger = logging.getLogger(__name__)
+
+# Where the B=500 aggregated cache lives (git-ignored, owner-only). A module
+# attribute so tests can point it at a temporary directory.
+BOOTSTRAP_CACHE_ROOT = bootstrap_cache.CACHE_ROOT
+# The engine name the cached run records (`fit_ar1_effect`'s R path); part of
+# the cache fingerprint, so any other engine reads as stale and fails closed.
+BOOTSTRAP_ENGINE = "R (nlme::lme + corAR1)"
+# Preregistration section 5.1: the deviation is undefined with fewer than 7
+# valid days in the recent window, or a zero baseline SD.
+MIN_RECENT_DAYS_FOR_DEVIATION = 7
+# Two-sided 95% normal quantile for the contract's CI fields (not shown to
+# participants; the label above decides what may be said).
+_Z_95 = 1.959963984540054
+_STRENGTH_ORDER = {"moderate": 1, "strong": 2}
+_REQUIRED_EVIDENCE_COLUMNS = frozenset(
+    {
+        "uid",
+        "slope_i",
+        "slope_se_parametric",
+        "slope_se_cluster",
+        "label_parametric",
+        "label_cluster",
+        "label_intersection",
+    }
+)
 LOCAL_DEMO_PARTICIPANT_ALIAS = "local-demo"
 
 # CLAUDE.md "Finalised decisions": comparison window [-14, -1], baseline
@@ -220,7 +251,7 @@ def _load_cleaned_sensing(feature_id: str) -> pd.DataFrame:
 
 _CLEANED_SENSING_CACHE: dict[str, pd.DataFrame] = {}
 _EMA_CACHE: pd.DataFrame | None = None
-_EVIDENCE_TABLE_CACHE: dict[str, pd.DataFrame | None] = {}
+_EVIDENCE_TABLE_CACHE: dict[str, _EvidenceTable] = {}
 
 
 def _cleaned_sensing(feature_id: str) -> pd.DataFrame:
@@ -275,46 +306,86 @@ def select_local_demo_participant(feature_id: str = "gps_distance") -> str:
     return str(candidates.iloc[0]["uid"])
 
 
-def _evidence_table(feature_id: str) -> pd.DataFrame | None:
-    """Per-person `evidence.reclassify_cohort_family` table for `feature_id`,
-    computed once per process and cached — this is a cohort-wide model fit
-    (spec §1.2-1.7), not something to redo per HTTP request.
+@dataclass(frozen=True)
+class _EvidenceTable:
+    """The cached intersection table indexed by uid, or `None` with the
+    reason it could not be used (recorded in `uncertainty.item_level`)."""
 
-    Returns `None` when the real R engine
-    (`backend.statistics.r_bridge.r_bridge_available()`) is not usable in
-    this process: `evidence.extract_person_slopes` requires real per-person
-    BLUPs, which only the R engine produces (see `mixed_effects_model.py`'s
-    `Ar1EffectResult.blups` docstring) — the Python GEE fallback is
-    population-averaged and has none. Rather than run an expensive cohort
-    GEE fit whose only possible outcome is "cannot classify" in that case,
-    this is skipped outright and reported honestly via the packet's
-    `uncertainty.item_level`.
-    """
-    if feature_id in _EVIDENCE_TABLE_CACHE:
-        return _EVIDENCE_TABLE_CACHE[feature_id]
+    table: pd.DataFrame | None
+    unavailable_reason: str | None = None
 
+
+def _evidence_table(feature_id: str) -> _EvidenceTable:
+    """Per-person bootstrap intersection table for `feature_id`, loaded once
+    per process from the aggregated B=500 cache (preregistration section
+    4.1). Never fits or bootstraps anything per request and never raises:
+    every failure becomes `table=None`, which callers treat as `no_claim`."""
+    if feature_id not in _EVIDENCE_TABLE_CACHE:
+        _EVIDENCE_TABLE_CACHE[feature_id] = _load_evidence_table(feature_id)
+    return _EVIDENCE_TABLE_CACHE[feature_id]
+
+
+def _load_evidence_table(feature_id: str) -> _EvidenceTable:
     if not r_bridge.r_bridge_available():
-        _EVIDENCE_TABLE_CACHE[feature_id] = None
-        return None
-
+        # The cache fingerprint records the R/nlme versions; without R it can
+        # only read as stale, so skip the read and report why.
+        return _EvidenceTable(None, "per-person evidence unavailable: R engine not usable in this process")
     meta = _FEATURES[feature_id]
-    cleaned = _cleaned_sensing(feature_id)
-    frame = build_model_frame(cleaned, _ema(), feature_spec=meta.spec)
-    ar1 = fit_ar1_effect(frame)
-    if ar1.blups is None:
-        _EVIDENCE_TABLE_CACHE[feature_id] = None
-        return None
+    try:
+        frame = build_model_frame(_cleaned_sensing(feature_id), _ema(), feature_spec=meta.spec)
+        cached = bootstrap_cache.load_aggregated_cache(
+            meta.spec, frame, engine=BOOTSTRAP_ENGINE, cache_root=BOOTSTRAP_CACHE_ROOT
+        )
+    except Exception as exc:  # noqa: BLE001 - fail closed; stale, unreadable or permission errors alike
+        # Exception type only: messages can carry local paths.
+        logger.warning("event=bootstrap_cache_unusable feature=%s error=%s", feature_id, type(exc).__name__)
+        return _EvidenceTable(None, "per-person evidence unavailable: bootstrap cache unusable")
+    if cached is None:
+        return _EvidenceTable(None, "per-person evidence unavailable: no bootstrap cache")
+    table = cached.intersection
+    if (
+        not _REQUIRED_EVIDENCE_COLUMNS <= set(table.columns)
+        or table["uid"].duplicated().any()
+    ):
+        logger.warning("event=bootstrap_cache_malformed feature=%s", feature_id)
+        return _EvidenceTable(None, "per-person evidence unavailable: bootstrap cache malformed")
+    return _EvidenceTable(table.set_index("uid"))
 
-    person_slopes = evidence_module.extract_person_slopes(ar1, frame)
-    outcome_sd = float(frame["phq4_score"].std())
-    predictor_sd = float(frame["x_within"].std())
-    # Statistics-side name (not the SLM-side feature_id) keys EXPECTED_FAMILY_SIZE.
-    table = evidence_module.reclassify_cohort_family(
-        person_slopes, outcome_sd, predictor_sd, feature_id=meta.spec.name
+
+def _statistical_evidence(row: pd.Series) -> StatisticalEvidence | None:
+    """`StatisticalEvidence` for an intersection row labelled
+    `evidence_available`, or `None` if any field is unusable (fail closed).
+
+    Strength is the weaker of the two methods' own BH labels (both are
+    strong/moderate for an intersection-positive row). The contract's CI uses
+    the larger of the two bootstrap SEs, the conservative choice; it is not
+    shown to participants and does not affect the label."""
+    if str(row["label_intersection"]) != "evidence_available":
+        return None
+    labels = (str(row["label_parametric"]), str(row["label_cluster"]))
+    if not all(label in _STRENGTH_ORDER for label in labels):
+        return None
+    strength = min(labels, key=_STRENGTH_ORDER.__getitem__)
+    try:
+        slope_i = float(row["slope_i"])
+        slope_se = max(float(row["slope_se_parametric"]), float(row["slope_se_cluster"]))
+    except (TypeError, ValueError):
+        return None
+    if not (math.isfinite(slope_i) and math.isfinite(slope_se) and slope_se > 0):
+        return None
+    return StatisticalEvidence(
+        within_person_deviation_estimate=slope_i,
+        confidence_interval_low=slope_i - _Z_95 * slope_se,
+        confidence_interval_high=slope_i + _Z_95 * slope_se,
+        direction=(
+            Direction.ABOVE_BASELINE
+            if slope_i > 0
+            else Direction.BELOW_BASELINE
+            if slope_i < 0
+            else Direction.NO_CLEAR_DIRECTION
+        ),
+        evidence_strength=EvidenceStrength(strength),
     )
-    table = table.set_index("uid")
-    _EVIDENCE_TABLE_CACHE[feature_id] = table
-    return table
 
 
 @dataclass
@@ -481,57 +552,42 @@ def build_evidence_packet(
         ]
         baseline_values = baseline_rows[clean_col].dropna()
         n_baseline = len(baseline_values)
+        baseline_sd = float(baseline_values.std(ddof=1)) if n_baseline > 1 else 0.0
+        # Preregistration section 5.1: no deviation value this occasion with
+        # fewer than 7 valid recent days or a zero (or undefined) baseline SD.
+        deviation_defined = (
+            observed_days >= MIN_RECENT_DAYS_FOR_DEVIATION
+            and math.isfinite(baseline_sd)
+            and baseline_sd > 0
+        )
+        if not deviation_defined:
+            uncertainty_items.append(
+                "too few recorded days in the recent or baseline window for a comparison"
+            )
 
-        evidence_label: str | None = None
-        if n_baseline > 0:
-            table = _evidence_table(feature_id)
-            if table is None:
-                evidence_label = None
-                uncertainty_items.append(
-                    "per-person evidence-strength classification requires the real R "
-                    "engine (backend.statistics.r_bridge), which is not usable in this "
-                    "process — see backend/statistics/evidence.py's module docstring"
-                )
-            elif participant_id not in table.index:
-                uncertainty_items.append(
-                    "this participant's occasions did not pass the model's occasion-"
-                    "validity gate, so no per-person slope was fit for this feature"
-                )
+        evidence_table = _evidence_table(feature_id)
+        if evidence_table.table is None:
+            uncertainty_items.append(evidence_table.unavailable_reason or "per-person evidence unavailable")
+        elif participant_id not in evidence_table.table.index:
+            uncertainty_items.append(
+                "this participant's occasions did not pass the model's occasion-"
+                "validity gate, so no per-person slope was fit for this feature"
+            )
+        else:
+            row = evidence_table.table.loc[participant_id]
+            # Already the user-facing 2-valued label (evidence.intersect_bootstrap_evidence).
+            user_facing_evidence = str(row["label_intersection"])
+            if user_facing_evidence == "evidence_available":
+                statistical_evidence = _statistical_evidence(row)
+                if statistical_evidence is None:
+                    user_facing_evidence = "no_claim"
+                    uncertainty_items.append("per-person evidence row unusable; treated as no_claim")
             else:
-                row = table.loc[participant_id]
-                evidence_label = str(row["label_bh"])
-                user_facing_evidence = evidence_module.to_user_facing_evidence(evidence_label)
-                if user_facing_evidence == "evidence_available":
-                    slope_i = float(row["slope_i"])
-                    statistical_evidence = StatisticalEvidence(
-                        within_person_deviation_estimate=slope_i,
-                        # No per-person CI is available without the
-                        # unreconciled bootstrap SE (evidence.py docstring)
-                        # — reporting the point estimate as a zero-width
-                        # interval would misrepresent precision we don't
-                        # have, so this branch is unreachable in practice
-                        # (see module docstring: label_bh is always
-                        # "insufficient" without slope_se). Kept for
-                        # structural completeness only.
-                        confidence_interval_low=slope_i,
-                        confidence_interval_high=slope_i,
-                        direction=(
-                            Direction.ABOVE_BASELINE
-                            if slope_i > 0
-                            else Direction.BELOW_BASELINE
-                            if slope_i < 0
-                            else Direction.NO_CLEAR_DIRECTION
-                        ),
-                        evidence_strength=EvidenceStrength(evidence_label),
-                    )
+                uncertainty_items.append("per-person evidence is no_claim under the bootstrap intersection")
 
-        if statistical_evidence is not None:
+        if statistical_evidence is not None and deviation_defined:
             # Only combination `backend/slm/response_health.py` accepts for
-            # ELIGIBLE: a real baseline value AND real StatisticalEvidence
-            # both present. Confirmed by running this against real
-            # participants (see PR description) — `response_health.py`
-            # enforces this pairing as a hard invariant, stricter than the
-            # Pydantic contract's own field-level comment suggests.
+            # ELIGIBLE: a real baseline value AND real StatisticalEvidence.
             baseline_value = _round_user_facing(float(baseline_values.mean()) * value_scale)
             baseline = PersonalBaseline(
                 method="trailing person-mean, 28-day window",
@@ -540,40 +596,25 @@ def build_evidence_packet(
                 eligibility_status=eligibility_status,
             )
         else:
-            # DISCOVERED WIRING REAL DATA THROUGH THIS FOR THE FIRST TIME:
-            # `eligibility.ColdStartState.C_FULL_HISTORY` (data-sufficiency
-            # for a *comparison*) and `response_health.py`'s ELIGIBLE
-            # invariant (requires real StatisticalEvidence) are not the same
-            # condition — per the real Week 5 numbers, most State C
-            # occasions (~64%) have no significant per-person evidence.
-            # `response_health.py` has no contract-legal way to say
-            # "comparison-eligible, but no defensible relationship claim",
-            # so this demotes to PARTIAL_DESCRIPTIVE_ONLY (no baseline
-            # value shown, matching that status's other real usage for
-            # State B) rather than sending ELIGIBLE with evidence=None,
-            # which `response_health.py` rejects outright
-            # (`eligible_evidence_missing`) — flagged here for Priyansh/
-            # SLM review, not silently worked around.
+            # The contract allows a baseline value only on an ELIGIBLE packet
+            # with StatisticalEvidence, so a State C comparison that cannot be
+            # reported is sent as PARTIAL_DESCRIPTIVE_ONLY. The reason code
+            # tells the output grammar to say the history is long enough,
+            # not "too early to compare".
             eligibility_status = EligibilityStatus.PARTIAL_DESCRIPTIVE_ONLY
-            reason = (
-                "no valid sensor-days in the 28-day baseline window"
-                if n_baseline == 0
-                else (
-                    f"per-person evidence-strength label: {evidence_label}"
-                    if evidence_label is not None
-                    else "per-person evidence-strength classification unavailable in this process"
-                )
-            )
+            statistical_evidence = None
+            user_facing_evidence = None
             baseline = PersonalBaseline(
-                method="n/a — comparison-eligible by history, but no defensible evidence",
+                method="n/a — comparison-eligible by history, but comparison not reportable",
                 value=None,
                 n_baseline_observations=n_baseline,
                 eligibility_status=eligibility_status,
-                ineligible_reason=reason,
+                ineligible_reason=(
+                    STATE_C_EVIDENCE_NOT_REPORTABLE
+                    if deviation_defined
+                    else STATE_C_TOO_FEW_RECORDED_DAYS
+                ),
             )
-            if n_baseline == 0:
-                uncertainty_items.append("no baseline window data despite full history")
-            user_facing_evidence = None
 
     identity = PacketIdentity(
         contract_version="1.0.0",

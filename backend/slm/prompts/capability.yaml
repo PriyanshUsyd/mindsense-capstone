@@ -3,7 +3,7 @@
 # model is called for this route.
 
 template_id: capability
-template_version: "1.0.0"
+template_version: "1.1.0"
 response_mode: refusal
 allowed_claim_ids:
   - non_diagnostic_boundary
@@ -16,8 +16,9 @@ prohibited_claim_ids:
 text: >
   I can explain two tracked patterns from your phone: GPS distance travelled
   and phone unlock count. For each one I can describe what was observed in
-  the recent observation window and, when there is enough history, how it
-  compares with your own past patterns. I can't diagnose conditions, explain
+  the recent observation window and, when there is enough history and the
+  statistical evidence is strong enough, how it compares with your own
+  baseline. I can't diagnose conditions, explain
   what caused a change, or give treatment advice. Try asking, for example,
   "How has my phone-unlock activity changed recently?"
 

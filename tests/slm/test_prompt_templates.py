@@ -170,6 +170,9 @@ def test_model_manifest_marks_phi_and_qwen_as_comparison_candidates():
     with open(MANIFEST_PATH, "r", encoding="utf-8") as f:
         manifest = yaml.safe_load(f)
     assert manifest["selection_status"] == "selected"
+    roles = {c["model_tag"]: c["role"] for c in manifest["comparison_candidates"]}
+    assert roles == {"phi4-mini:3.8b": "final", "qwen3:4b": "comparison_only"}
+    assert manifest["model_tag"] == "phi4-mini:3.8b"
     tags = {candidate["model_tag"] for candidate in manifest["comparison_candidates"]}
     assert tags == {"phi4-mini:3.8b", "qwen3:4b"}
     assert all("latest" not in tag for tag in tags)

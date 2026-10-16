@@ -1045,6 +1045,17 @@ the check was silently skipped. No estimate or classification changes.
 
 `unlock_num_ep_0` was run in Week 9; results are in preregistration §4.1 and week7-calibration-concerns.md item 2.
 
+**Connected to `/respond` (2026-10-16).** The per-person SE gap no longer
+reaches participants as a blanket `no_claim`: `participant_evidence.py` reads
+the cached `label_intersection` (fail closed on any cache problem) and shows a
+State C participant a comparison with their own baseline only when it is
+`evidence_available` and the deviation is defined. Other State C occasions are
+told the history is long enough but the comparison cannot be reported, instead
+of "too early to compare". Because evidence contract 1.0.0 ties a baseline
+value to `StatisticalEvidence`, `C + no_claim` still gets no comparison value,
+which is narrower than §3.7.1 permits. Details: preregistration §4.1 ("Used on
+the live `/respond` path") and §7 item 13.
+
 ---
 
 ## 6. Handover to other workstreams

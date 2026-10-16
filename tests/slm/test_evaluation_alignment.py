@@ -87,7 +87,7 @@ def test_full_responses_and_versions_exported_without_invented_human_ratings(res
     assert result["execution_backend"] == "injected_service_not_verified_live"
     assert result["provenance"]["request_policy_version"] == "0.3.3"
     assert result["provenance"]["prompt_version"] == "0.4.13"
-    assert result["provenance"]["output_grounding_version"] == "0.1.1"
+    assert result["provenance"]["output_grounding_version"] == "0.2.0"
     assert all(len(h) == 64 for h in result["provenance"]["sha256_raw_bytes"].values())
     for record in result["records"]:
         assert record["human_review"] == {
