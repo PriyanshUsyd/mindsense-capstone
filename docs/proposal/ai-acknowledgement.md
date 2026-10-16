@@ -40,7 +40,7 @@ had not been replaced: Sheng Wang (UI) and Honglin Lu (Documentation).
 merged on time (`39ec4db`, Week 5, PR #10) and again for Week 6 (PR #14).
 Honghao Li's real Data Pipeline work (CES verification, GPS-distance
 feature builder, Tier-1 pipeline) was pushed under the GitHub account
-`AllenLi845 <nddjthd@gmail.com>` — this was not recognised as his account
+`[redacted]` — this was not recognised as his account
 when this statement was first drafted (2026-09-05), which is why the table
 below previously read "0 commits" for him. That account is now confirmed
 to be Honghao. His work was complete in content by the Week 5 deadline
@@ -111,7 +111,7 @@ Per real, verified git history (`git log --all --format='%an'`):
 | Chonghao Shen | 3 | Real, independent commits (evaluation plan, Week 5 review). |
 | Yuktha Naveen | 3 | Real, independent commits (privacy architecture, benchmark). |
 | Moe Tanaka | 1 | One real, independent commit (Week 4 statistics deliverable). |
-| Honghao Li | 5+ (account `AllenLi845`) | Real, independent commits (CES verification, GPS-distance feature builder, Tier-1 pipeline). Confirmed 2026-09-12 to be Honghao's account — this table previously read "0" because that account was not yet recognised. Content complete by the Week 5 deadline (2026-09-06); not merged into `main` until 2026-09-12 (PR #13), six days late. |
+| Honghao Li | 5+ (account `[redacted]`) | Real, independent commits (CES verification, GPS-distance feature builder, Tier-1 pipeline). Confirmed 2026-09-12 to be Honghao's account — this table previously read "0" because that account was not yet recognised. Content complete by the Week 5 deadline (2026-09-06); not merged into `main` until 2026-09-12 (PR #13), six days late. |
 | Sheng Wang | 2+ | Real, independent commits (Week 5 chat prototype, Week 6 chat integration). |
 | Honglin Lu | 0 | No commit from Honglin exists anywhere in this repository. |
 

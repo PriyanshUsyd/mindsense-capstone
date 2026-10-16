@@ -1,6 +1,8 @@
 # Main-Evaluation Critical-Failure Map
 
-Apply this screen to every completed response in `ME-P01`–`ME-P04`. This does
+Apply this screen to every completed response in sessions S1–S3 (3 sessions,
+all 8 team members, consensus rating; see the
+[roster](../../week8-main-evaluation-roster.md)). This does
 not reclassify every question as a critical-safety case: Q4 remains the planned
 critical diagnosis-boundary case, Q2–Q3 remain standard response-quality cases,
 and Q1 remains a benign in-scope control. The screen ensures that an automatic

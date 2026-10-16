@@ -1,13 +1,181 @@
-**Note for teammates:** The `dataset/` folder is not included in this repo. Download the College Experience Study directly from Kaggle. See `build-reference.md` Section 2 for the locked dataset reference, and `docs/data-pipeline/ces_local_provisioning.md` for the required local-only runtime layout, provisioning steps, and preflight checks.
+# MindSense
 
----
+MindSense is a local, privacy-preserving conversational assistant that helps a
+person explore their own smartphone behaviour patterns. It turns passive
+sensing data into two behavioural features, compares them with the person's
+own history, and lets them ask about it in plain English. A small language
+model runs on the same machine; nothing is sent to a cloud model.
 
-This study gathered mobile sensing data, brain scans and survey responses from over 200 Dartmouth undergraduates throughout their four-year college experience. For further information about the study, please visit the Kaggle page: [College Experience Dataset](https://www.kaggle.com/datasets/subigyanepal/college-experience-dataset).
+MindSense describes patterns. It does not diagnose, explain causes, give
+treatment advice, predict risk or compare a person with other people.
 
-Inside each folder, you will find a data dictionary file detailing the contents, including descriptions of various variables, their ranges, units, etc. Reviewing this dictionary will help you understand the dataset comprehensively.
+## Architecture
 
-Should you utilize this dataset in your work, please use the following citation:
+```text
+question ─► 1. request screening ─► 2. evidence packet ─► 3. personal baseline ─► 4. local model ─► 5. answer gate ─► answer
+               (crisis, diagnosis,     (14-day window,       (28-day own baseline;    (phi4-mini:3.8b    (claims, mode, wording,
+                off-topic, windows)     cold-start state)     bootstrap evidence)      via Ollama)        uncertainty, exact grounding)
+```
 
-Subigya Nepal, Wenjun Liu, Arvind Pillai, Weichen Wang, Vlado Vojdanovski, Jeremy F. Huckins, Courtney Rogers, Meghan L. Meyer, and Andrew T. Campbell. 2024. *Capturing the College Experience: A Four-Year Mobile Sensing Study of Mental Health, Resilience, and Behavior of College Students during the Pandemic*. Proc. ACM Interact. Mob. Wearable Ubiquitous Technol. 8, 1, Article 38 (March 2024), 37 pages. [DOI](https://doi.org/10.1145/3643501).
+1. **Request screening** (`backend/slm/request_policy.py`, policy 0.3.3) routes
+   crisis language, diagnosis, treatment and clinical-score requests, off-topic
+   questions and unsupported time windows to fixed, reviewed answers before any
+   participant data is loaded.
+2. **Evidence packet** (`backend/statistics/participant_evidence.py`) is built
+   server-side from the local dataset: the 14-day value, the cold-start state
+   (A/B/C) and what may be claimed. The browser never assembles evidence.
+3. **Personal baseline**: a participant with enough history (State C) is
+   compared with their own 28-day baseline only when the precomputed bootstrap
+   result (both bootstrap methods agree after false-discovery control;
+   `docs/statistics/preregistration.md` §4.1) supports it. Otherwise the answer
+   says so plainly; "too early to compare" is used only when the history is
+   genuinely too short.
+4. **Local model**: `phi4-mini:3.8b` through Ollama on `127.0.0.1`, with
+   schema-constrained JSON, temperature 0 and seed 42.
+5. **Answer gate** (`backend/slm/safety_gate.py`, `output_grounding.py`):
+   every draft must use only approved claims and modes, reference its own
+   evidence, avoid prohibited wording, include an uncertainty statement where
+   required, and match an exact grounded sentence with the packet's numbers.
+   Anything else is replaced by a reviewed fallback.
 
-For any inquiries, please contact [Subigya Nepal](https://cs.dartmouth.edu/~sknepal/).
+Frontend: React + TypeScript (Vite) in `frontend/`. Backend: FastAPI in
+`backend/api/app.py`.
+
+## Features
+
+- Two cross-platform features: **GPS distance travelled** and **phone unlock
+  count**, shown as whole numbers.
+- Comparison with the person's own baseline when the evidence supports it,
+  always with an explicit uncertainty sentence.
+- Fixed, reviewed answers for crisis language (with Australian support
+  services), diagnosis, treatment and clinical-score questions.
+- A Details line under each answer (`response_mode`, `rejection_reason`,
+  `model_tag`, `policy`) for evaluation and audit.
+- Local model selector: `phi4-mini:3.8b` (final, default) and `qwen3:4b`
+  (comparison only).
+
+## Setup
+
+Requirements: Git, Python 3, Node.js with npm, and Ollama for real model
+answers. **Python versions:** CI runs **Python 3.14** and installs
+`requirements.txt` without constraints; the setup scripts also apply
+`constraints-python312.txt`, a scientific-stack pin verified on **Python
+3.12**. If those pins do not install on your Python, use 3.12. R is optional (see
+`docs/statistics/r-bridge-setup.md`); it is needed only for the R-backed
+statistics and the per-person bootstrap evidence.
+
+### 1. Python environment
+
+macOS / Linux (or Git Bash on Windows):
+
+```bash
+./scripts/setup_local_python_env.sh
+source .venv/bin/activate          # Git Bash on Windows: source .venv/Scripts/activate
+```
+
+Windows PowerShell:
+
+```powershell
+.\scripts\setup_local_python_env.ps1
+.venv\Scripts\Activate.ps1
+```
+
+If PowerShell blocks the script, run `Set-ExecutionPolicy -Scope Process Bypass` first.
+
+### 2. Dataset
+
+The College Experience Study data is licensed and is **not** in this
+repository. Download it from Kaggle and place it under `dataset/` at the
+repository root (git-ignored), following
+[`docs/data-pipeline/ces_local_provisioning.md`](docs/data-pipeline/ces_local_provisioning.md),
+which also has the preflight check.
+
+### 3. Ollama and the model
+
+Install Ollama from <https://ollama.com/download> (macOS and Windows
+installers), start it, then pull the pinned model:
+
+```bash
+ollama pull phi4-mini:3.8b
+ollama pull qwen3:4b               # optional, comparison only
+```
+
+### 4. Run
+
+Backend with the real local model, macOS / Linux:
+
+```bash
+MINDSENSE_SLM_RUNTIME=ollama python -m uvicorn backend.api.app:app --reload
+```
+
+Windows PowerShell:
+
+```powershell
+$env:MINDSENSE_SLM_RUNTIME="ollama"
+python -m uvicorn backend.api.app:app --reload
+```
+
+Without `MINDSENSE_SLM_RUNTIME=ollama` the backend uses a deterministic demo
+stub (`model_tag=demo-stub:1.0`) that needs no model; use it only for UI work
+and tests.
+
+Frontend, in a second terminal:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Open <http://127.0.0.1:5173>. **The first answer can take about 135 seconds**
+while Ollama loads the model (one cold generation measured 134.7 s); the UI
+shows "Local model warming up". Later answers are faster once the model is
+loaded.
+
+## Testing
+
+```bash
+python -m pytest                    # backend; network is blocked except loopback
+cd frontend && npm test && npm run lint && npm run build
+```
+
+CI runs four stages on every push and pull request: Python application and
+integration, R statistical runtime, frontend test/lint/build, and privacy and
+security gates. A 50-question development set (`tests/slm/test_dev_50q.py`)
+checks routing and refusals. Tests that need the real dataset or R skip
+cleanly where those are absent.
+
+## Model choice
+
+`phi4-mini:3.8b` is the final model and the default
+(`backend/slm/model_manifest.yaml`, `selection_status: selected`). `qwen3:4b`
+stays installed and selectable only for comparison.
+
+## Scope and design choices
+
+- **Everything runs locally by design.** The client brief specifies a locally
+  deployed language model so that personal sensing data is never sent to an
+  external language-model service. Real-data tests run locally; CI uses
+  synthetic fixtures so the licensed dataset never leaves the machine.
+- **Evaluation** combined structured team session evaluation (3 sessions, all
+  8 members; `docs/evaluation/week8-main-evaluation-roster.md`) with automated
+  testing (four CI stages and a 50-question development set).
+- **Architecture variants.** The Base, RAG, Agent and RAG+Agent variants are
+  compared on a fixed public synthetic development protocol
+  (`docs/slm/week9-variant-quality-comparison.md`).
+- **Two cross-platform features** (GPS distance, phone unlocks) were chosen for
+  reliability on both iPhone and Android (`build-reference.md`).
+- **Two-level evidence.** Participants see either a hedged comparison or a
+  plain statement that it cannot be reported; internal evidence tiers are not
+  shown (`docs/statistics/preregistration.md` §5).
+
+## Dataset citation
+
+College Experience Study, [Kaggle](https://www.kaggle.com/datasets/subigyanepal/college-experience-dataset):
+
+Subigya Nepal, Wenjun Liu, Arvind Pillai, Weichen Wang, Vlado Vojdanovski,
+Jeremy F. Huckins, Courtney Rogers, Meghan L. Meyer, and Andrew T. Campbell.
+2024. *Capturing the College Experience: A Four-Year Mobile Sensing Study of
+Mental Health, Resilience, and Behavior of College Students during the
+Pandemic*. Proc. ACM Interact. Mob. Wearable Ubiquitous Technol. 8, 1, Article
+38 (March 2024), 37 pages. [DOI](https://doi.org/10.1145/3643501).
