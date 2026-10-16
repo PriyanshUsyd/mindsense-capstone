@@ -273,3 +273,43 @@ def test_model_refusal_mode_cannot_bypass_grounding(gps):
     )
     assert response.used_fallback is True
     assert response.rejection_reason == "model_must_not_select_refusal"
+
+
+STATE_C_NO_EVIDENCE = PARTIAL.replace(
+    "It is too early to compare with your own baseline.",
+    "Your history is long enough to compare with your own baseline, but there "
+    "is not enough statistical evidence to report a comparison.",
+)
+
+
+def _state_c(partial):
+    from backend.contracts.comparison_reasons import STATE_C_EVIDENCE_NOT_REPORTABLE
+
+    baseline = partial.baseline.model_copy(
+        update={"ineligible_reason": STATE_C_EVIDENCE_NOT_REPORTABLE}
+    )
+    return partial.model_copy(update={"baseline": baseline})
+
+
+def test_state_c_without_reportable_comparison_uses_accurate_sentence(partial):
+    response = respond(_state_c(partial), STATE_C_NO_EVIDENCE)
+    assert response.used_fallback is False
+    assert response.text == STATE_C_NO_EVIDENCE
+
+
+def test_state_c_reason_rejects_too_early_sentence(partial):
+    # A participant with long history must not be told it is too early.
+    assert respond(_state_c(partial), PARTIAL).used_fallback is True
+
+
+def test_state_b_rejects_long_history_sentence(partial):
+    assert respond(partial, STATE_C_NO_EVIDENCE).used_fallback is True
+
+
+def test_whole_number_written_with_decimal_still_matches(partial):
+    from backend.slm.output_grounding import render_grounded_response_option
+
+    option = render_grounded_response_option(partial, ResponseMode.INSUFFICIENT_DATA)
+    assert "was 18 unlocks per day" in option["text"]
+    response = respond(partial, PARTIAL.replace("was 18 ", "was 18.0 "))
+    assert response.used_fallback is False

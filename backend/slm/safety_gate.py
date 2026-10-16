@@ -100,9 +100,14 @@ _PROHIBITED_ASSERTION_PATTERNS = (
     re.compile(r"\byour (?:mental health )?risk (?:is|will be)\b", re.IGNORECASE),
 )
 
+# The last two alternatives (2026-10-16) are the State C sentences from
+# output_grounding._PARTIAL_COMPARISON_TEXT: history is long enough, but the
+# comparison cannot be reported. The exact-template grounding check below
+# still decides the full sentence.
 _INSUFFICIENT_HISTORY_PATTERN = re.compile(
     r"\bno data\b|\b(?:not enough|insufficient) (?:data|history)|"
-    r"\btoo early to (?:compare|tell|determine)\b",
+    r"\btoo early to (?:compare|tell|determine)\b|"
+    r"\bnot enough statistical evidence\b|\btoo few recorded days\b",
     re.IGNORECASE,
 )
 
