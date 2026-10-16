@@ -65,6 +65,12 @@ safety, human usefulness, or held-out performance.
    payloads before Q2 and Q8 can be executed.
 2. SLM and Evaluation should compare independent judgments and record any real
    disagreement; none is fabricated in this independent review.
+   **Closed (recorded 16 October 2026).** The joint SLM and Evaluation review
+   ([`2026-09-06T152157+1000_joint-review.md`](../../benchmarks/history/slm_grounding_prompt048/2026-09-06T152157+1000_joint-review.md))
+   reached agreement on every case it reviewed: `plan_q1`, `plan_q7`,
+   `privacy_01` and `privacy_02` (both reviewers Pass, with the resolution
+   recorded for each). No disagreement arose, so there were no differing cases
+   to document.
 3. Add public paraphrase cases only through team review so the frozen taxonomy
    and sealed held-out set remain uncontaminated.
 4. Pilot the ten client-specified human-evaluation dimensions only after the

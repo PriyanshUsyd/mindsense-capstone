@@ -2,7 +2,7 @@
 
 **Status:** committed to this repository (`0c8a342`, "Add original
 CS62_Group_Proposal.pdf alongside its markdown conversion"), authored under
-`PriyanshUsyd`'s git identity, `Co-Authored-By: Claude Sonnet 5` — this file
+the Integration & QA Lead's git identity, `Co-Authored-By: Claude Sonnet 5` — this file
 was never falsely attributed to Honglin Lu at the git level. This note
 records the real-world context behind it, which the commit message alone
 didn't carry.
@@ -32,7 +32,7 @@ stand-in or an earlier draft — but it is not new evidence beyond what
 
 ## Relationship to Honglin's real 704-line draft (`9bdfd6b`, unmerged)
 
-`9bdfd6b` on branch `HonglinLu722-patch-1` (`docs/proposal/Group
+`9bdfd6b` on the Documentation & Report Lead's branch (`docs/proposal/Group
 Proposal.md`, 704 lines, genuine GitHub-web commit by Honglin) is **not**
 an earlier or divergent version of this PDF — it is structurally a
 different document entirely: 11 top-level sections (Introduction and
@@ -55,10 +55,9 @@ two differ in exactly the way a substantial reorganization would produce.
 
 ## What's still unresolved
 
-- `9bdfd6b` itself remains on an unmerged branch (`HonglinLu722-patch-1`),
-  so it currently gets no visibility from `main` even as "superseded early
-  draft" context — worth a pointer from `main` if anyone wants the history
-  preserved.
+- `9bdfd6b` is reachable from `main`: its branch was later merged, and
+  `git branch --contains 9bdfd6b` lists `main` (checked 16 October 2026), so
+  the early draft is preserved in `main`'s history as context.
 - `7c976168` and `0bdc6e62` remain in history as `Author: Honglin Lu`,
   actually written by Priyansh — a known, disclosed discrepancy (see
   `docs/proposal/ai-acknowledgement.md` and this repo's own audit trail),

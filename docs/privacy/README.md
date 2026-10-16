@@ -23,10 +23,13 @@ Yuktha Naveen owns this area as Privacy and Security Lead. The operational polic
 
 ## Current assurance boundary
 
-The latest Week 6 local preflight passed 391 Python/R tests and 14 frontend
-tests, together with frontend lint/build and dependency advisory checks. The
-new GitHub workflow is locally validated but has not yet executed remotely.
-Current evidence supports conditional approval for synthetic local development.
-It does not approve participant use; disconnected integrated-app testing,
-input minimisation, logging and retention rules, Git-history remediation,
-dependency locking, and governance review remain required.
+The GitHub workflow runs four stages on every push and pull request; the
+latest `main` run (`38833421820`, on `95e3171`) passed all four, including
+Stage 4, the privacy and security gates. On the final build the local suite
+passed 1027 Python tests and 41 frontend tests with outbound network blocked
+except loopback (`pytest.ini`), and frontend lint/build passed (release
+checklist §11). The git history was scrubbed of personal data on 2026-10-16.
+Approval for participant use is the Privacy & Security Lead's sign-off on the
+final build, which includes the whole-device offline test and the review areas
+in the [master test register](master-test-register.md#privacy-review-and-remaining-work)
+(input minimisation, logging and retention, dependency locking, governance).

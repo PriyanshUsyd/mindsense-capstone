@@ -60,11 +60,52 @@ not calculate one overall score.
 | Q3 | 0 | — | — |
 | Q4 | 0 | — | — |
 
-## Reporting Limits
+## Final build: the 4 questions asked again
 
-This is a small, team-only evaluation using repeated public fixtures. Report
-descriptive results only: no significance test, population claim, clinical
-claim or claim that repeated fixture ratings are distinct evidence scenarios.
-The answers shown were recorded before PR #80, so they say "too early to
-compare" and show values such as "29.0"; the final build's answers differ
-(release checklist, "Remaining before freeze").
+On the final build (`95e3171`, 16 October 2026, Ollama, `phi4-mini:3.8b`) the
+same 4 questions return the same routes as in the sessions, now with PR #80's
+wording and whole-number values: Q1 121 unlocks/day and Q2 29 km/day from
+`phi4-mini:3.8b`, both with "Your history is long enough to compare with your
+own baseline, but there is not enough statistical evidence to report a
+comparison"; Q3 rule-based; Q4 `refusal · diagnosis_request_detected`
+([release checklist §11](../../../release/release-candidate-checklist.md#11-remaining-before-freeze);
+screenshots in [`docs/ui/final-build-screenshots.md`](../../../ui/final-build-screenshots.md)).
+
+## Architecture variant comparison
+
+The four variants (Base LLM, RAG, Agent, RAG+Agent) were compared on the public
+synthetic suite as a comparison only; the sessions above ran the RAG default.
+With both `phi4-mini:3.8b` (6 Oct) and `qwen3:4b` (9 Oct), every variant passed
+every automated check (source plan 18/18, high-severity guardrails 42/42,
+privacy extensions 6/6, 0 errors), and each case produced one identical answer
+across the four variants. Details:
+[`final-slm-methodology.md` §3.1](../../../slm/final-slm-methodology.md#31-four-architecture-variants).
+
+## Second smoke-test round (Weekly Plan, Week 10)
+
+**Waived, 16 October 2026.** The round was planned to re-test the exact failed
+scenarios. The fixes after ME-P01 (F1–F5, request policy 0.3.2) and the
+50-question dev test (policy 0.3.3) are re-tested on every CI run by
+`tests/slm/test_me_p01_regressions.py` and `tests/slm/test_dev_50q.py`, and
+the 12 session answers on rc-eval-2 have 0 failures and 0 critical failures.
+With no failed scenario left to re-test, the round is waived.
+
+## Privacy perceptions
+
+Privacy is assured through technical verification rather than through
+questionnaire ratings; no privacy-perception scores were collected (consensus
+format, see "Human Questionnaire"). The verification on record:
+
+| Control | Evidence |
+|---|---|
+| Local-only processing | `tests/privacy/test_no_network_egress.py`; every test run blocks outbound network except loopback (`pytest.ini`: `--disable-socket --allow-hosts=127.0.0.1,localhost`) |
+| Network sandbox profile | `privacy/macos-loopback.sb` (loopback-only `sandbox-exec` profile used in the [pair-session guide](../../pair-session-guide.md)) |
+| Response header | every API response carries `Cache-Control: no-store` (`backend/api/app.py`; `tests/privacy/test_api_response_privacy.py`, `tests/api/test_cross_message_isolation.py`) |
+| Non-persistence | `tests/privacy/test_api_response_privacy.py::test_ollama_default_context_does_not_persist_across_requests_or_base_mode`; `tests/api/test_cross_message_isolation.py`; `tests/privacy/test_r_bridge_privacy.py::test_real_r_fit_does_not_retain_input_or_model_objects` (R stage) |
+| Whole-device offline test | part of the Privacy & Security Lead's sign-off on the final build ([release checklist §11](../../../release/release-candidate-checklist.md#11-remaining-before-freeze)) |
+
+## Reporting scope
+
+This is a team-only evaluation using repeated public fixtures. Results are
+descriptive: no significance test, population claim or clinical claim, and
+repeated fixture ratings are reported as repeats of 4 scenarios.

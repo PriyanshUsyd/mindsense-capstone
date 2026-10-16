@@ -22,7 +22,7 @@ The earlier repository statement that Phi-4 Mini was already the final locked mo
 |---|---|---|
 | Decide the local deployment stack | Ollama 0.33.2 is installed and local calls are restricted to loopback (`127.0.0.1`/`localhost`) with cloud use disabled for the local run. | Complete |
 | Record exact model versions | Both candidate tags and digest prefixes are recorded in `backend/slm/model_manifest.yaml`; floating `latest` tags are rejected. | Complete |
-| Make the final model decision | A small same-machine comparison was completed, but it was not large enough to justify a winner. The manifest correctly remains `comparison_pending`. | Deliberately deferred pending expanded evaluation |
+| Make the final model decision | Week 4: a small same-machine comparison was completed and the manifest stayed `comparison_pending` until the larger evaluation. Final: `phi4-mini:3.8b` selected on 16 Oct 2026 (`backend/slm/model_manifest.yaml`, `selection_status: selected`; [final-slm-methodology.md](final-slm-methodology.md)). | Complete (16 Oct 2026) |
 | Draft a generic fallback | Versioned `backend/slm/prompts/generic_fallback.yaml` exists and is used when generation or deterministic validation fails. | Complete |
 | Draft a separate crisis-aware fallback | Versioned `backend/slm/prompts/crisis_aware.yaml` v1.1.0 now contains Australia-specific resources and no US-only 988/741741 content. | Complete as a Week 4 draft |
 | Keep crisis wording deterministic | The SLM is prohibited from selecting the crisis response. The crisis message is a fixed YAML template, not generated text. | Complete for template design; routing detector is later joint SLM/Evaluation work |

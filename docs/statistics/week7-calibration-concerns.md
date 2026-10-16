@@ -3,7 +3,7 @@
 **Owner:** Moe Tanaka, Statistical Analysis Lead
 **Written:** 2026-09-20
 **Revised:** 2026-09-20, after reading `main` at `e5401a2` (see item 1)
-**Status:** primarily a record — as written on 2026-09-20 no code, spec or document outside this file was changed. **Exception: item 8 was resolved in Week 8 (2026-09-27)**, which did change code, tests and documents (see its Resolution).
+**Status:** primarily a record — as written on 2026-09-20 no code, spec or document outside this file was changed. **Exception: item 8 was resolved in Week 8 (2026-09-27)**, which did change code, tests and documents (see its Resolution). **All items are now resolved or closed** (2026-10-16); each has a Resolution with its evidence.
 
 **Tense note.** The "Observed" paragraphs describe the state of the repository on 2026-09-20 and are kept as written; they are not updated when an item is later resolved. Where an item has a "Resolution", read the Observed text as the old state (e.g. item 8's `reclassify_family213`, `bh_q_213` and `EXPECTED_FAMILY_SIZE = 213` no longer exist in that form).
 
@@ -22,12 +22,12 @@ The Week 7 pilot has already taken place: a lightweight remote rostered-pair ses
 | # | Item | Status |
 |---|---|---|
 | 1 | The evidence-derivation path was not wired into `/respond` | **Superseded** by `c62d862` (2026-09-16) |
-| 2 | Per-person standard errors are not in the production path | Cache implemented 2026-10-07 (runner only); B=500 rebuild and `/respond` wiring open |
+| 2 | Per-person standard errors are not in the production path | **Resolved** (2026-10-16): cache built 2026-10-07, B=500 rebuilt for both features, read on `/respond` by PR #80 |
 | 3 | B=500 results vs. the current primary specification | **CLOSED** |
-| 4 | B=500 results were only in a temporary scratchpad | Mitigated; storage location open |
-| 5 | Participant sets differ between the two Tier-1 features | Open |
-| 6 | The lowest-qualifying-state rule has no implementation | Open |
-| 7 | Preregistration §1.4 fixed-effects formula does not match the implementation | Open — high priority |
+| 4 | B=500 results were only in a temporary scratchpad | **Closed** (2026-10-09): committed code reproduces the run bit-identically into the owner-only cache |
+| 5 | Participant sets differ between the two Tier-1 features | **Resolved**: per-feature cohort families (214 / 216), one feature per turn |
+| 6 | The lowest-qualifying-state rule has no implementation | **Closed**: every turn is answered from exactly one feature |
+| 7 | Preregistration §1.4 fixed-effects formula does not match the implementation | **Resolved** (2026-09-27): §1.4 corrected to the fitted formula |
 | 8 | BH-FDR family size: labelling vs. what is computed | **Resolved** (2026-09-27) |
 
 ---
@@ -104,7 +104,7 @@ Decisions a–d cover the runner. Reading the cache from `participant_evidence` 
 **Done** (`backend/statistics/bootstrap_cache.py`, `tier1_runner.py`, `bootstrap.prepare_model_frame`; tests in `tests/statistics/test_bootstrap_cache.py`):
 - **a.** Raw checkpoint (`raw_checkpoint.jsonl` + `raw_fingerprint.json`) and the aggregated cache (`aggregated_cache.json`: per-person SE rows `uid, method, slope_se, n_occasions, n_bootstrap_draws`, and the `intersect_bootstrap_evidence` table) are separate files under `outputs/bootstrap_cache/<feature>/` (gitignored). This resolves "where the cache lives" for now as the ignored tree, not a tracked location: `docs/privacy/local-demo-privacy-check.md` forbids committing per-person bootstrap rows, so a tracked location is not needed for this cache (the location of the 2026-09-13 archive, item 4, is a separate question and still awaits Yuktha's review). Permissions (**fail-closed**, revised 2026-10-09 at the Privacy & Security Lead's request on PR #49; was best-effort): mode 700/600 on POSIX; on Windows `icacls` with inheritance removed and the current user only. The permissions are then **read back and verified** (`stat` mode; `icacls` output parsed, every ACE must be the current user with Full control) — a successful command is not taken as proof. If they cannot be restricted and verified, `PermissionRestrictionError` is raised and nothing is written (the temp file is restricted before any content is written). An *existing* cache folder is checked too, on load and on resume of a raw checkpoint: if not owner-only, one restriction attempt is made, and a failure raises. `PermissionRestrictionError` is deliberately not a `BootstrapCacheError`. The same helpers (`backend/statistics/private_files.py`, outside the fingerprint) protect `tier1_runner`'s uid-bearing outputs; unlike a stale cache, a permission failure aborts the whole run (design d's "the healthy feature is still written" covers statistical failures only).
 - **b.** Fingerprint, key dictionary stored beside the SHA-256. **c.** No aggregated cache → `None` and everyone stays `insufficient`; mismatch → `BootstrapCacheStale` naming the changed keys. **d.** `tier1_runner.main` now catches per feature, writes the other features' output and then raises `Tier1RunFailed`.
-- `tier1_runner` reads the cache only; the bootstrap is started only by `python -m backend.statistics.bootstrap_cache <feature>`. **Not wired into `/respond`** (`participant_evidence`), per the scope of this change; that still needs its own decision (above).
+- `tier1_runner` reads the cache only; the bootstrap is started only by `python -m backend.statistics.bootstrap_cache <feature>`. **Not wired into `/respond`** (`participant_evidence`), per the scope of this change; that still needs its own decision (above). *(Wired on 2026-10-16 by PR #80; see the Resolution below.)*
 
 **Changes from design a–d:**
 1. **`git_commit` is not a key.** Replaced by content hashes: the fingerprint has three layers — (A) a hash of the exact model frame the fit consumes, (B) content hashes of the estimation-path files (`bootstrap.py`, `mixed_effects_model.py`, `r_bridge.py`, `feature_specs.py`, `data_pipeline/{cleaning,gps_distance_feature,unlock_frequency_feature}.py`), (C) environment and configuration. This addresses the second consequence noted under b (a commit that does not touch the estimate no longer invalidates 30–40 minutes of work), and a test walks the real import graph so that a new module on the estimation path fails CI unless it is hashed or listed as excluded with a reason.
@@ -133,7 +133,7 @@ Decisions a–d cover the runner. Reading the cache from `participant_evidence` 
 - **Small-cell note.** 3/216 is below 5. In any published aggregate it is reported as "fewer than 5" (`preregistration.md` §5.3); the exact count above is for this internal document only.
 - **Family-size warning.** The run log was not kept, so whether the family-size warning fired could not be confirmed from the outputs. The family is 216 throughout (216 rows in the intersection table; 216 per method in the SE table), matching `EXPECTED_FAMILY_SIZE["unlock_num_ep_0"]` = 216, so the warning would not be expected.
 
-**Still open:** only reading the cache from `/respond` (above). The `unlock_num_ep_0` run is done.
+**Resolution (2026-10-16).** PR #80 (merge `94810c5`) reads the cache on `/respond`: `participant_evidence.py` loads the aggregated cache with `bootstrap_cache.load_aggregated_cache` and uses `label_intersection`; any cache problem fails closed to `no_claim` (`preregistration.md` §4.1, §7 item 13; tests in `tests/statistics/test_participant_evidence_bootstrap.py`). Both B=500 runs are done. Item 2 is resolved.
 
 ---
 
@@ -180,6 +180,8 @@ Now archived (2026-09-20) to `C:\Users\<user>\mindsense-bootstrap-archive\` (out
 
 **Week 8.** Move the data to a tracked location after Yuktha's privacy review; then update the README and fix or replace the scripts' hard-coded paths.
 
+**Resolution (2026-10-09).** The full B=500 GPS run was rebuilt on committed code (`469eebd`) and is bit-identical to the 2026-09-13 archive on all 1000 records (item 2, "Full B=500 reproducibility check"); the `unlock_num_ep_0` run followed on 2026-10-10. The data is therefore regenerated by committed code into the owner-only, git-ignored `outputs/bootstrap_cache/<feature>/` (`bootstrap_cache.CACHE_ROOT`), which is where `/respond` reads it. Per-person rows stay out of the repository (`docs/privacy/local-demo-privacy-check.md`), so no tracked location is needed. Item 4 is closed.
+
 ---
 
 ## 5. Participant sets differ between the two Tier-1 features
@@ -191,6 +193,8 @@ Now archived (2026-09-20) to `C:\Users\<user>\mindsense-bootstrap-archive\` (out
 **Consequence.** For those 2 people the system can say something per-person using unlock but never using GPS. Whether a feature has anything to say about a person is a per-feature question. The multiple-comparison family is also affected: the 213 (now 214, item 8) is specific to GPS distance, and the correct user-facing family is each person's per-feature statements batched together (Week 4 §2), so the family is not simply "213 × 2". With 214 + 216 participants the family definition needs to be settled before a second feature gets real per-person labels.
 
 **Week 8.** Decide the two-feature family definition (per-person batching across features vs. per-feature cohort families) before unlock bootstrap SEs are produced.
+
+**Resolution.** Per-feature cohort families. `backend/statistics/evidence.py:146` sets `EXPECTED_FAMILY_SIZE = {"loc_dist_ep_0": 214, "unlock_num_ep_0": 216}`, the cached aggregation checks each feature against its own family (`bootstrap_cache.py:445`, `feature_id=feature`), and `tests/statistics/test_bootstrap_cache.py:269` asserts the intersection table has exactly that size for each feature. Both B=500 runs used these families (GPS 23 of 214; unlocks fewer than 5 of 216). This matches the finalised decision in `CLAUDE.md` ("the participants holding a per-person slope for that feature") and `preregistration.md` §2.2. Per-person batching across features does not arise on `/respond`, because each turn carries exactly one feature (item 6), so a turn makes at most one per-person statement. Item 5 is resolved.
 
 ---
 
@@ -208,6 +212,8 @@ This was established by reading `participant_evidence.py`, `request_policy.py`, 
 **Consequence.** A question that spans both features is answered from GPS alone, framed by GPS's state, not by the lower of the two. State itself is computed at runtime (item 1); what is missing is only the aggregation across features.
 
 **Week 8.** Decide together with the request-path owner whether turns may span features. If they may, implement the aggregation; if not, record that the rule is moot by design.
+
+**Resolution.** Turns do not span features, so the rule has a single state to apply to. Since request policy 0.3.x, `request_policy.infer_feature_from_question` returns one feature, or `None` when a question names both features or neither; `None` is answered with a request to name one feature (`rejection_reason = ambiguous_feature_request`) before any participant data is loaded. The GPS fallback described under "Observed" was removed. Tests: `tests/slm/test_request_policy.py::test_a_question_naming_both_features_does_not_select_either`, `tests/api/test_week8_scope.py` ("What changed in my GPS and unlock data?"), `tests/slm/test_dev_50q.py` Q18 ("Compare my movement and my phone use."). The lowest-qualifying-state rule therefore reduces to the one feature's own state, which `classify_state` computes. Item 6 is closed.
 
 *(The rule is cited from Week 4 §5 and `eligibility.py`. Section 4.4 of `docs/proposal/Group Proposal.md` is "Deployment" and does not contain it.)*
 
@@ -232,6 +238,8 @@ The lag-1 term is not implemented — `mixed_effects_model.py`'s docstring recor
 §1.4 describes the retired `analysis/` pipeline (27,530 occasions). Adding terms to the implementation to match it would change the primary estimate and require rerunning the bootstrap — a larger change than correcting the text, and one made to fit a document rather than for a statistical reason.
 
 **Not decided this week. Flagged as the owner's recommendation.**
+
+**Resolution (2026-09-27).** Done as recommended: `preregistration.md` §1.4 now states the fitted two-term formula with a dated correction record, and §7 item 9 registers it. No analysis changed. Item 7 is resolved.
 
 ---
 

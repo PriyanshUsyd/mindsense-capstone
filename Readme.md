@@ -169,6 +169,17 @@ stays installed and selectable only for comparison.
   plain statement that it cannot be reported; internal evidence tiers are not
   shown (`docs/statistics/preregistration.md` §5).
 
+## Final documentation
+
+| Area | Document |
+|---|---|
+| Data pipeline | [docs/data-pipeline/final-pipeline-methodology.md](docs/data-pipeline/final-pipeline-methodology.md) |
+| Statistics | [docs/statistics/final-statistical-methodology.md](docs/statistics/final-statistical-methodology.md), [preregistration](docs/statistics/preregistration.md) |
+| Evaluation results | [pass-threshold-summary.md](docs/evaluation/results/main-evaluation/pass-threshold-summary.md), [statistical write-up](docs/statistics/main-evaluation-statistical-writeup.md) |
+| SLM | [docs/slm/final-slm-methodology.md](docs/slm/final-slm-methodology.md) |
+| UI | [docs/ui/final-build-screenshots.md](docs/ui/final-build-screenshots.md) |
+| Release | [release-candidate-checklist.md](docs/release/release-candidate-checklist.md), [final-submission-checklist.md](docs/release/final-submission-checklist.md) |
+
 ## Dataset citation
 
 College Experience Study, [Kaggle](https://www.kaggle.com/datasets/subigyanepal/college-experience-dataset):

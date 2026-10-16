@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import csv
 import importlib.util
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -275,6 +276,21 @@ def test_public_output_has_no_evaluator_code_or_session_id(tmp_path):
     for token in {r["evaluator_code"] for r in rows} | {r["session_id"] for r in rows}:
         assert token not in body
 
+
+def test_short_session_ids_do_not_redact_item_ids():
+    # The real sessions are named S1-S3; the usability items are US1-US3.
+    rows = synth_rows(sessions=("S1", "S2", "S3"))
+    for r in rows:
+        r["evaluator_code"] = r["evaluator_code"].replace("ME-P9", "S")
+    text = report(rows)
+    for item in ("US1", "US2", "US3", "US4"):
+        assert f"| Usability | {item} |" in text
+    assert REDACTED_MARK not in text
+    for token in ("S1", "S2", "S3", "S1-E1"):
+        assert not re.search(rf"(?<![A-Za-z0-9]){token}(?![A-Za-z0-9])", text)
+
+
+REDACTED_MARK = "[redacted]"
 
 PII = ("talked to Alice Smith about this", "see email from jdoe9999", "call 0412 345 678", "+61-2-9351-0000")
 

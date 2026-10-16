@@ -68,7 +68,7 @@ via `gh api repos/.../branches/main/protection`, which needs an
 authenticated `gh` session this environment does not have).
 
 Given the number of direct-to-main commits visible in the git history
-(`PriyanshUsyd` has pushed directly to `main` repeatedly, not always through
+(the Integration & QA Lead's account has pushed directly to `main` repeatedly, not always through
 a PR), it seems unlikely that a "no direct pushes, PR + review required"
 rule is currently active on `main` — but this is an inference from behaviour,
 not a confirmed setting. **Whoever has admin access should check this
