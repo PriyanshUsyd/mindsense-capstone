@@ -743,7 +743,7 @@ therefore retained as the final GPS extreme-value policy.
 
 ## 21. Final Tier-1 Status
 
-The final locked Tier-1 features are (`freeze-decision.md`, 706a599; hard cap of
+The final locked Tier-1 features are (`freeze-decision.md`, 8adddce; hard cap of
 2 cross-platform features per `Weekly_Plan.md` Week 4):
 
 1. GPS distance travelled (`loc_dist_ep_0`)

@@ -30,21 +30,21 @@ commit history, not attributed to the named role owner.
 
 **2. Reconciling AI placeholders with real teammate work as it arrived.**
 As real branches were pushed, commits `40bbf00` (Moe's real statistics
-work), `b5c0e13` (Yuktha's real privacy work), and `2e8e48c` (Chonghao's real
+work), `7f1224c` (Yuktha's real privacy work), and `7135b18` (Chonghao's real
 evaluation plan) used AI assistance to merge each person's actual
 contribution in and remove or supersede the corresponding AI placeholder.
-Commit `24809a1` did a further reconciliation pass. At that time, two
+Commit `a1c8bc8` did a further reconciliation pass. At that time, two
 roles' work had not yet been received and their AI-authored placeholders
 had not been replaced: Sheng Wang (UI) and Honglin Lu (Documentation).
 **Update, 2026-09-12:** both have since landed. Sheng Wang's real UI work
-merged on time (`39ec4db`, Week 5, PR #10) and again for Week 6 (PR #14).
+merged on time (`1a7baeb`, Week 5, PR #10) and again for Week 6 (PR #14).
 Honghao Li's real Data Pipeline work (CES verification, GPS-distance
 feature builder, Tier-1 pipeline) was pushed under the GitHub account
 `[redacted]` — this was not recognised as his account
 when this statement was first drafted (2026-09-05), which is why the table
 below previously read "0 commits" for him. That account is now confirmed
 to be Honghao. His work was complete in content by the Week 5 deadline
-(`f30fce5`, 2026-08-27, and further commits dated 2026-09-06), but it was
+(`55ba5c1`, 2026-08-27, and further commits dated 2026-09-06), but it was
 **not merged into `main` until 2026-09-12, via PR #13 — six days after the
 Week 5 deadline (2026-09-06)**. This statement records that plainly rather
 than rounding it up to "on time": the work existed in content before the

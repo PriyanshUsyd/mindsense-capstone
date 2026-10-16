@@ -17,7 +17,7 @@ A same-source Qwen four-mode companion also completed on 9 October; see the
 It uses the unchanged production prompt, not the F condition. This Z/F table
 remains **Phi/Base only**. No Qwen Z/F run or human rubric result is included.
 
-Team approval source: Priyansh's 8 October decision in the [release checklist at main b742ad8](https://github.com/PriyanshUsyd/mindsense-capstone/blob/b742ad8638f35dca2c67d13e152eb624c364c145/docs/release/release-candidate-checklist.md#decisions-priyansh) authorises Richard's single 24-prompt held-out run by 23 October.
+Team approval source: Priyansh's 8 October decision in the [release checklist at main 5df5c28](https://github.com/PriyanshUsyd/mindsense-capstone/blob/5df5c28720abd1f55e4b6b6b420ccf46d1486865/docs/release/release-candidate-checklist.md#decisions-priyansh) authorises Richard's single 24-prompt held-out run by 23 October.
 
 The formal held-out model evaluation has not been run. These public experiments
 used no held-out data. Existing CI checksum, JSON-structure and privacy checks
@@ -113,7 +113,7 @@ conversion, the same JSON has SHA256
 `6421d482a4c6698fc25b28ade4e2aceb5fdc1890b25e16a133755f03be0dffb8`.
 The 9 October readiness audit verified both without rewriting the result;
 stored per-source and loaded-prompt hashes describe the actual run's bytes.
-It records actual local Ollama calls on `b742ad8` with the explicitly scoped
+It records actual local Ollama calls on `5df5c28` with the explicitly scoped
 uncommitted source set. All 31 recorded source hashes matched before/after.
 No failed attempt was dropped or selectively repeated. These are development
 checks on public synthetic data, not completed human or RC acceptance.
@@ -223,14 +223,14 @@ experiment. Subsequent publication validation is recorded separately below.
 
 ### Publication validation
 
-The initial technical commit `eda2b6f` passed all four stages of the existing
+The initial technical commit `454ab33` passed all four stages of the existing
 manual [sealed-excluded CI](https://github.com/PriyanshUsyd/mindsense-capstone/actions/runs/37926288038)
 on 9 October. That result excludes sealed integrity and sealed-text scanning;
 it is not a full-CI result or a model-evaluation score.
 
 The Week 9 Draft uses branch `Rz-week9`, the unchanged automatic CI workflow and
 no skip marker. All four stages of [full CI](https://github.com/PriyanshUsyd/mindsense-capstone/actions/runs/37929997010)
-passed on `657f60e`. That result applies to that revision; the PR checks report
+passed on `0277495`. That result applies to that revision; the PR checks report
 validation of subsequent commits. CI does not establish human rubric acceptance
 or ME-P02 completion.
 

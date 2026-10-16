@@ -28,7 +28,7 @@ technical pilot and readiness check.
 | Item | Observed value |
 | --- | --- |
 | Branch | `chonghao/evaluation-week7-pilot` |
-| Source commit | `1341ceaff096e7912bf1852adc8b15fd82143f43` |
+| Source commit | `0258c3532109f05581068ffbe05df6a72ef2e0c6` |
 | Operating environment | Windows, local loopback services only |
 | Frontend | Vite development server at `http://localhost:5173` |
 | Backend | FastAPI at `http://127.0.0.1:8000` |

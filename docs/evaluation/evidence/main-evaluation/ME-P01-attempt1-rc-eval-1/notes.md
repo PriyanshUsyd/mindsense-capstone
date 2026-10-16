@@ -3,7 +3,7 @@
 > **Superseded — failures fixed in rc-eval-2.** This attempt is kept as evidence and must not be deleted. ME-P01 is re-run on rc-eval-2.
 
 Session: ME-P01
-Build: `rc-eval-1` = `687a50ea233ba7e3653b15d79ed84d5da7db6a91`
+Build: `rc-eval-1` = `1e998ab3f3fe31665807d800a8d6ad836615806e`
 Runtime: Ollama, `phi4-mini:3.8b`, request policy `0.3.1`
 Date: 2026-10-10
 Recorded by: Priyansh Khandelwal (lead), from the session report

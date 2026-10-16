@@ -130,7 +130,7 @@ need correction by its owners, not an unannounced edit in this SLM amendment.
 
 This amendment and the preceding evaluation alignment belong to the existing
 Rz-week5 / PR #2 delivery. Historical result files preserve their execution-time
-HEAD and dirty-worktree metadata, including runs based on 0cf49cf with local
+HEAD and dirty-worktree metadata, including runs based on ea75354 with local
 changes. Week 4 branch/history/PR #1 remain unchanged. Publication is not
 joint acceptance or approval to merge.
 

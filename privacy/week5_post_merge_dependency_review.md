@@ -4,7 +4,7 @@ Owner: Yuktha Naveen, Privacy and Security Lead
 
 Review date: 6 September 2026 (Australia/Sydney)
 
-Reviewed baseline: `6a5e6b6`
+Reviewed baseline: `7bed881`
 
 Scope: dependencies introduced by merged PRs #7 and #8
 

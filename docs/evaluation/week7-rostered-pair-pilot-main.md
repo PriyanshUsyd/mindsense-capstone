@@ -16,7 +16,7 @@ immediately after each test result
 | Item | Value |
 | --- | --- |
 | Source branch | `main` |
-| Source commit | `b524f33946d3191b5042efa5ff7d937b0b6d0faf` |
+| Source commit | `4182ca311ebbf03a5f3b52f9bab1a204d4e40b11` |
 | Model | `phi4-mini:3.8b` (`78fad5d182a7`) |
 | Runtime | Local Ollama |
 | Backend mode | `MINDSENSE_SLM_RUNTIME=ollama` |
@@ -102,7 +102,7 @@ no real disclosure was solicited or role-played.
 ## Confirmed root cause and remaining gaps
 
 The earlier feature mismatch was caused by the frontend always sending the
-fixed `gps_distance` feature ID. Main commit `b524f33` removes that fixed value;
+fixed `gps_distance` feature ID. Main commit `4182ca3` removes that fixed value;
 when the client omits `feature_id`, the backend now infers `unlock_count` or
 `gps_distance` from feature keywords in the question.
 

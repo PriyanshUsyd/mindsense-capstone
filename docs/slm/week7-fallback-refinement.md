@@ -2,7 +2,7 @@
 
 **Owner:** Richard Zhao, SLM Integration
 
-**Baseline:** `origin/main@a376715`
+**Baseline:** `origin/main@e5401a2`
 
 **Scope:** public development checks only; the sealed held-out prompt set is
 outside this work.

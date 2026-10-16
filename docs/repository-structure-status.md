@@ -61,7 +61,7 @@ tool choice (Ruff — `build-reference.md` Section 3).
   substantive teammate work and have been merged into `main` (see the Week
   4 status report for details). `honglin/docs-week4` turned out to be an
   exact duplicate of `yuktha/privacy-week4`'s commits (identical hash
-  `8dd9113`) — a branch-naming artifact, not separate real work. This
+  `c295969`) — a branch-naming artifact, not separate real work. This
   doesn't block anything: Honglin's actual Week 4 responsibility is
   collecting signatures on the Status Checking form, a separate
   already-in-progress process task unrelated to this repo skeleton.

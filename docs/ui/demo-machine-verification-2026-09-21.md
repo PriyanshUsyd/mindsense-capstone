@@ -4,7 +4,7 @@
 
 **Demo-machine operator:** Richard Zhao
 
-**Current target build:** `main` at `822214c`
+**Current target build:** `main` at `01405e8`
 
 **Status:** Visual working confirmation recorded at the group lead's request.
 

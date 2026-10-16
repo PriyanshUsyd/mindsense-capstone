@@ -55,7 +55,7 @@ a claim of completed joint acceptance.
 - `python -m backend.slm.shadow_cli` provides the UI-independent executable
   path. It accepts a validated packet file and question and prints the audited
   response JSON.
-- Prompt `evidence_explainer` is now v0.4.8 (earlier `0cf49cf` snapshot: v0.4.3). The payload exposes the exact
+- Prompt `evidence_explainer` is now v0.4.8 (earlier `ea75354` snapshot: v0.4.3). The payload exposes the exact
   allowed evidence IDs, and the prompt requires an explicit uncertainty
   sentence and prohibits unsolicited clinical referral language.
 - The deterministic output gate now verifies the uncertainty text itself; it
@@ -156,7 +156,7 @@ remains 3/3. Full results and the initial unsuccessful content checks are
 linked from the output-grounding amendment, including strict-gate failures at
 Prompt 0.4.6/0.4.7 and the current 0.4.8 run. No Qwen rerun or final selection is claimed.
 
-The following is the earlier published `0cf49cf` verification record:
+The following is the earlier published `ea75354` verification record:
 
 - Full repository pytest: 179 passed, 8 skipped, zero failures and no
   deselections after restoring the canonical LF working copy.
@@ -173,7 +173,7 @@ The following is the earlier published `0cf49cf` verification record:
 - Ruff passes on every changed Python file. A repository-wide Ruff scan still
   reports 10 pre-existing findings in Data/contract/frontend/statistics test
   files outside this SLM change.
-- Complete Week 5 whitespace validation against `7d33de4` passes, rather
+- Complete Week 5 whitespace validation against `d7ee1be` passes, rather
   than checking only an empty uncommitted diff.
 
 ## Remaining team-owned acceptance

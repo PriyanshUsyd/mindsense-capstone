@@ -51,7 +51,7 @@ is not approval for clinical use or participant deployment.
 | 7 | Dependency verification | `pip check` passed; Python manifests and npm reported 0 known vulnerabilities | No broken Python requirements or currently known dependency advisories were detected. |
 | 7 | Frozen-build application privacy run | **HOLD:** real CES UID embedded in tracked/browser code; one natural self-harm phrase missed the crisis route; `npm run dev` retained a public registry connection | The green automated baseline did not cover all live runtime privacy and safety behaviour. Participant-facing use is not approved. |
 | 7 | Frozen-build regression gates | 31 passed, 2 failed | New checks reproduce the frontend identifier exposure and crisis-language coverage gap. |
-| 7 | Frozen-build complete local suite | 457/457 passed; 45 warnings before the new regression gates | Existing Python, R, CES, privacy, security, SLM, API, integration, and statistics tests remained stable at commit `1341cea`. |
+| 7 | Frozen-build complete local suite | 457/457 passed; 45 warnings before the new regression gates | Existing Python, R, CES, privacy, security, SLM, API, integration, and statistics tests remained stable at commit `0258c35`. |
 | 7 | Frozen-build latency confirmation | 5/5 completed; mean 2.23 s; sample p95 3.83 s | Local Phi-4 Mini remained operational with effectively unchanged mean latency versus the Week 6 post-merge sample. |
 | 7 | Privacy and crisis remediation | 72/72 focused and 460/460 complete tests passed; live browser rerun passed | Raw CES identifiers were removed from the tracked tree and browser request, the missed crisis phrase now routes correctly, and app processes showed no public TCP connection. |
 | 7 | Four-stage CI separation preflight | Python 373/373; R 67/67; frontend 22/22 plus lint/build; privacy 17/17; all audits clear | Python, R, frontend, and privacy/security now have distinct failure boundaries and explanatory Markdown artifacts for failed stages. |
@@ -153,7 +153,7 @@ Week 4 speed baseline.
 **Limit:** latency does not measure privacy, factual correctness, clinical
 safety, or response quality. One raw response used causal-sounding wording,
 showing why deterministic request and output safety gates are required. The
-successful historical result is stored in Git commit `517ade3`; the current
+successful historical result is stored in Git commit `57065f2`; the current
 JSON file contains the Week 5 replacement result. An earlier pre-installation
 attempt failed with connection refused and was not treated as a benchmark.
 
@@ -164,7 +164,7 @@ attempt failed with connection refused and was not treated as a benchmark.
 **Why necessary:** merged frontend testing and R statistics dependencies
 expanded the attack surface and the types of sensitive data held in memory.
 
-**Assumptions before testing:** baseline commit `6a5e6b6` contained all merged
+**Assumptions before testing:** baseline commit `7bed881` contained all merged
 Week 5 changes under review; lockfiles and installed versions reflected those
 changes; tests used synthetic or de-identified inputs; and package installation
 was separate from sensitive-data processing.
@@ -250,7 +250,7 @@ were installed; fixtures were synthetic unless a row says otherwise; and a
 passing unit test represents only its encoded requirement.
 
 Fresh verification on 6 September 2026 tested branch
-`yuktha/privacy-week5` at commit `d15e3a3`. A restricted sandbox run reported
+`yuktha/privacy-week5` at commit `7bc6f3a`. A restricted sandbox run reported
 340 passes and five setup failures because the environment denied a temporary
 HTTP server permission to bind to `127.0.0.1`. No project assertion failed.
 The complete suite was rerun with local loopback binding permitted and produced
@@ -369,7 +369,7 @@ the product safety gate. Results vary with machine load and model warm-up.
 ### Scope and Environment
 
 **Branch and baseline:** `yuktha/privacy-week6`, created from `origin/main` at
-commit `3423e43a302287f857e91ef7b19bd50190deec60`. The working tree was clean
+commit `be29b172e20b2bb50553bf3bcfa6b6cebf159dae`. The working tree was clean
 before the audit. No Week 6 changes were committed or pushed during this run.
 
 **Environment:** macOS 26.6.2 on Apple arm64; Python 3.14.0; R 4.6.1 with the
@@ -475,13 +475,13 @@ five-prompt sample remains too small for a performance guarantee.
 
 ### Security/Privacy Lead Review References
 
-No commit added after the Week 5 master-register commit (`c624a08`) explicitly
+No commit added after the Week 5 master-register commit (`ad67b13`) explicitly
 assigns a new review or approval to the Security/Privacy Lead. The unmerged
 Honghao Tier-1 and Sheng Week 6 commit messages also contain no such request.
 
 Existing governance references remain active:
 
-- Commit `82d9c14` records Yuktha's Privacy Lead approval of the Week 5 SLM
+- Commit `1e19a8c` records Yuktha's Privacy Lead approval of the Week 5 SLM
   dependency review.
 - `docs/slm/week5-dependency-privacy-review.md` contains the named Privacy Lead
   sign-off.
@@ -502,7 +502,7 @@ passes by skipping or weakening the tests.
 ### Post-Fast-Forward Verification - 12 September 2026
 
 **Why necessary:** `origin/main` advanced by 22 commits to
-`fbf7cf2de619802caaa918b2bf8bfc3a90c78131` after the initial Week 6 audit.
+`bbe738ff7f862e7a9fe6c89d12ef7a96dc13e3c4` after the initial Week 6 audit.
 Those commits changed the frontend client, backend API, SLM request and health
 logic, statistical evidence code, data pipeline, and test suite. The earlier
 result therefore could not be treated as evidence for the updated repository.
@@ -665,7 +665,7 @@ and never writes directly to `main`.
 ### Scope and Assumptions
 
 **Branch and baseline:** `yuktha/privacy-week7`, created from current
-`origin/main` at commit `691d1fe9382e56d67e208207f89a9a1d71908b1c`.
+`origin/main` at commit `875bdcd20a1044c3b9d3f6d9d4ae8c01ef6f69bb`.
 The working tree was clean before the review.
 
 **Environment:** macOS 26.6.2 on Apple arm64; Python 3.14.0; R 4.6.1 with
@@ -711,7 +711,7 @@ test failures.
 ### Automatic Coverage Review
 
 The latest `main` workflow run, GitHub Actions run `34913733919`, tested commit
-`691d1fe` and completed all four jobs successfully. Its Python job reported
+`875bdcd` and completed all four jobs successfully. Its Python job reported
 381 passed, 20 skipped, and 51 warnings. Sixteen skips require the private CES
 dataset. One dataset-independent Tier 1 registry check was incorrectly marked
 to skip, and three frontend-build integration checks skipped because the
@@ -742,7 +742,7 @@ statistical methodology.
 ### Scope and Assumptions
 
 **Branch and commit:** `yuktha/privacy-week7` at
-`1341ceaff096e7912bf1852adc8b15fd82143f43`, identical to `origin/main` when
+`0258c3532109f05581068ffbe05df6a72ef2e0c6`, identical to `origin/main` when
 the run began. The working tree was clean before test evidence was generated.
 
 **Environment:** macOS 27.0 on Apple arm64; Python 3.14.0; R 4.6.1 using the
@@ -790,10 +790,10 @@ networking be separated from participant-data processing.
   Python environment, and npm high/critical audit reported zero known
   vulnerabilities.
 - Dependency manifests: no changes between the Week 7 initial baseline
-  `691d1fe` and the tested commit.
+  `875bdcd` and the tested commit.
 - Reviewed `main` workflow run
   [35416287755](https://github.com/PriyanshUsyd/mindsense-capstone/actions/runs/35416287755):
-  all four jobs passed at `1341cea`; CI reported 435 passed, 22 dataset-backed
+  all four jobs passed at `0258c35`; CI reported 435 passed, 22 dataset-backed
   skips, 51 warnings, 22 frontend passes, and zero known advisories.
 
 These results prove that the existing encoded requirements pass. They do not
@@ -857,7 +857,7 @@ development may continue if the real CES-backed frontend flow is not used.
 
 ### Changes Verified
 
-The remediation working tree was based on commit `d70fa6d`. No dependency
+The remediation working tree was based on commit `000e3e1`. No dependency
 manifest changed.
 
 - The frontend now sends the non-sensitive `local-demo` alias. FastAPI resolves
@@ -956,8 +956,8 @@ which could not inspect `rpy2` because the audit job omitted the established
 `RPY2_CFFI_MODE=ABI` environment setting. The generated Stage 4 failure report
 captured that cause. The workflow was then corrected to set ABI mode for this
 audit-only environment. Corrected branch run `35478727512` passed all four
-stages at commit `6a0b1ea`. After the latest `main` changes were merged, run
-`35493857235` also passed all four stages at merge commit `17702e3` and
+stages at commit `fbc3cc0`. After the latest `main` changes were merged, run
+`35493857235` also passed all four stages at merge commit `f075619` and
 published the combined Markdown run artifact.
 
 The stable stage definitions and artifact behaviour are documented in
@@ -965,7 +965,7 @@ The stable stage definitions and artifact behaviour are documented in
 
 ### Latest Main Integration Check
 
-`origin/main` at `a376715` added deterministic GPS/unlock question routing,
+`origin/main` at `e5401a2` added deterministic GPS/unlock question routing,
 evaluation evidence, data-storage scope, and bootstrap-caching documentation.
 The request-path conflicts were resolved by preserving both controls: the
 frontend sends `local-demo` without a feature override, the backend infers the
@@ -1031,7 +1031,7 @@ restarted to load the corrected bridge code.
 
 Owner: Yuktha Naveen, Privacy and Security Lead. Checks were executed on
 Yuktha's Mac against `yuktha/privacy-week8`, created from fetched `origin/main`
-at `be40e3c00d9a14b268a9088f42c6ed896074be95`. The post-fix results apply to
+at `dd7483fbafe703582c5d01a8d1d394eb6d9badb3`. The post-fix results apply to
 that base **plus the uncommitted working-tree changes**, not to unchanged main.
 No commit, push, PR or GitHub Actions dispatch was performed.
 
@@ -1039,7 +1039,7 @@ Environment: Apple M3/arm64, macOS 27.0, Python 3.14.0, R 4.6.1 with
 `RPY2_CFFI_MODE=ABI`, Node 22.19.0, Ollama 0.33.2 and installed
 `phi4-mini:3.8b`. Existing local dependencies and CES data were reused; no
 packages or models were installed. Dependency manifests and the frontend
-lockfile are unchanged relative to Week 7 commit `33cead3`.
+lockfile are unchanged relative to Week 7 commit `6324e1e`.
 
 Before running, the following scope assumptions were made:
 
@@ -1287,7 +1287,7 @@ stopped at completion.
 ## Week 9 Post-Merge Privacy Recheck - 5 October 2026
 
 **Operator:** Yuktha Naveen, Privacy and Security Lead. **Branch:**
-`yuktha/privacy-week9`, based on main commit `f39f07f`. Results are recorded
+`yuktha/privacy-week9`, based on main commit `3d7f322`. Results are recorded
 on this branch only; this is not a merge to main. Machine: Yuktha's Mac,
 Python 3.14.0, R 4.6.1, Node 22.19.0,
 Ollama 0.33.2 with the installed `phi4-mini:3.8b` model. The dataset stayed in

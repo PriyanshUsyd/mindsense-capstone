@@ -4,7 +4,7 @@
 - Date: 4 September 2026 (Australia/Sydney)
 - Status: developer checks completed within the scope below; peer and
   Integration/QA approval pending. Not participant-use approval.
-- Scope: Week 5 changes after `7d33de4`, plus the inherited local inference
+- Scope: Week 5 changes after `d7ee1be`, plus the inherited local inference
   boundary introduced in Week 4 PR #1. This document is added in Week 5;
   it does not modify or backdate Week 4 code, commits, or PR descriptions.
 
@@ -125,7 +125,7 @@ Sources checked on 4 September 2026:
 
 - Reviewer: Yuktha Naveen, Privacy and Security Lead
 - Review date: 5 September 2026 (Australia/Sydney)
-- Reviewed commit: `1554ec6`
+- Reviewed commit: `5636971`
 - Scope: the Week 5 SLM dependency and local-inference boundary documented
   above; this is not approval of every dependency added by other components.
 - Verification: 10/10 focused privacy and transport tests passed; the complete

@@ -19,7 +19,7 @@ what's recorded here should come from Moe directly.
 > through the same `nlme` path (`lme4` is only the sensitivity fit). The B=500
 > run was checked against the current primary specification on every point
 > that matters and nothing differs (`docs/statistics/week7-calibration-concerns.md`
-> item 3); commit `4af4d7a` ("AR(1) as primary") changed documents only. The
+> item 3); commit `ab5137b` ("AR(1) as primary") changed documents only. The
 > text is left as originally relayed so the record of what was said is intact;
 > read it with this correction applied. The rerun is still being done, but for
 > a different reason: the 2026-09-13 run came from an uncommitted working tree,

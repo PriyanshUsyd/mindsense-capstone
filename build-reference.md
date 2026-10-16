@@ -154,8 +154,8 @@ open engineering question the client did not specify and the team has not
 yet decided. These remain **to be scoped in Week 7**, not confirmed choices.
 
 **Week 7 interface status (independent review branch, updated 2026-09-18):**
-`Rz-week7` is based on frozen `origin/main@470fe8c`; the first three Week 7
-commits are published at `origin/Rz-week7@68fbcc5`, while the real-data
+`Rz-week7` is based on frozen `origin/main@148bcb0`; the first three Week 7
+commits are published at `origin/Rz-week7@d24c83e`, while the real-data
 readiness and model-selector continuation described below is local pending a
 fresh push review. The branch adds a common outer interface
 and public synthetic comparison harness for Base LLM, RAG, Agent and RAG+Agent.

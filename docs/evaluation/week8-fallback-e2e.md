@@ -2,7 +2,7 @@
 
 - **Date:** 25 September 2026 (Australia/Sydney)
 - **Operator:** Chonghao Shen
-- **Build tested:** `main@822214ca75e84279c21c9c04cda0a718976c00e9`
+- **Build tested:** `main@01405e8fda680c5aad7689ab4728255fc20d9929`
 - **Frontend:** local Vite browser UI
 - **Backend:** local FastAPI `/respond` endpoint
 - **Runtime/model:** Ollama with `phi4-mini:3.8b`

@@ -17,9 +17,9 @@ frozen response-quality prompts, model variants, statistical calibration,
 guardrail thresholds, dataset contents, or backend-generated response text.
 
 All evaluation support was planned against rc-eval-1 (historical: tagged
-2026-10-10 and superseded the same day by rc-eval-2, `d31e05d`, the build the
+2026-10-10 and superseded the same day by rc-eval-2, `ae84965`, the build the
 three evaluation sessions record; see `docs/evaluation/week8-main-evaluation-roster.md`). The 2026-10-08 pre-session rehearsal ran on
-`b60cb848237a2a2a2cbc726551267a275f1668d0` (`b60cb84`), which predates
+`525dfb9ce0fc794afd4dc3002537c300fcc0e9bd` (`525dfb9`), which predates
 #46, #48, #49, #53 and #58; the UI was to be re-checked on the evaluation build (rc-eval-2). This documentation branch is not
 the evaluation build. No dependency, frontend, backend, model, or prompt change
 is introduced into the locked RC during the sessions.
@@ -55,7 +55,7 @@ retrieve from a document store.
 Complete this once on every evaluation machine before its first session.
 
 - [x] Record the fixed RC commit:
-      rc-eval-2 (`d31e05d`; rc-eval-1 is historical).
+      rc-eval-2 (`ae84965`; rc-eval-1 is historical).
 - [ ] Confirm the approved dataset is locally available without opening raw
       participant data in the browser or terminal capture. This remains a data
       provisioning check outside the frontend support result.
@@ -85,11 +85,11 @@ local evidence path in the committed table.
 
 | RC commit | OS | Browser and version | Viewport | API/model status | Frontend result | Check date | Redacted evidence summary |
 |---|---|---|---|---|---|---|---|
-| `b60cb848237a2a2a2cbc726551267a275f1668d0` | macOS (version not recorded) | Google Chrome (version not recorded) | Desktop evaluation window with docked DevTools | Local API available; all four rehearsal `/respond` requests returned HTTP 200 | Rehearsal pass | 2026-10-08 | Pre-session rehearsal only; local-only screenshots and JSON retained; no blocking, transport, or response-rendering UI failure observed |
+| `525dfb9ce0fc794afd4dc3002537c300fcc0e9bd` | macOS (version not recorded) | Google Chrome (version not recorded) | Desktop evaluation window with docked DevTools | Local API available; all four rehearsal `/respond` requests returned HTTP 200 | Rehearsal pass | 2026-10-08 | Pre-session rehearsal only; local-only screenshots and JSON retained; no blocking, transport, or response-rendering UI failure observed |
 
-The rehearsal row above records true history: it ran on `b60cb84`, which predates
+The rehearsal row above records true history: it ran on `525dfb9`, which predates
 #46, #48, #49, #53 and #58. It is not a check of the evaluation build; the UI
-was to be re-checked on the evaluation build, rc-eval-2 (`d31e05d`); rc-eval-1 is historical.
+was to be re-checked on the evaluation build, rc-eval-2 (`ae84965`); rc-eval-1 is historical.
 
 ## Aggregate session support record
 

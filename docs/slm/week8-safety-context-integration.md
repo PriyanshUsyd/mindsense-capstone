@@ -2,7 +2,7 @@
 
 - Owner: Richard Zhao, SLM Integration Lead
 - Updated: 9 October 2026
-- Integration base (28 September): `main@9abda9b369def04de1d370550c8a3db966b78263`
+- Integration base (28 September): `main@174b1b08553bc9c1261df16824afb6593cd3a4f7`
 - Review branch: `Rz-week9`; Week 9 comparison and prompting results
 - Earlier delivery: [PR #34](https://github.com/PriyanshUsyd/mindsense-capstone/pull/34), merged 26 September
 
@@ -182,7 +182,7 @@ screenshots and full session responses remain local. Any later session summary
 requires approval for publication.
 
 ME-P02 was not run as planned: the evaluation became three team sessions on
-rc-eval-2 (`d31e05d`; rc-eval-1 and `b60cb84` are historical), recorded in
+rc-eval-2 (`ae84965`; rc-eval-1 and `525dfb9` are historical), recorded in
 `docs/evaluation/week8-main-evaluation-roster.md`. It is separate from these
 developer benchmarks. The application still reuses the participant's validated
 evidence summary for RAG, and its live association path remains `no_claim`.
@@ -190,9 +190,9 @@ Bootstrap SE wiring into `/respond` was outside this delivery; it was added late
 
 ### CI verification is separate from held-out evaluation
 
-The initial technical commit `eda2b6f` passed all four stages of the manual
+The initial technical commit `454ab33` passed all four stages of the manual
 [sealed-excluded run](https://github.com/PriyanshUsyd/mindsense-capstone/actions/runs/37926288038).
-The later documentation commit `657f60e` passed all four stages of
+The later documentation commit `0277495` passed all four stages of
 [automatic full CI](https://github.com/PriyanshUsyd/mindsense-capstone/actions/runs/37929997010).
 These results apply to their recorded revisions; checks for subsequent commits
 are reported on the PR. This delivery changes no workflow and uses no skip marker.
@@ -206,7 +206,7 @@ check nor CI supplies model-evaluation results.
 
 ### Earlier local verification: 9 October
 
-After synchronisation to `main@b742ad8`, the six explicit related SLM test
+After synchronisation to `main@5df5c28`, the six explicit related SLM test
 modules passed 80 tests and Ruff passed. All 35 source hashes from the 6 October
 run still matched; the saved result remained unchanged. No model rerun was
 performed for this check. Human rubric scoring and ME-P02 remained pending.
@@ -226,7 +226,7 @@ independent judgments and the separate ME-P02 session are not complete.
 | --- | --- |
 | Guardrails, safe defaults and packet-summary integration | Delivered in merged #34/#43; the 28 September evidence remains below |
 | Zero/few-shot methodology and separate multi-turn plan | Documentation only; no new prompt-method experiments |
-| Configured four-variant execution | Complete local run on the `f39f07f` main baseline with an uncommitted benchmark and explicit source hashes |
+| Configured four-variant execution | Complete local run on the `3d7f322` main baseline with an uncommitted benchmark and explicit source hashes |
 | Developer rubric decisions | Richard and Chonghao must independently record judgments and resolve disagreements |
 | ME-P02 | Richard/Sheng session still not run; use the existing pairing plan |
 

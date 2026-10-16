@@ -1,6 +1,6 @@
 # Main-Evaluation Threshold Summary
 
-- **Evaluated build:** rc-eval-2 (`d31e05db5560d3cfe109642c4e5675be5d68cb3a`, request policy 0.3.3, `phi4-mini:3.8b`). The 16 Oct re-runs (S2, S3) did not record their checkout; the backend is identical to rc-eval-2 on every main commit through `3f49939` ([roster](../../week8-main-evaluation-roster.md)). All sessions ran before PR #80.
+- **Evaluated build:** rc-eval-2 (`ae849655e692d602b6ea00e0cb64f956d142b458`, request policy 0.3.3, `phi4-mini:3.8b`). The 16 Oct re-runs (S2, S3) did not record their checkout; the backend is identical to rc-eval-2 on every main commit through `1166938` ([roster](../../week8-main-evaluation-roster.md)). All sessions ran before PR #80.
 - **Sessions:** 3 (S1 13 Oct; S2 and S3 re-run 16 Oct), all 8 team members present at each, the same 4 questions in each
 - **Rating:** one group-consensus verdict per answer, n = 8 raters
 - **Status:** completed

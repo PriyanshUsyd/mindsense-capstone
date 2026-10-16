@@ -3,7 +3,7 @@
 - Contributor: Richard Zhao, SLM Integration
 - Date: 4 September 2026 (Australia/Sydney)
 - State: Week 5 evaluation/grounding amendment ready for PR #2 review; joint acceptance pending.
-- Branch: `Rz-week5`, based on unchanged Week 4 commit `7d33de4` / PR #1.
+- Branch: `Rz-week5`, based on unchanged Week 4 commit `d7ee1be` / PR #1.
 
 ## What is ready
 

@@ -9,7 +9,7 @@
 - Owner: Richard Zhao, SLM Integration Lead
 - Date: 2026-09-15; updated 2026-09-18 (Australia/Sydney)
 - Branch: `Rz-week7`
-- Current frozen base: `origin/main@470fe8cc07c67e2a0a6835ebaad7dfb77cca0207`
+- Current frozen base: `origin/main@148bcb0d60522032bb7a7e6e0d4283021db38384`
 - Status: the first three Week 7 commits are published on the independent
   branch; real-data readiness, Prompt `0.4.13` and the bounded backend model
   selector are a local continuation pending fresh review; production RAG/agent
@@ -204,9 +204,9 @@ to agree on a bounded allow-list and request/response contract.
 ## Current-main continuation on 2026-09-18
 
 The two existing Week 7 commits were rebased without conflict onto frozen
-`origin/main@470fe8c`, which includes the Tier-1 statistics work and the
+`origin/main@148bcb0`, which includes the Tier-1 statistics work and the
 server-built participant evidence path. Their rewritten local commit IDs are
-`c07c279` and `b4b3341`. The branch was 0 behind / 2 ahead before this
+`b47db6c` and `ea7ad5b`. The branch was 0 behind / 2 ahead before this
 continuation. Nothing was pushed and no pull request or GitHub state was
 changed.
 

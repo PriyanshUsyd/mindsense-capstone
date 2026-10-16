@@ -12,7 +12,7 @@ silently replacing this baseline.
 
 | Item | Frozen value |
 | --- | --- |
-| Source commit (`origin/main` at branch creation) | `e7a25381480054ff30049612f16eff177d31d44f` |
+| Source commit (`origin/main` at branch creation) | `1b67283b969c7c4f1c82b196720af3642883b7b9` |
 | `tests/` tree | `d6f80099c31a2bf75a95432aebc322eb175a5716` |
 | `benchmarks/fixtures/` tree | `762e2812db9322d1a43e781d5747b1b052994ef6` |
 | Registered thresholds | 100% high-severity; 90% standard |

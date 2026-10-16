@@ -95,14 +95,14 @@ not relabelled as successful model answers. See
 
 ## Limitations to retain in the Proposal
 
-- The earlier `0cf49cf` snapshot passed all four synthetic smoke paths and the full
+- The earlier `ea75354` snapshot passed all four synthetic smoke paths and the full
   automated suite (179 passed, 8 skipped, no failures or deselections). This
   is developer evidence, not joint Evaluation Lead acceptance.
 - The public 16-case result is provisional and still requires joint review
   with the Evaluation Lead; it is not the final or held-out score.
 - The current amendment has 265 automated passes and eight skips, including
   65 new output-grounding regressions; the
-  earlier 179-pass run above describes `0cf49cf`, not the current code. Six executable
+  earlier 179-pass run above describes `ea75354`, not the current code. Six executable
   source questions do not establish complete coverage of all five response
   quality dimensions. Human ratings and the final agreed Week 5 suite are pending.
 - The English rule-based request detector is a development guardrail, not a

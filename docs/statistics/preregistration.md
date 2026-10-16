@@ -514,11 +514,11 @@ it.
 **Amendment — the 14-day window itself `[POST-HOC, 2026-10-10]`.** Requests
 that name the pre-registered 14-day window itself ("past two weeks", "fourteen
 days", "fortnight", "past couple of weeks") are answered on that window rather
-than refused, as of request policy 0.3.2 (fde16f0, 2026-10-10, following the
+than refused, as of request policy 0.3.2 (22dca5e, 2026-10-10, following the
 ME-P01 session). This is consistent with the rationale above: the refusal
 exists because no statistic is defined for other windows, and the 14-day
 statistic is the one that is. Other windows — three days, last month,
-yesterday, past week — are still refused. Request policy 0.3.3 (5bd46f6,
+yesterday, past week — are still refused. Request policy 0.3.3 (23f1981,
 2026-10-10) does not change which windows are answered and which are refused;
 `tests/slm/test_dev_50q.py` cases 5 and 6 (two weeks → answered) and 21 and 22
 (last month, 3 days → refused) confirm this. Under 0.3.3 a question that names
@@ -1034,7 +1034,7 @@ Resolved Week 4 open items (decisions, not post-hoc changes):
     links sessions to named evaluators, so session IDs are not published.
     Not a Week 4 open item; does not touch the Tier-1 analysis.
 12. **Requests naming the 14-day window itself are answered, not refused**
-    (section 3.1 amendment, 2026-10-10) — request policy 0.3.2 (fde16f0)
+    (section 3.1 amendment, 2026-10-10) — request policy 0.3.2 (22dca5e)
     stops refusing "past two weeks" / "fourteen days" / "fortnight" / "past
     couple of weeks". The answer is on `[-14, -1]`, which ends the day before
     the assessment and so is not identical to the calendar fortnight the

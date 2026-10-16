@@ -4,7 +4,7 @@
 
 **Last verified:** 11 September 2026 (Australia/Sydney)
 
-**Branch:** `Rz-week6`, based on `origin/main` at `e7a2538`
+**Branch:** `Rz-week6`, based on `origin/main` at `1b67283`
 
 **Status:** implementation and development verification complete; published to
 `origin/Rz-week6`, with PR review and joint acceptance still pending
@@ -81,7 +81,7 @@ The additive
 [`clean post-commit replay`](../../benchmarks/slm_week6_off_topic_phi_prompt0410_postcommit_replay_results.json)
 and matching
 [`scorecard`](../../benchmarks/slm_week6_off_topic_phi_prompt0410_postcommit_replay_scorecard.md)
-repeat the same 5/5 service result at committed head `f8ae5e9`, with all eight
+repeat the same 5/5 service result at committed head `adf646b`, with all eight
 recorded source hashes matching. Historical evidence was not overwritten.
 
 During development, the first cold Prompt `0.4.9` four-path smoke passed 3/4:
@@ -136,7 +136,7 @@ the shared API in this branch.
 The local `.venv` and empty `dataset/` directory used to satisfy the repository
 test environment are ignored and are not delivery files.
 
-The reviewed Week 6 scope was pushed to `origin/Rz-week6` at `4cae1b4` after
+The reviewed Week 6 scope was pushed to `origin/Rz-week6` at `2f9b999` after
 separate user confirmation. No pull request, merge, reviewer request, or
 teammate message had been created when this report status was corrected.
 

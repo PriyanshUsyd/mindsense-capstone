@@ -4,7 +4,7 @@
 - **Updated:** 16 October 2026 (Australia/Sydney). Replaces the 27 September four-pair plan (`ME-P01`–`ME-P04`), which is kept in git history.
 - **Scope:** team-only evaluation; no external participants
 - **Format:** 3 sessions, **all 8 team members present at each**, the same 4 questions in each session, one **group-consensus** rating per answer (n = 8 raters)
-- **Evaluated build:** the response behaviour of rc-eval-2 = `d31e05db5560d3cfe109642c4e5675be5d68cb3a` (request policy 0.3.3, evidence-explainer prompt 0.4.13, `phi4-mini:3.8b`). All sessions ran **before** PR #80 (bootstrap baseline comparison, whole-number display), so they show the pre-#80 answers ("too early to compare", values such as "29.0").
+- **Evaluated build:** the response behaviour of rc-eval-2 = `ae849655e692d602b6ea00e0cb64f956d142b458` (request policy 0.3.3, evidence-explainer prompt 0.4.13, `phi4-mini:3.8b`). All sessions ran **before** PR #80 (bootstrap baseline comparison, whole-number display), so they show the pre-#80 answers ("too early to compare", values such as "29.0").
 
 ## Sessions
 
@@ -16,7 +16,7 @@
 
 The 13 Oct runs of S2 and S3 used the deterministic demo stub (`demo-stub:1.0`). They were re-run on 16 Oct with `phi4-mini:3.8b`; **the 16 Oct re-runs supersede the 13 Oct runs** and are the results. The superseded S3 run stays recorded in its notes.
 
-**Build of the 16 Oct re-runs.** The exact checkout was not recorded. Every main commit from rc-eval-2 (`d31e05d`) to `3f49939` has the same `backend/` code (the only difference is the model manifest's `selection_status` field and its comment; `git diff d31e05d 3f49939 -- backend/`), so the re-runs produced rc-eval-2's responses. Whether the checkout already included PR #78 (frontend model selector, merged 16 Oct) is not recorded; it does not change any answer text or Details line.
+**Build of the 16 Oct re-runs.** The exact checkout was not recorded. Every main commit from rc-eval-2 (`ae84965`) to `1166938` has the same `backend/` code (the only difference is the model manifest's `selection_status` field and its comment; `git diff ae84965 1166938 -- backend/`), so the re-runs produced rc-eval-2's responses. Whether the checkout already included PR #78 (frontend model selector, merged 16 Oct) is not recorded; it does not change any answer text or Details line.
 
 The folder `ME-P01-attempt1-rc-eval-1/` is a superseded attempt on rc-eval-1 and is not part of the results.
 

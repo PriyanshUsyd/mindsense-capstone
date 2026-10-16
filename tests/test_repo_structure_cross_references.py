@@ -122,7 +122,7 @@ def test_repository_structure_status_documents_the_branch_discovery():
     text = _read("docs/repository-structure-status.md")
     assert "honglin/docs-week4" in text
     assert "yuktha/privacy-week4" in text
-    assert "8dd9113" in text
+    assert "c295969" in text  # was 8dd9113 before the 2026-10-16 history scrub
 
 
 def test_honghao_real_script_is_referenced_from_repo_structure_status():

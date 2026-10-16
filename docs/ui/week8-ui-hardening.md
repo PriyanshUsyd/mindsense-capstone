@@ -2,7 +2,7 @@
 
 **Owner:** Sheng Wang, Conversational Interface Lead  
 **Branch:** `sheng-week8-ui-hardening`  
-**Base:** `main` at `822214c`  
+**Base:** `main` at `01405e8`  
 **Date:** 2026-09-22
 
 ## Scope
@@ -71,7 +71,7 @@ states, retry behaviour, desktop width, and phone width.
 
 ### Sheng's Mac verification boundary
 
-On 2026-09-22, Sheng verified commit `bc47185` on a macOS MacBook Air using the
+On 2026-09-22, Sheng verified commit `98d2cf4` on a macOS MacBook Air using the
 project-local `.venv`, Ollama, and the Vite frontend. The frontend loaded at
 `127.0.0.1:5173`, FastAPI started at `127.0.0.1:8000`, and repeated
 `POST /respond` requests returned HTTP 200. The browser correctly rendered the

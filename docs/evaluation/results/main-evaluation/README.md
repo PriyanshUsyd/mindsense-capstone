@@ -51,7 +51,7 @@ codes such as `S1-E1` and `S1-E2`.
 - Use the exact backend values for `response_mode` and `rejection_reason`.
 - `architecture_variant` must identify the actual build as `base`, `rag`,
   `agentic` or `rag_agent`. Do not infer a variant from the wording alone.
-- All rows in this round record rc-eval-2 (`d31e05db5560d3cfe109642c4e5675be5d68cb3a`, policy 0.3.3), which replaced rc-eval-1. The 16 Oct S2/S3 re-runs did not record their checkout; the backend is identical to rc-eval-2 on every main commit through `3f49939` (see the roster), and their `notes` say so.
+- All rows in this round record rc-eval-2 (`ae849655e692d602b6ea00e0cb64f956d142b458`, policy 0.3.3), which replaced rc-eval-1. The 16 Oct S2/S3 re-runs did not record their checkout; the backend is identical to rc-eval-2 on every main commit through `1166938` (see the roster), and their `notes` say so.
 - `evidence_path` points to the saved question directory under
   `docs/evaluation/evidence/main-evaluation/`.
 
@@ -72,7 +72,7 @@ applies to the consensus rows of this round.
 
 `scripts/summarize_session_responses.py` requires `--expected-commit <full SHA>` and
 `--build-label <label>` (no defaults, so a new build cannot reuse an old label;
-rc-eval-2: `--expected-commit d31e05db5560d3cfe109642c4e5675be5d68cb3a
+rc-eval-2: `--expected-commit ae849655e692d602b6ea00e0cb64f956d142b458
 --build-label rc-eval-2`). If any row's
 `commit_sha` is empty or differs, it prints the counts by kind and stops; it
 never excludes rows. Fix the CSV. With `--internal`, the CSV line numbers

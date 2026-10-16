@@ -4,7 +4,7 @@
 
 **Branch:** `sheng-week7-ui-pilot`
 
-**Branch base:** `main` at `470fe8c` (2026-09-16)
+**Branch base:** `main` at `148bcb0` (2026-09-16)
 **Status:** Pilot blocked by missing approved local dataset; Week 8 fixes require
 triage before implementation
 
@@ -31,7 +31,7 @@ The local exploratory session on 2026-09-12 used the then-current `main`, but
 its exact commit SHA was not captured. It used the earlier client-supplied
 synthetic EvidencePacket flow.
 
-PR #22 (`7feeac1`, merged 2026-09-16) subsequently changed `/respond` to build
+PR #22 (`4818832`, merged 2026-09-16) subsequently changed `/respond` to build
 evidence server-side from `participant_id`. Results from 2026-09-12 are useful
 reproduction evidence, but they are **not** represented as verification of the
 current frozen build. Every item in the current-build checklist below must be
@@ -40,7 +40,7 @@ run again after recording the exact commit SHA.
 ## Repository gate verification on 2026-09-17
 
 The following non-interactive checks passed on this branch at base commit
-`470fe8c` in an isolated Linux workspace. These checks verify the repository
+`148bcb0` in an isolated Linux workspace. These checks verify the repository
 gates only; they do not replace the Mac/Ollama end-to-end pilot.
 
 | Gate | Result |
@@ -69,7 +69,7 @@ gates only; they do not replace the Mac/Ollama end-to-end pilot.
 |---|---|
 | Machine | Apple MacBook Air |
 | Operating system | macOS 14.4.1 |
-| Git branch / commit | `sheng-week7-ui-pilot` / `717cdf0` |
+| Git branch / commit | `sheng-week7-ui-pilot` / `3821a8a` |
 | Ollama | `0.34.1` |
 | Model | `phi4-mini:3.8b` (`78fad5d182a7`, 2.5 GB) |
 | Python environment | Project-local `.venv` |

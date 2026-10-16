@@ -37,17 +37,17 @@ isn't mistaken for "no work" in a future check.
 
 ### Honghao Li — Data Pipeline Lead
 Git identity: `[redacted]` — no branch, pushed straight to
-`main`, bypassing PR review (`f30fce5`, parent `7cd6db0`).
+`main`, bypassing PR review (`55ba5c1`, parent `4d4787f`).
 
 - **Week 4 — Done.** `scripts/validate_ces.py` (552 lines) and
   `docs/data-pipeline/dataset_validation_CES.md`, real CES re-verification
-  work, self-authored (`f30fce5`, 2026-08-27; renamed in `3c720ca`). Priyansh
+  work, self-authored (`55ba5c1`, 2026-08-27; renamed in `4017bb9`). Priyansh
   only fixed a path bug so it would run against this repo's dataset layout
-  (`d5406a3`).
+  (`7a9a19c`).
 - **Week 5 — Not done.** `backend/data_pipeline/gps_distance_feature.py` and
   `backend/data_pipeline/ces_eligibility.py` have no commit by
-  Honghao/[redacted] anywhere — both are 100% Priyansh-authored (`634866c`,
-  `67ec7ba`, `1e0bae8`), despite commit messages describing them as his. No
+  Honghao/[redacted] anywhere — both are 100% Priyansh-authored (`eeb247a`,
+  `563ac9c`, `b5857f7`), despite commit messages describing them as his. No
   real end-to-end GPS feature build from him this week.
 
 ### Moe Tanaka — Statistical Analysis Lead
@@ -59,7 +59,7 @@ Git identity: `[redacted]`.
   baseline window, and three-state cold-start policy.
 - **Week 5 — Not done.** No Week 5 branch or commit from Moe exists anywhere.
   `backend/statistics/mixed_effects_model.py`, wired to the GPS feature, is
-  entirely Priyansh-authored (`67ec7ba`, `634866c`), despite being described
+  entirely Priyansh-authored (`563ac9c`, `eeb247a`), despite being described
   as "Moe's mixed-effects model fitting."
 
 ### Richard Zhao — SLM Integration Lead
@@ -67,19 +67,19 @@ Git identity: `[redacted]` — same university
 email pattern as his likely real account; `[redacted]` looks like a leftover
 placeholder git username he never fixed, not a fake account.
 
-- **Week 4 — Done.** `origin/Rz` (`be5ba89`..`7d33de4`), self-pushed, 26 files
+- **Week 4 — Done.** `origin/Rz` (`789b5a1`..`d7ee1be`), self-pushed, 26 files
   / 2498 lines including the safety gate, SLM client, prompts, and tests.
-  Merged via `79a673d`.
-- **Week 5 — Done.** `origin/Rz-week5` (`22b4616`..`49dc73e`), self-pushed, 60
+  Merged via `2aba24d`.
+- **Week 5 — Done.** `origin/Rz-week5` (`8b9d304`..`66f0daa`), self-pushed, 60
   files / ~21.5k lines including output grounding, request policy, shadow
-  build, benchmarks, and tests. Merged via `9c2d317`.
+  build, benchmarks, and tests. Merged via `ac30917`.
 - Flag: the git username `[redacted]` should be fixed — it's currently
   indistinguishable from a bot/placeholder account in `git log`.
 
 ### Sheng Wang — Conversational Interface Lead
 - **Week 4 — Not done.** No branch, no commit, ever, under any name.
 - **Week 5 — Not done.** `frontend/src/features/chat/NormalResponse.tsx` and
-  all of `frontend/` are 100% Priyansh-authored (`c28d05a`), whose own commit
+  all of `frontend/` are 100% Priyansh-authored (`5b5fac3`), whose own commit
   message is explicit: "Fill in Sheng Wang's missing Week 4/5 UI work (both
   weeks, still no commit from him)."
 
@@ -91,8 +91,8 @@ Git identities: `[redacted]`, `[redacted]`.
   Note: this content landed via a branch named `honglin/docs-week4`, not a
   branch of her own — mislabeled, but the content is genuinely hers.
 - **Week 5 — Done.** `origin/yuktha/privacy-week5`, self-pushed, including
-  the two most recent commits on `main` (`82d9c14` SLM dependency review
-  sign-off, `67cda0e` AI-disclosure cleanup). The most complete and reliably
+  the two most recent commits on `main` (`1e19a8c` SLM dependency review
+  sign-off, `7c3b6af` AI-disclosure cleanup). The most complete and reliably
   self-authored contributor across both weeks.
 
 ### Chonghao Shen — Evaluation Design Lead
@@ -102,11 +102,11 @@ Git identity: `[redacted]`.
   self-authored `evaluation_plan_v0.1.md` genuinely covers the frozen
   taxonomy and points to the pass-threshold rule. The held-out set,
   participant information sheet, and crisis-response script that also
-  satisfy this week's task are Priyansh fills (`40ccdf6`, `d24c55e`), not
+  satisfy this week's task are Priyansh fills (`31b367a`, `d24c55e`), not
   Chonghao's own commits.
-- **Week 5 — Done.** `origin/chonghao/evaluation-week5` (`fd7765e`,
-  `d45ce82`), self-authored: rubric v0.1, development review, proposal
-  contribution, and a real test. Merged via `7cd6db0`.
+- **Week 5 — Done.** `origin/chonghao/evaluation-week5` (`2a9b77a`,
+  `a880cdc`), self-authored: rubric v0.1, development review, proposal
+  contribution, and a real test. Merged via `4d4787f`.
 
 ### Honglin Lu — Documentation & Report Lead
 - **Week 4 — Not done.** Zero commits under any name/handle across the
@@ -114,7 +114,7 @@ Git identity: `[redacted]`.
   no docs-lead work at all — it is actually Yuktha's Week 4 privacy/latency
   deliverables, mislabeled. The repo skeleton, branch-protection doc, and
   proposal outline that exist on `main` are all Priyansh fills (`d24c55e`,
-  `33247f4`).
+  `a064c29`).
 - **Week 5 — Not done.** No compiled Group Proposal Report exists in this
   repository — only `docs/proposal/outline.md`, a Priyansh-authored scaffold
   (`d24c55e`), not the report itself. The report is tracked separately on
@@ -132,7 +132,7 @@ contract freeze, Tier 1 feature-list sign-off, PR review/merge).
 - Held-out set checksum (`tests/evaluation/held_out/held_out_prompts.sha256`)
   matches a freshly computed SHA-256 of `held_out_prompts.json` — unchanged.
 - `git diff main origin/main` → empty after fast-forwarding local `main` to
-  `origin/main` (two commits, `82d9c14` and `67cda0e`, had not yet been
+  `origin/main` (two commits, `1e19a8c` and `7c3b6af`, had not yet been
   fetched locally).
 - Branch protection on `main` and PR `merged:true` status could not be
   verified in this environment: no `gh` CLI and no `GITHUB_TOKEN` were
