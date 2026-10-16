@@ -98,6 +98,16 @@ describe('NormalResponse', () => {
     expect(banner).toHaveTextContent('A kinder you.')
   })
 
+  it('keeps the welcome state scrolled to the top instead of jumping to its end', () => {
+    const scrollIntoView = vi.fn()
+    Element.prototype.scrollIntoView = scrollIntoView
+
+    render(<NormalResponse />)
+
+    expect(scrollIntoView).not.toHaveBeenCalled()
+    delete (Element.prototype as Partial<Element>).scrollIntoView
+  })
+
   it('shows only the implemented chat section in the sidebar', () => {
     render(<NormalResponse />)
 
