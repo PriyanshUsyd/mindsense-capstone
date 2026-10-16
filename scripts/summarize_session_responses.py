@@ -761,10 +761,12 @@ def _internal_appendix(failed, failure_types, warnings: Warnings, raw_answers: l
 def _scrub(text: str, evaluator_codes: set[str], session_ids: set[str]) -> str:
     """Free text (na_reason) may quote an evaluator code or a session ID: redact, then verify."""
     # Codes first: they embed the session ID as a prefix.
+    # Whole tokens only: a session ID such as `S1` is also part of the item ID `US1`.
     forbidden = sorted(evaluator_codes | session_ids, key=len, reverse=True)
-    for token in forbidden:
-        text = text.replace(token, REDACTED)
-    leaked = [t for t in forbidden if t in text]
+    patterns = [re.compile(rf"(?<![A-Za-z0-9]){re.escape(t)}(?![A-Za-z0-9])") for t in forbidden if t]
+    for pattern in patterns:
+        text = pattern.sub(REDACTED, text)
+    leaked = [p.pattern for p in patterns if p.search(text)]
     if leaked:  # defensive; cannot happen after the replace above
         raise RuntimeError("an evaluator code or session ID would appear in the output; refusing to emit it")
     return text

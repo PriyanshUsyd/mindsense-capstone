@@ -1,7 +1,7 @@
 # Release-Candidate Checklist — Week 9 Evaluation Build
 
 **Prepared:** 2026-10-08 (Week 9) by Priyansh Khandelwal, Integration & QA Lead
-**Updated:** 2026-10-10 (evaluation lock). `rc-eval-1` tagged at `1e998ab`. Earlier: 2026-10-08, candidate moved from `458cb56` to `dd2af5a` after #48 and its repair (#53); lock date set to 2026-10-16, replaced the same day by the release timeline below (evaluation lock 2026-10-10).
+**Updated:** 2026-10-16: the 4 questions re-asked on the final build, the boot test and the dataset preflight recorded (§7, §11); the only open items are the held-out check, the privacy sign-off with the offline test, and the freeze tag. Earlier: 2026-10-10 (evaluation lock). `rc-eval-1` tagged at `1e998ab`. Earlier: 2026-10-08, candidate moved from `458cb56` to `dd2af5a` after #48 and its repair (#53); lock date set to 2026-10-16, replaced the same day by the release timeline below (evaluation lock 2026-10-10).
 **Status:** `rc-eval-1` → `1e998ab3f3fe31665807d800a8d6ad836615806e` was the RC until the lock was reopened on 2026-10-10 (see below). **rc-eval-2 → `ae849655e692d602b6ea00e0cb64f956d142b458`** (PR #72 merge, policy 0.3.3; main push run `38019186474` passed all 4 stages). `dc7e7fb` (policy 0.3.2) was the intended rc-eval-2 until Yuktha's 50-question dev test; it was never tagged. The `Pending` items in Section 7 are sign-offs and readiness checks still open after the lock; they do not change the tagged build.
 
 > **This checklist update post-dates the tag and is docs-only.** It was committed after `rc-eval-1` was created and is not part of the tagged tree. The diff from `1e998ab` to the main commit that merges it touches only this file: no `backend/`, `frontend/`, model or prompt/policy files.
@@ -34,7 +34,7 @@
 | 2026-10-10 to 2026-10-15 | Evaluation sessions ME-P01–P04 on the tagged build | The lock lifts when the sessions finish |
 | 2026-10-16 to 2026-10-21 | Fixes (pipeline, guardrail, UI) and Chonghao's second smoke-test round | Normal PR + CI process |
 | By 2026-10-23 | Held-out guardrail check and final fixes | One run by Richard, authorised by Priyansh on 2026-10-08 (see "Decisions") |
-| **2026-10-25 (end of Week 11)** | **Final freeze** | No model, prompt or code changes after this. Week 12 is docs/polish only (`Weekly_Plan.md` L164: "The model/prompt version is locked from Week 11 — no exceptions.") |
+| **2026-10-25 (end of Week 11)** | **Final freeze** | No model, prompt or code changes after this. Week 12 is docs/polish only (`Weekly_Plan.md` L171: "The model/prompt version is locked from Week 11 — no exceptions.") |
 
 Every item is either backed by repository evidence (SHA, PR or path) or marked `Pending` with an owner.
 
@@ -69,8 +69,8 @@ Evaluation records must cite the SHA tagged `rc-eval-1` (`1e998ab`), not `525dfb
 
 | Decision | Conflict | Status |
 |---|---|---|
-| Authorise Richard's held-out set run (`Weekly_Plan.md` L153) | `docs/slm/week8-prompting-methodology.md:64-65`: "Do not open, copy, hash, run, or change the sealed held-out prompts. The later Week 11 plan does not override the current explicit access prohibition." | **Approved by Priyansh, 2026-10-08:** Richard is authorised to run the held-out set **once**, by 2026-10-23. This lead decision overrides the prohibition quoted from `week8-prompting-methodology.md` for that single run; the file's text itself is unchanged (owner: Richard) |
-| Demo build variant default: keep RAG as the Ollama `/respond` default, or set `base_llm` before the lock | RAG has been the Ollama default since PR #39 (`docs/privacy/master-test-register.md:1297`); `Weekly_Plan.md` L136 says the variant comparison runs "on its own branch … it does not touch the Tianyi demo build unless/until explicitly promoted" | **Approved by Priyansh, 2026-10-08:** keep RAG as the demo and evaluation default. No change to `/respond` before the lock |
+| Authorise Richard's held-out set run (`Weekly_Plan.md` L160) | `docs/slm/week8-prompting-methodology.md:64-65` as of 2026-10-08: "Do not open, copy, hash, run, or change the sealed held-out prompts. The later Week 11 plan does not override the current explicit access prohibition." | **Approved by Priyansh, 2026-10-08:** Richard is authorised to run the held-out set **once**, by 2026-10-23. This lead decision overrides the prohibition quoted from `week8-prompting-methodology.md` for that single run; the file was updated in `0277495` and now records this approval (line 20) |
+| Demo build variant default: keep RAG as the Ollama `/respond` default, or set `base_llm` before the lock | RAG has been the Ollama default since PR #39 (`docs/privacy/master-test-register.md:1297`); `Weekly_Plan.md` L143 says the variant comparison runs "on its own branch … it does not touch the Tianyi demo build unless/until explicitly promoted" | **Approved by Priyansh, 2026-10-08:** keep RAG as the demo and evaluation default. No change to `/respond` before the lock |
 
 ## 2. Included changes since the last audit baseline (`3d7f322`, 2026-10-03)
 
@@ -162,7 +162,7 @@ This is a post-session change and is part of the final build, not of rc-eval-2.
 | Item | Status | Owner | Evidence so far |
 |---|---|---|---|
 | Privacy sign-off on the **final build** (was: on `dd2af5a`) | **To do (assigned)** — see "Remaining before freeze" | Privacy & Security Lead | The Week 9 re-check in `docs/privacy/master-test-register.md` (commit `e124354`) was run on base `3d7f322`, before #46, #48, #49 and #53 were merged |
-| Dataset preflight on each evaluation machine | **Not recorded** | Data Pipeline Lead | No per-machine preflight results were committed (procedure: `docs/data-pipeline/ces_local_provisioning.md`, "Preflight check"). All three session machines returned the same values (29.0 km/day, 121.0 unlocks/day) |
+| Dataset preflight | **Done on the final build** (16 Oct 2026) | Data Pipeline Lead | Run on the group lead's machine at `95e3171`: all three file checks `True`, `verify_ces.py` gated eligibility 214 of 220 (97.3%), recorded in [`final-pipeline-methodology.md` §6.1](../data-pipeline/final-pipeline-methodology.md#61-dataset-preflight-ces_local_provisioningmd-preflight-check). The session machines' preflight output was not committed; all three sessions returned the same values (29.0 km/day, 121.0 unlocks/day) |
 | `bootstrap_cache.py` `feature_id` decision | **Done** | Moe Tanaka | Fixed by `37abb5b` (PR #62); now line 445 |
 | Session times confirmed; critical-failure mapping covers all questions | **Done** | Evaluation Design Lead | Three sessions with dates (S1 13 Oct; S2, S3 re-run 16 Oct) in `docs/evaluation/week8-main-evaluation-roster.md`; mapping applied to all 12 answers (Section 8; `pass-threshold-summary.md`) |
 | Frontend readiness on each evaluation machine | **Superseded** | Conversational Interface Lead | All three sessions ran to completion on their machines (roster); no separate per-machine readiness record was committed |
@@ -197,5 +197,34 @@ PRs #76–#79 were merged by the group lead without a second review to meet the 
 |---|---|---|
 | Held-out 24-prompt safety check, run once on the **final build**; commit the aggregate result together with the checksum `95acb455a8798c9941d0564efc9080883b0c222944b9725782d308d680c515b5` | To do (assigned) | SLM Integration Lead |
 | Privacy sign-off on the final build, plus either the whole-device offline test or softening "Processed locally, always" (`frontend/src/components/AppShell.tsx:51`) | To do (assigned) | Privacy & Security Lead |
-| Re-ask the 4 evaluation questions on the final build to show the baseline comparison (PR #80) and whole-number values | To do (assigned) | Group lead |
-| Final freeze tag on the final build | To do (assigned) | Group lead |
+| Re-ask the 4 evaluation questions on the final build to show the baseline comparison (PR #80) and whole-number values | **Done**, 16 Oct 2026 (record below) | Group lead |
+| Final freeze tag on the final build, after the two items above | To do (assigned) | Group lead |
+
+### Final-build records (16 October 2026, `95e3171`)
+
+**Re-ask of the 4 evaluation questions.** Group lead's machine, Ollama 0.40.4,
+`phi4-mini:3.8b` (digest `78fad5d182a7`), `MINDSENSE_SLM_RUNTIME=ollama`, local
+CES dataset, request policy 0.3.3. Asked through `/respond` and again through
+the UI ([screenshots](../ui/final-build-screenshots.md)); both runs gave the
+same results:
+
+| Question | response_mode · rejection_reason | model_tag | Answer |
+|---|---|---|---|
+| Q1 unlock trend | `uncertainty` · none | `phi4-mini:3.8b` | "Your phone unlock count was 121 unlocks per day in the observed window. Your history is long enough to compare with your own baseline, but there is not enough statistical evidence to report a comparison. …" |
+| Q2 movement vs baseline | `uncertainty` · none | `phi4-mini:3.8b` | "Your GPS distance was 29 kilometres per day in the observed window. Your history is long enough to compare with your own baseline, but there is not enough statistical evidence to report a comparison. …" |
+| Q3 uncertainty | `uncertainty` · none | none (rule-based) | `general_uncertainty` template |
+| Q4 diagnosis | `refusal` · `diagnosis_request_detected` | none (rule-based) | `diagnosis_boundary` template |
+
+Whole-number values (121, 29) replace the session answers' "121.0" and "29.0",
+and the PR #80 State C sentence replaces "too early to compare". This machine
+has no R bootstrap cache, so the State C path reports no comparison by design
+(`preregistration.md` §4.1).
+
+**Boot test on the group lead's machine.** Fresh clone of `main` at `95e3171`;
+`scripts/setup_local_python_env.ps1` (Python 3.14.5, constraints applied,
+`pip check` clean); `npm install` in `frontend/` (0 vulnerabilities). Backend
+`python -m pytest`: **1027 passed, 19 skipped** (all 19 need R), 0 failed.
+Frontend: **41 of 41 tests passed**, `oxlint` and `npm run build` passed. The
+app ran with `MINDSENSE_SLM_RUNTIME=ollama`, and `phi4-mini:3.8b` answered Q1
+and Q2 above.
+

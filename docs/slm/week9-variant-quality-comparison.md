@@ -3,7 +3,7 @@
 Owner: Richard Zhao, SLM Integration  
 Protocol: `week9-public-variant-quality-1`  
 Date: 6 October 2026  
-Status: Technical protocol; independent human review required
+Status: Technical protocol; completed as a comparison (automated checks pass for all four variants). The human review of the final model is the main evaluation; see [final-slm-methodology.md](final-slm-methodology.md)
 
 ## Scope and decision
 

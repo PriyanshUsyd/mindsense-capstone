@@ -67,6 +67,8 @@ The comparison is pre-specified as a within-case development benchmark:
 No zero/few-shot, multi-turn or fine-tuning result is claimed at Week 6. Empty
 tables are preparation, not evidence.
 
+> **Update, 16 October 2026.** The zero/few-shot comparison ran on 9 October and the standalone multi-turn evaluation on 16 October; results are in [final-slm-methodology.md](../slm/final-slm-methodology.md). Fine-tuning stays declined (`build-reference.md` Section 10). The table below is the Week 6 plan.
+
 | Condition | Model/version | Public cases | Faithfulness pass | Critical failures | Median usability | Status |
 | --- | --- | ---: | ---: | ---: | ---: | --- |
 | Zero-shot | TBD | TBD | — | — | — | Planned |

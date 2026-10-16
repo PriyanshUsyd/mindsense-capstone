@@ -2,7 +2,7 @@
 
 - Owner: Richard Zhao, SLM Integration Lead
 - Created: 24 September 2026; updated: 9 October 2026
-- Status: public Z/F experiment completed on 9 October; human review not assessed; multi-turn remains planned
+- Status: public Z/F experiment completed on 9 October; standalone multi-turn evaluation run on 16 October. Final results, with the human review of the final model, are in [final-slm-methodology.md](final-slm-methodology.md)
 
 ## Scope and authority
 
@@ -254,6 +254,8 @@ The output already exists and the runner refuses to overwrite it. Any later
 approved rerun needs a fresh filename and must retain this original.
 
 ## Independent method: conversational multi-turn reasoning
+
+> **Run on 16 October 2026.** Implemented as `benchmarks/slm_multiturn_eval.py` with the six scenarios below (stateless and bounded-history conditions; 2 user turns, 300 characters, reset per session). Results: [final-slm-methodology.md §3.3](final-slm-methodology.md#33-standalone-multi-turn-evaluation). The text below is the method as planned.
 
 This remains a separate planned method, not a synonym for few-shot examples or
 RAG tool execution. Displaying earlier messages in the UI does not demonstrate

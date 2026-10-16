@@ -686,10 +686,12 @@ under one single, arbitrarily-chosen specification would have been, since
 it rules out "the transform choice is hiding a real effect" as an
 explanation.
 
-Per-person evidence classification (`evidence.reclassify_cohort_family`) is
-currently `insufficient` for all 216 participants, same reason as GPS
-(§3.5/5.4): no per-person `slope_se` has been fed in from
-`backend.statistics.bootstrap` for this feature yet.
+Per-person evidence classification (`evidence.reclassify_cohort_family`) for
+unlocks uses the B=500 bootstrap SEs run on 2026-10-10 (§5.4): fewer than 5 of
+216 participants are `evidence_available` under the cross-method intersection
+(`docs/statistics/week7-calibration-concerns.md` item 2), and `/respond` reads
+that result since PR #80 (2026-10-16). Before the run, all 216 were
+`insufficient` because no per-person `slope_se` had been fed in.
 
 ---
 
@@ -1070,7 +1072,7 @@ Four items require action from other leads.
 | SLM Integration (Richard), Conversational Interface (Sheng) | **State C does not guarantee a deviation number either.** 762 State C occasions (3.2%, 170 participants) have no computable deviation — the comparison framing is unlocked but there is nothing to quote (§3.7.1). Templates need a distinct branch for "comparison is available in principle, but not this time"; falling back to State B wording would be wrong, since the participant does have a usable baseline. |
 | SLM Integration (Richard), Conversational Interface (Sheng) | **User-facing wording changes from "this week" to "the past two weeks"** following the 14-day unification (section 4). |
 | SLM Integration (Richard) | **Evidence strength is surfaced as two values, not four** (section 3.7). Templates distinguishing `strong` from `moderate` are not required. |
-| Documentation & Report (Honglin), Integration & QA (Priyansh) | **The analysis code is not in the GitHub repository** and is not under version control (limitation 9). |
+| Documentation & Report, Integration & QA | **Done:** the analysis code is in the repository under `backend/statistics/` (ported 2026-09-12/13; `analysis/` archived), see item 9. |
 
 ---
 

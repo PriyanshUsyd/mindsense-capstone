@@ -165,6 +165,7 @@ and refused/crisis/invalid requests stop before either dependency runs. The
 current Base responder deliberately rejects non-empty supplemental context;
 production RAG/agent runs therefore remain pending owner-approved sources,
 tool schemas, context-aware grounding, privacy review and evaluation alignment.
+*(Update: RAG over the current packet became the Ollama `/respond` default in PR #39 and was kept for evaluation by the 2026-10-08 decision; see [final-slm-methodology.md](docs/slm/final-slm-methodology.md).)*
 See `docs/slm/week7-variant-interface.md` for the interface and comparison
 controls.
 
@@ -232,7 +233,7 @@ ContextItems; production source adapters and promotion remain owner-reviewed
 dependencies. Generation Prompt `0.4.13`, contract `1.0.0` and the model-selection
 status remain unchanged. See [implementation and verification](docs/slm/week8-safety-context-integration.md)
 and the [documentation-only prompting methodology](docs/slm/week8-prompting-methodology.md),
-including its separate planned multi-turn method and empty results tables.
+including its multi-turn method. Results of the Z/F, variant and multi-turn runs are in [final-slm-methodology.md](docs/slm/final-slm-methodology.md).
 
 "No data leaves the local environment" is defined precisely, not left implicit:
 
@@ -300,8 +301,8 @@ mapping above.
 
 **What we've done so far (factual, repo-grounded):**
 
-Evaluation today is a synthetic, development-stage Pass/Fail regime, not yet
-a human-participant study:
+Evaluation combines a synthetic Pass/Fail regime with a team-only human
+evaluation (updated 16 October 2026):
 
 - **Source plan**: `backend/evaluation/evaluation_plan_v0.1.md` — 5
   categories (data faithfulness, personal-baseline interpretation, wellbeing
@@ -313,13 +314,17 @@ a human-participant study:
   deterministic safety-gate checks in `backend/slm/safety_gate.py` and
   `backend/slm/output_grounding.py`.
 - **Rubric mapped to the client's 10 criteria**: `docs/evaluation/response-quality-rubric-v0.1.md`,
-  tied to Section 9 above — drafted and internally tested, not yet run with
-  human (or team-only) participants.
-- **Held-out set**: 20-30 prompts frozen, untouched until Week 11.
-- **Not yet covered**: longitudinal PHQ-4 change and behavioural-PHQ-4
-  association interpretation (the evidence contract can't represent those
-  inputs yet); joint inter-rater comparison between Chonghao and Richard is
-  still outstanding; no pilot or main evaluation session has run yet.
+  tied to Section 9 above — drafted and internally tested in Week 6.
+- **Main evaluation**: 3 team sessions, all 8 members, one consensus verdict
+  per answer: 12 of 12 passes, 0 critical failures
+  ([pass-threshold-summary.md](docs/evaluation/results/main-evaluation/pass-threshold-summary.md),
+  [statistical write-up](docs/statistics/main-evaluation-statistical-writeup.md)).
+- **Joint SLM/Evaluation review**: agreement on every jointly reviewed case
+  (`docs/evaluation/week5-development-review.md`).
+- **Held-out set**: 24 prompts, sealed (sha256 `95acb455…`), run once on the
+  final build (release checklist §11).
+- **Not in scope of the evidence contract**: longitudinal PHQ-4 change and
+  behavioural-PHQ-4 association interpretation.
 
 **How we'll do it from today to the end — metric by metric:**
 
