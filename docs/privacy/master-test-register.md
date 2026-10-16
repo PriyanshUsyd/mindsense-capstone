@@ -1342,6 +1342,37 @@ prompt/log retention, and deletion policy. The new five-request default-RAG
 application timing is recorded separately from historical direct-model timing
 because it measures a different workload.
 
+## Week 10 Final Local-Demo Verification - 16-17 October 2026
+
+**Operator:** Yuktha Naveen, Privacy and Security Lead. **Branch:**
+`codex/privacy-week10-signoff`. **Tested commit:**
+`df66eac843ddce2f99b9f0a73dee46f6465911a9` (fetched `origin/main`).
+The verified scope is a trusted-operator, single-Mac local demo with
+`phi4-mini:3.8b`, not real-user accounts. The sealed held-out set was excluded.
+No participant IDs, feature values, raw responses or screenshots are recorded
+in this entry.
+
+| Check | Assumptions | Result and meaning |
+| --- | --- | --- |
+| Full unsealed Python/integration suite under `privacy/macos-loopback.sb` | Local dependencies/data ready; sealed content excluded before collection | **1,062 passed, 21 skipped, 82 warnings, 0 failed** in 92.43 s. A first attempt could not apply the profile inside the host tool sandbox; the permitted rerun completed. |
+| Focused privacy suite | Same commit; local R bridge optional for two cases | **49 passed, 2 skipped, 0 failed**. The two R-dependent skips are not passes; the exact-commit CI R stage succeeded. |
+| Frontend and dependencies | Installed lockfile packages | **41/41 frontend tests**, lint, build, and local `pip check` passed. |
+| Four-stage GitHub Actions | Exact tested SHA | Run `38886676044` completed successfully: Python, R, frontend, and privacy/security stages. |
+| Live offline app/model, 16 Oct | Wi-Fi Off verified; tested public HTTPS destination unreachable; model already installed | Frontend, asset, health and model catalogue served locally. Both movement and unlock `/respond` requests returned HTTP 200, `uncertainty`, real Phi invocation, no fallback and `no-store`. Wi-Fi/public reachability were restored. Manual Chrome captures showed the local Phi responses while Wi-Fi was off. No raw responses or captures were committed. |
+| Git and evidence review | Text and image/PDF content are separate checks | `dataset/`, `outputs/`, and `.env` files are untracked; local dataset/cache permissions are owner-only. Tracked text scan found no match for the tested credential, email or real home-directory path patterns. Older tracked screenshot/PDF/text evidence contains CES-derived single-person summaries, despite the local-demo procedure's no-screenshot rule. This is a publication hold, not a direct-identifier finding. |
+
+**Decision:** Sign-off is **given for the tested local Phi demo runtime only**.
+Repository evidence publication remains **on hold** pending reconciliation of
+the previously approved UI screenshots with the stricter written privacy
+procedure and a decision on redaction/history cleanup. No approval for real
+users, user-account access, Qwen comparison, whole-device offline guarantees,
+or future code/model changes. The browser was not process-sandboxed, the public
+probe did not cover every interface, and this run did not independently scan
+all new library log lines. Full assumptions, findings and follow-up are in
+`docs/privacy/week10-local-demo-privacy-signoff.md`; redacted machine-readable
+results are in
+`benchmarks/history/privacy_security/2026-10-17_week10-local-demo-signoff.json`.
+
 ## SLM Latency Run History
 
 `benchmarks/slm_latency_results.json` remains the stable latest-result file.
