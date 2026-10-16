@@ -41,9 +41,14 @@ bootstrap SE estimates independently agree after BH-FDR control over the
 cohort family (section 2.2). No rule is added here; the label is used as
 computed. The bootstrap itself is never run from a request.
 
-Fail closed: no R engine, a missing, stale, unreadable, malformed or not
-owner-only cache, or a participant without a row all leave the packet at
-`no_claim` (no comparison value). Nothing is guessed and nothing raises to
+Engines: when R is usable in this process the R-built cache is read first;
+the Python-built cache (`bootstrap.ENGINE_PYTHON`, same model, method, B and
+seed) is read when R is not usable, or when no R-built cache exists. Its
+fingerprint does not depend on R, so it works on machines without R.
+
+Fail closed: a missing, stale, unreadable, malformed or not owner-only
+cache, or a participant without a row all leave the packet at `no_claim`
+(no comparison value). Nothing is guessed and nothing raises to
 the caller. The non-bootstrapped per-request fit (`slope_se=None`, which
 could only ever produce `insufficient`) is no longer run.
 
@@ -89,7 +94,7 @@ from backend.contracts.evidence import (
     UncertaintyReasons,
 )
 from backend.data_pipeline.ces_eligibility import make_pseudonymizer
-from backend.statistics import bootstrap_cache, r_bridge
+from backend.statistics import bootstrap, bootstrap_cache, r_bridge
 from backend.statistics.eligibility import (
     ColdStartState,
     classify_state,
@@ -108,9 +113,9 @@ logger = logging.getLogger(__name__)
 # Where the B=500 aggregated cache lives (git-ignored, owner-only). A module
 # attribute so tests can point it at a temporary directory.
 BOOTSTRAP_CACHE_ROOT = bootstrap_cache.CACHE_ROOT
-# The engine name the cached run records (`fit_ar1_effect`'s R path); part of
-# the cache fingerprint, so any other engine reads as stale and fails closed.
-BOOTSTRAP_ENGINE = "R (nlme::lme + corAR1)"
+# Engine names the cached runs record (part of each cache's fingerprint).
+BOOTSTRAP_ENGINE = bootstrap.ENGINE_R
+BOOTSTRAP_ENGINE_PYTHON = bootstrap.ENGINE_PYTHON
 # Preregistration section 5.1: the deviation is undefined with fewer than 7
 # valid days in the recent window, or a zero baseline SD.
 MIN_RECENT_DAYS_FOR_DEVIATION = 7
@@ -325,17 +330,26 @@ def _evidence_table(feature_id: str) -> _EvidenceTable:
     return _EVIDENCE_TABLE_CACHE[feature_id]
 
 
+def _cache_engines() -> tuple[str, ...]:
+    """R-built cache first when R is usable (its fingerprint records the R and
+    nlme versions, so it is only valid where R loads); the Python-built cache
+    otherwise, or when no R-built cache exists."""
+    if r_bridge.r_bridge_available():
+        return (BOOTSTRAP_ENGINE, BOOTSTRAP_ENGINE_PYTHON)
+    return (BOOTSTRAP_ENGINE_PYTHON,)
+
+
 def _load_evidence_table(feature_id: str) -> _EvidenceTable:
-    if not r_bridge.r_bridge_available():
-        # The cache fingerprint records the R/nlme versions; without R it can
-        # only read as stale, so skip the read and report why.
-        return _EvidenceTable(None, "per-person evidence unavailable: R engine not usable in this process")
     meta = _FEATURES[feature_id]
     try:
         frame = build_model_frame(_cleaned_sensing(feature_id), _ema(), feature_spec=meta.spec)
-        cached = bootstrap_cache.load_aggregated_cache(
-            meta.spec, frame, engine=BOOTSTRAP_ENGINE, cache_root=BOOTSTRAP_CACHE_ROOT
-        )
+        cached = None
+        for engine in _cache_engines():
+            cached = bootstrap_cache.load_aggregated_cache(
+                meta.spec, frame, engine=engine, cache_root=BOOTSTRAP_CACHE_ROOT
+            )
+            if cached is not None:
+                break
     except Exception as exc:  # noqa: BLE001 - fail closed; stale, unreadable or permission errors alike
         # Exception type only: messages can carry local paths.
         logger.warning("event=bootstrap_cache_unusable feature=%s error=%s", feature_id, type(exc).__name__)

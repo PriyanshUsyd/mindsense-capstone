@@ -206,10 +206,45 @@ def loader(monkeypatch):
     return monkeypatch
 
 
-def test_no_r_engine_skips_the_cache(monkeypatch):
-    monkeypatch.setattr(pe, "_EVIDENCE_TABLE_CACHE", {})
-    monkeypatch.setattr(pe.r_bridge, "r_bridge_available", lambda: False)
-    assert pe._evidence_table("gps_distance").table is None
+def _record_engines(loader, results):
+    tried = []
+
+    def load(spec, frame, *, engine, cache_root):
+        tried.append(engine)
+        return results.get(engine)
+
+    loader.setattr(pe.bootstrap_cache, "load_aggregated_cache", load)
+    return tried
+
+
+def test_without_r_only_the_python_cache_is_read(loader):
+    loader.setattr(pe.r_bridge, "r_bridge_available", lambda: False)
+    cached = bootstrap_cache.AggregatedCache("0" * 64, 500, pd.DataFrame(), _table(), {})
+    tried = _record_engines(loader, {pe.BOOTSTRAP_ENGINE_PYTHON: cached})
+    assert pe._evidence_table("gps_distance").table is not None
+    assert tried == [pe.BOOTSTRAP_ENGINE_PYTHON]
+
+
+def test_with_r_the_r_cache_is_read_first(loader):
+    cached = bootstrap_cache.AggregatedCache("0" * 64, 500, pd.DataFrame(), _table(), {})
+    tried = _record_engines(loader, {pe.BOOTSTRAP_ENGINE: cached})
+    assert pe._evidence_table("gps_distance").table is not None
+    assert tried == [pe.BOOTSTRAP_ENGINE]
+
+
+def test_with_r_but_no_r_cache_the_python_cache_is_used(loader):
+    cached = bootstrap_cache.AggregatedCache("0" * 64, 500, pd.DataFrame(), _table(), {})
+    tried = _record_engines(loader, {pe.BOOTSTRAP_ENGINE_PYTHON: cached})
+    assert pe._evidence_table("gps_distance").table is not None
+    assert tried == [pe.BOOTSTRAP_ENGINE, pe.BOOTSTRAP_ENGINE_PYTHON]
+
+
+def test_no_cache_for_either_engine_fails_closed(loader):
+    tried = _record_engines(loader, {})
+    result = pe._evidence_table("gps_distance")
+    assert result.table is None
+    assert result.unavailable_reason == "per-person evidence unavailable: no bootstrap cache"
+    assert tried == [pe.BOOTSTRAP_ENGINE, pe.BOOTSTRAP_ENGINE_PYTHON]
 
 
 @pytest.mark.parametrize(

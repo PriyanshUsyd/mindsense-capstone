@@ -3,7 +3,9 @@ Cache for the per-person bootstrap SE (`backend.statistics.bootstrap`) —
 design: `docs/statistics/week7-calibration-concerns.md` item 2, decisions
 a-d, plus the changes listed there under "Implementation status".
 
-Layout, per feature, under `outputs/bootstrap_cache/<feature>/` (gitignored;
+Layout, per feature, under `outputs/bootstrap_cache/<feature>/` for the R
+engine and `outputs/bootstrap_cache/python/<feature>/` for the Python engine
+(`bootstrap.ENGINE_R` / `ENGINE_PYTHON`; both gitignored —
 `docs/privacy/local-demo-privacy-check.md`: per-person bootstrap rows are
 never committed):
 
@@ -25,7 +27,10 @@ entry changed, and the error message must).
                   (`ESTIMATION_CODE_FILES`). Needed because layer A cannot
                   see the simulation, the R model formula or `lmeControl`.
   C. environment  Python/R/package versions, plus the run configuration
-     and config   (feature, transform, master_seed, B, engine, ...).
+     and config   (feature, transform, master_seed, B, engine, ...). The
+                  Python engine records only Python, NumPy, SciPy and pandas
+                  (R is not involved), so its cache stays valid whether or
+                  not R is installed where it is read.
 
 The aggregated layer's key = every raw key (prefixed `raw.`) + the content
 hash of `evidence.py` + the evidence-classification thresholds, so a change
@@ -59,7 +64,8 @@ error is deliberately *not* a `BootstrapCacheError` (it is not a cache
 mismatch and must not be handled as one).
 
 Run (after committing; real dataset required):
-  python -m backend.statistics.bootstrap_cache loc_dist_ep_0
+  python -m backend.statistics.bootstrap_cache --all              # R if usable, else Python
+  python -m backend.statistics.bootstrap_cache loc_dist_ep_0 --engine python
 """
 
 from __future__ import annotations
@@ -110,6 +116,7 @@ ESTIMATION_CODE_FILES: tuple[str, ...] = (
     "backend/statistics/bootstrap.py",  # simulation, resampling, seeds
     "backend/statistics/mixed_effects_model.py",  # fit_ar1_effect, build_model_frame, windows
     "backend/statistics/r_bridge.py",  # nlme formula, lmeControl, BLUP/D extraction
+    "backend/statistics/lme_ar1_python.py",  # Python engine: REML criterion, optimiser, BLUP/D
     "backend/statistics/feature_specs.py",  # transform + clean_fn per feature
     "backend/data_pipeline/cleaning.py",  # quality gate, thresholds, offsets
     "backend/data_pipeline/gps_distance_feature.py",
@@ -174,8 +181,12 @@ def model_frame_digest(frame: pd.DataFrame) -> dict[str, object]:
     }
 
 
-def environment_versions() -> dict[str, str]:
+def environment_versions(engine: str = bootstrap.ENGINE_R) -> dict[str, str]:
     versions = {"python": sys.version.split()[0]}
+    if engine == bootstrap.ENGINE_PYTHON:
+        for dist in ("numpy", "scipy", "pandas"):
+            versions[dist] = importlib.metadata.version(dist)
+        return versions
     for dist in ("numpy", "scipy", "pandas", "statsmodels", "rpy2"):
         try:
             versions[dist] = importlib.metadata.version(dist)
@@ -211,7 +222,7 @@ def raw_key_dict(
         keys[f"input.{k}"] = v
     for rel in ESTIMATION_CODE_FILES:
         keys[f"code.{rel}"] = _sha256_source(repo_root / rel)
-    for k, v in (environment if environment is not None else environment_versions()).items():
+    for k, v in (environment if environment is not None else environment_versions(engine)).items():
         keys[f"env.{k}"] = v
     keys.update(
         {
@@ -334,7 +345,8 @@ def _verify_existing_cache(d: Path, cache_root: Path, files: Sequence[str]) -> N
     """Fail-closed check for a cache that already exists on disk (read, or
     resume): directories and uid-bearing files must be owner-only. Not
     owner-only -> one attempt to restrict -> `PermissionRestrictionError`."""
-    for directory in (cache_root, d):
+    between = [cache_root / q for q in reversed(d.relative_to(cache_root).parents[:-1])]
+    for directory in (cache_root, *between, d):
         if directory.is_dir():
             ensure_owner_only(directory, is_dir=True)
     for name in files:
@@ -343,8 +355,19 @@ def _verify_existing_cache(d: Path, cache_root: Path, files: Sequence[str]) -> N
             ensure_private_file(f)
 
 
-def cache_dir(feature: str, cache_root: Path = CACHE_ROOT) -> Path:
+def cache_dir(feature: str, cache_root: Path = CACHE_ROOT, engine: str = bootstrap.ENGINE_R) -> Path:
+    """R engine: `<root>/<feature>` (the original layout); Python engine:
+    `<root>/python/<feature>`, so the two caches never overwrite each other."""
+    if engine == bootstrap.ENGINE_PYTHON:
+        return cache_root / "python" / feature
     return cache_root / feature
+
+
+def _private_cache_dirs(d: Path, cache_root: Path) -> None:
+    private_dir(cache_root)
+    for parent in reversed(d.relative_to(cache_root).parents[:-1]):
+        private_dir(cache_root / parent)
+    private_dir(d)
 
 
 # ---------------------------------------------------------------------------
@@ -366,7 +389,7 @@ def prepare_raw_checkpoint(
     `BootstrapCacheStale` (never mix legs of different code states).
     Checkpoint without a sidecar: refused (unknown provenance). Nothing
     there yet: requires a clean tree, then writes the sidecar first."""
-    d = cache_dir(feature, cache_root)
+    d = cache_dir(feature, cache_root, str(raw_keys["config.engine"]))
     checkpoint = d / RAW_CHECKPOINT_NAME
     sidecar = d / RAW_FINGERPRINT_NAME
     current = make_fingerprint(raw_keys)
@@ -388,8 +411,7 @@ def prepare_raw_checkpoint(
         )
 
     assert_clean_for_write(ESTIMATION_CODE_FILES, repo_root, git_status)
-    private_dir(cache_root)
-    private_dir(d)
+    _private_cache_dirs(d, cache_root)
     _write_json_atomic(sidecar, current)
     checkpoint.touch()
     restrict_to_owner(checkpoint, is_dir=False)
@@ -460,9 +482,8 @@ def write_aggregated_cache(
 ) -> Path:
     assert_clean_for_write((*ESTIMATION_CODE_FILES, *AGGREGATION_CODE_FILES), repo_root, git_status)
     se, intersection, summaries = aggregate_checkpoint(feature, real_fit, records, n_iterations)
-    d =cache_dir(feature, cache_root)
-    private_dir(cache_root)
-    private_dir(d)
+    d = cache_dir(feature, cache_root, str(raw_keys["config.engine"]))
+    _private_cache_dirs(d, cache_root)
     path = d / AGGREGATED_NAME
     _write_json_atomic(
         path,
@@ -493,7 +514,7 @@ def load_aggregated_cache(
     and `BootstrapCacheError` if the file is unreadable; an existing cache
     that is not owner-only is restricted, or `PermissionRestrictionError`.
     Compares hashes only — no git involved."""
-    path = cache_dir(spec.name, cache_root) / AGGREGATED_NAME
+    path = cache_dir(spec.name, cache_root, engine) / AGGREGATED_NAME
     if not path.exists():
         return None
     _verify_existing_cache(path.parent, cache_root, (AGGREGATED_NAME,))
@@ -539,10 +560,12 @@ def run_and_cache(
     n_workers: int = 6,
     maxtasksperchild: int | None = 20,
     cache_root: Path = CACHE_ROOT,
+    engine: str = "auto",
 ) -> Path:
     """Fit the real model, (resume and) run both bootstrap methods into the
-    fingerprinted raw checkpoint, then write the aggregated cache."""
-    real_fit = bootstrap.fit_real_model(prepared_source_frame)
+    fingerprinted raw checkpoint, then write the aggregated cache.
+    `engine`: `"auto"` (R if usable, else Python), `"r"` or `"python"`."""
+    real_fit = bootstrap.fit_real_model(prepared_source_frame, engine=engine)
     raw_keys = raw_key_dict(
         real_fit.model_frame,
         spec,
@@ -572,16 +595,26 @@ def main(argv: list[str] | None = None) -> None:
     from backend.statistics.mixed_effects_model import build_model_frame
 
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    parser.add_argument("feature", choices=sorted(TIER1_FEATURE_SPECS))
+    parser.add_argument("feature", nargs="*", choices=sorted(TIER1_FEATURE_SPECS))
+    parser.add_argument("--all", action="store_true", help="build every Tier-1 feature")
+    parser.add_argument("--engine", choices=("auto", "r", "python"), default="auto")
     parser.add_argument("--workers", type=int, default=6)
     parser.add_argument("--maxtasksperchild", type=int, default=20)
     args = parser.parse_args(argv)
+    features = sorted(TIER1_FEATURE_SPECS) if args.all else args.feature
+    if not features:
+        parser.error("name a feature or pass --all")
 
-    spec = TIER1_FEATURE_SPECS[args.feature]
+    engine = bootstrap.resolve_engine(args.engine)
+    print(f"engine: {engine}")
     sensing, ema = tier1_runner.load_sensing_and_ema()
-    frame = build_model_frame(spec.clean_fn(sensing), ema, spec)
-    path = run_and_cache(spec, frame, n_workers=args.workers, maxtasksperchild=args.maxtasksperchild)
-    print(f"wrote {path}")
+    for feature in features:
+        spec = TIER1_FEATURE_SPECS[feature]
+        frame = build_model_frame(spec.clean_fn(sensing), ema, spec)
+        path = run_and_cache(
+            spec, frame, n_workers=args.workers, maxtasksperchild=args.maxtasksperchild, engine=engine
+        )
+        print(f"wrote {path}")
 
 
 if __name__ == "__main__":

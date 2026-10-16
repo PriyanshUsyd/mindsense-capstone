@@ -255,8 +255,9 @@ def test_simulate_parametric_outcome_varies_across_seeds():
 
 def test_fit_real_model_raises_without_r_backed_blups(monkeypatch):
     """Mirrors evidence.extract_person_slopes's own guard: bootstrapping
-    needs real per-person BLUPs and variance components, which only the R
-    engine provides — must fail loudly, not silently, if that's missing."""
+    needs real per-person BLUPs and variance components, which the GEE
+    fallback of `fit_ar1_effect` does not provide — the R engine must fail
+    loudly, not silently, if that's what it gets."""
     gee_like = Ar1EffectResult(
         engine="GEE (Python fallback, population-averaged, R unavailable in this environment)",
         ar1_coefficient=0.0,
@@ -279,7 +280,7 @@ def test_fit_real_model_raises_without_r_backed_blups(monkeypatch):
         }
     )
     with pytest.raises(ValueError, match="real BLUPs"):
-        bootstrap.fit_real_model(frame)
+        bootstrap.fit_real_model(frame, engine="r")
 
 
 @requires_r
@@ -360,3 +361,62 @@ def test_run_bootstrap_serial_b10_both_methods(tmp_path):
     draws = bootstrap.collect_person_slope_draws(records, "parametric")
     se_df = bootstrap.per_person_se(draws)
     assert len(se_df) > 0
+
+
+# ---------------------------------------------------------------------------
+# Python engine (no R needed)
+# ---------------------------------------------------------------------------
+
+
+def test_resolve_engine(monkeypatch):
+    monkeypatch.setattr(bootstrap.r_bridge, "r_bridge_available", lambda: False)
+    assert bootstrap.resolve_engine("auto") == bootstrap.ENGINE_PYTHON
+    monkeypatch.setattr(bootstrap.r_bridge, "r_bridge_available", lambda: True)
+    assert bootstrap.resolve_engine("auto") == bootstrap.ENGINE_R
+    assert bootstrap.resolve_engine("python") == bootstrap.ENGINE_PYTHON
+    assert bootstrap.resolve_engine("r") == bootstrap.ENGINE_R
+    assert bootstrap.resolve_engine(bootstrap.ENGINE_PYTHON) == bootstrap.ENGINE_PYTHON
+    with pytest.raises(ValueError):
+        bootstrap.resolve_engine("gee")
+
+
+@pytest.fixture(scope="module")
+def python_real_fit():
+    frame = _synthetic_frame_with_dates(n_people=30, n_occasions=15, seed=4)
+    return bootstrap.fit_real_model(frame, engine="python")
+
+
+def test_python_engine_real_fit_has_blups_and_variance_components(python_real_fit):
+    result = python_real_fit.ar1_result
+    assert result.engine == bootstrap.ENGINE_PYTHON
+    assert result.blups is not None and result.sigma > 0
+    assert set(result.random_effects_cov) <= {"Intercept", "x_within"}
+
+
+def test_python_engine_serial_run_is_reproducible(python_real_fit, tmp_path):
+    def run(path):
+        config = bootstrap.BootstrapRunConfig(master_seed=7, n_iterations=3, checkpoint_path=path)
+        return {(r["method"], r["iteration_index"]): r for r in bootstrap.run_bootstrap_serial(python_real_fit, config)}
+
+    first, second = run(tmp_path / "a.jsonl"), run(tmp_path / "b.jsonl")
+    assert len(first) == 6 and {m for m, _ in first} == {"parametric", "cluster"}
+    for key, rec in first.items():
+        assert rec["error"] is None
+        assert rec["seed"] == bootstrap.derive_seed(7, key[0], key[1])
+        assert rec["beta"] == second[key]["beta"]
+        assert rec["blups"] == second[key]["blups"]
+
+
+@requires_r
+def test_engines_give_the_same_replicate_for_the_same_seed():
+    frame = _synthetic_frame_with_dates(n_people=30, n_occasions=15, seed=5)
+    fits = {e: bootstrap.fit_real_model(frame, engine=e) for e in ("r", "python")}
+    seed = bootstrap.derive_seed(11, "cluster", 0)
+    recs = {
+        e: bootstrap._run_cluster_iteration(
+            0, seed, f.model_frame, f.outcome_col, f.uid_col, f.date_col, f.fixed_effect_names, f.ar1_result.engine
+        )
+        for e, f in fits.items()
+    }
+    assert recs["r"]["selection_counts"] == recs["python"]["selection_counts"]
+    assert recs["python"]["beta"]["x_within"] == pytest.approx(recs["r"]["beta"]["x_within"], rel=1e-4, abs=1e-6)

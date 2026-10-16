@@ -34,8 +34,18 @@ Implements both bootstrap designs agreed for comparison:
     source participant's real covariate values unchanged (the standard
     case-resampling bootstrap — resample clusters, not their covariates).
 
-Both methods require the R `nlme` engine (`fit_ar1_effect`'s primary
-path): there is no per-person BLUP to bootstrap from the GEE fallback.
+Both methods need a mixed-model fit with real per-person BLUPs and
+variance components. Two engines fit the same model (`corAR1` by occasion
+index, random intercept and slope on `x_within`, REML):
+
+  - `ENGINE_R`: R `nlme::lme` via `fit_ar1_effect`'s primary path;
+  - `ENGINE_PYTHON`: `backend.statistics.lme_ar1_python`, NumPy/SciPy only.
+
+`resolve_engine("auto")` picks R when `r_bridge.r_bridge_available()`, and
+the Python engine otherwise. The real fit and every replicate use the same
+engine; seeds, simulation and resampling are identical for both, so the two
+engines differ only in the optimiser that maximises the same REML criterion.
+The GEE fallback of `fit_ar1_effect` has no BLUPs and is never used here.
 
 Parallelisation is process-based (R/rpy2 is not thread-safe, and only one
 R can be embedded safely per OS process — see `r_bridge.py`'s own
@@ -72,11 +82,62 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 
-from backend.statistics import r_bridge
+from backend.statistics import lme_ar1_python, r_bridge
 from backend.statistics.evidence import X_WITHIN_TERM, PersonSlope
 from backend.statistics.mixed_effects_model import Ar1EffectResult, fit_ar1_effect
 
 INTERCEPT_TERM = "Intercept"
+ENGINE_R = "R (nlme::lme + corAR1)"
+ENGINE_PYTHON = lme_ar1_python.ENGINE_NAME
+ENGINE_CHOICES = {"r": ENGINE_R, "python": ENGINE_PYTHON}
+
+
+def resolve_engine(engine: str = "auto") -> str:
+    """`"auto"` -> R when it is usable in this process, else Python; `"r"` /
+    `"python"` (or a full engine name) select one explicitly."""
+    if engine == "auto":
+        return ENGINE_R if r_bridge.r_bridge_available() else ENGINE_PYTHON
+    if engine in ENGINE_CHOICES:
+        return ENGINE_CHOICES[engine]
+    if engine in ENGINE_CHOICES.values():
+        return engine
+    raise ValueError(f"unknown bootstrap engine: {engine!r}")
+
+
+def _fit_ar1(
+    data: pd.DataFrame,
+    outcome_col: str,
+    uid_col: str,
+    date_col: str,
+    extra_fixed_effects: list[str],
+    engine: str,
+) -> Ar1EffectResult:
+    """One fit of the bootstrap model with the given engine."""
+    if engine == ENGINE_PYTHON:
+        fixed_effect_names = ["x_within", "x_between", *extra_fixed_effects]
+        clean = data.dropna(subset=[outcome_col, date_col, *fixed_effect_names])
+        py = lme_ar1_python.fit_lme_ar1(clean, outcome_col, fixed_effect_names, uid_col)
+        return Ar1EffectResult(
+            engine=ENGINE_PYTHON,
+            ar1_coefficient=py.ar1_phi,
+            used_random_slope=py.used_random_slope,
+            fallback_reason=py.fallback_reason,
+            n_observations=py.n_observations,
+            n_groups=py.n_groups,
+            params=py.params,
+            pvalues=py.pvalues,
+            blups=py.blups,
+            sigma=py.sigma,
+            random_effects_cov=py.random_effects_cov,
+        )
+    return fit_ar1_effect(
+        data,
+        outcome_col=outcome_col,
+        uid_col=uid_col,
+        date_col=date_col,
+        extra_fixed_effects=extra_fixed_effects or None,
+        prefer_r=True,
+    )
 
 BootstrapMethod = Literal["parametric", "cluster"]
 _METHOD_IDS = {"parametric": 0, "cluster": 1}
@@ -276,9 +337,10 @@ def fit_real_model(
     uid_col: str = "uid",
     date_col: str = "date",
     extra_fixed_effects: list[str] | None = None,
+    engine: str = "auto",
 ) -> RealFit:
-    """Fits the real AR(1) model once (via `fit_ar1_effect`, R primary
-    path required) and sorts the model frame by `[uid_col, date_col]` —
+    """Fits the real AR(1) model once with `engine` (see `resolve_engine`;
+    a model with real BLUPs is required) and sorts the model frame by `[uid_col, date_col]` —
     every bootstrap replicate below assumes that row order already
     matches occasion order per person, since `corAR1(form = ~ 1 |
     uid_col)` itself has no explicit time covariate and relies on row
@@ -288,19 +350,12 @@ def fit_real_model(
 
     data = prepare_model_frame(model_frame, outcome_col, uid_col, date_col, extra_fixed_effects)
 
-    ar1_result = fit_ar1_effect(
-        data,
-        outcome_col=outcome_col,
-        uid_col=uid_col,
-        date_col=date_col,
-        extra_fixed_effects=extra_fixed_effects or None,
-        prefer_r=True,
-    )
+    ar1_result = _fit_ar1(data, outcome_col, uid_col, date_col, extra_fixed_effects, resolve_engine(engine))
     if ar1_result.blups is None or ar1_result.sigma is None or ar1_result.random_effects_cov is None:
         raise ValueError(
-            "bootstrap requires the R nlme::lme engine's real BLUPs and variance "
-            f"components (got engine={ar1_result.engine!r}); R/rpy2/nlme must be "
-            "usable here — see docs/statistics/r-bridge-setup.md"
+            "bootstrap requires a mixed-model fit with real BLUPs and variance "
+            f"components (got engine={ar1_result.engine!r}); use engine='python' "
+            "or make R/rpy2/nlme usable — see docs/statistics/r-bridge-setup.md"
         )
 
     return RealFit(
@@ -364,6 +419,7 @@ def _fit_bootstrap_replicate(
     uid_col: str,
     date_col: str,
     fixed_effect_names: list[str],
+    engine: str = ENGINE_R,
 ) -> dict:
     """Refits one bootstrap replicate and extracts exactly what's needed
     for the per-person slope draw. Never raises: any hard R/fit failure
@@ -373,14 +429,7 @@ def _fit_bootstrap_replicate(
     caller can exclude this replicate rather than the whole run dying."""
     extra_fixed_effects = [t for t in fixed_effect_names if t not in ("x_within", "x_between")]
     try:
-        result = fit_ar1_effect(
-            sim_frame,
-            outcome_col=outcome_col,
-            uid_col=uid_col,
-            date_col=date_col,
-            extra_fixed_effects=extra_fixed_effects or None,
-            prefer_r=True,
-        )
+        result = _fit_ar1(sim_frame, outcome_col, uid_col, date_col, extra_fixed_effects, engine)
     except Exception as exc:  # noqa: BLE001 - isolate this one replicate's failure, see docstring
         return {"error": f"{type(exc).__name__}: {exc}"}
 
@@ -457,6 +506,7 @@ def _run_parametric_iteration(
     random_effects_cov: dict[str, dict[str, float]],
     sigma: float,
     phi: float,
+    engine: str = ENGINE_R,
 ) -> dict:
     t0 = time.time()
     rng = np.random.default_rng(seed)
@@ -466,7 +516,7 @@ def _run_parametric_iteration(
         sim_frame[outcome_col] = _simulate_parametric_outcome(
             data, uid_col, fixed_effect_names, beta, random_effects_cov, sigma, phi, rng
         )
-        fit_result = _fit_bootstrap_replicate(sim_frame, outcome_col, uid_col, date_col, fixed_effect_names)
+        fit_result = _fit_bootstrap_replicate(sim_frame, outcome_col, uid_col, date_col, fixed_effect_names, engine)
 
     return _finalize_iteration_record(
         "parametric", iteration_index, seed, fit_result, time.time() - t0, peak_rss_mb=peak[0]
@@ -481,6 +531,7 @@ def _run_cluster_iteration(
     uid_col: str,
     date_col: str,
     fixed_effect_names: list[str],
+    engine: str = ENGINE_R,
 ) -> dict:
     t0 = time.time()
     rng = np.random.default_rng(seed)
@@ -500,7 +551,7 @@ def _run_cluster_iteration(
             parts.append(group)
         resampled = pd.concat(parts, ignore_index=True)
 
-        fit_result = _fit_bootstrap_replicate(resampled, outcome_col, uid_col, date_col, fixed_effect_names)
+        fit_result = _fit_bootstrap_replicate(resampled, outcome_col, uid_col, date_col, fixed_effect_names, engine)
 
     selection_counts = pd.Series(draws).value_counts().astype(int).to_dict()
     selection_counts = {str(k): int(v) for k, v in selection_counts.items()}
@@ -565,6 +616,7 @@ def _worker_init(
     random_effects_cov: dict[str, dict[str, float]],
     sigma: float,
     phi: float,
+    engine: str = ENGINE_R,
 ) -> None:
     """Pool(initializer=...): runs once per worker process before it
     takes any task. Warms up R/rpy2 + lme4/lmerTest/pbkrtest/nlme here
@@ -574,8 +626,10 @@ def _worker_init(
     process-global state so each task only needs to ship a tiny
     `(method, iteration_index, seed)` tuple."""
     global _WORKER_STATE
-    r_bridge.r_bridge_available()
+    if engine == ENGINE_R:
+        r_bridge.r_bridge_available()
     _WORKER_STATE = {
+        "engine": engine,
         "data": model_frame,
         "outcome_col": outcome_col,
         "uid_col": uid_col,
@@ -594,12 +648,12 @@ def _worker_task(task: tuple[str, int, int]) -> dict:
     if method == "parametric":
         return _run_parametric_iteration(
             iteration_index, seed, st["data"], st["outcome_col"], st["uid_col"], st["date_col"],
-            st["fixed_effect_names"], st["beta"], st["random_effects_cov"], st["sigma"], st["phi"],
+            st["fixed_effect_names"], st["beta"], st["random_effects_cov"], st["sigma"], st["phi"], st["engine"],
         )
     if method == "cluster":
         return _run_cluster_iteration(
             iteration_index, seed, st["data"], st["outcome_col"], st["uid_col"], st["date_col"],
-            st["fixed_effect_names"],
+            st["fixed_effect_names"], st["engine"],
         )
     raise ValueError(f"unknown bootstrap method: {method!r}")
 
@@ -662,11 +716,12 @@ def run_bootstrap_serial(real_fit: RealFit, config: BootstrapRunConfig) -> list[
             record = _run_parametric_iteration(
                 iteration_index, seed, real_fit.model_frame, real_fit.outcome_col, real_fit.uid_col,
                 real_fit.date_col, real_fit.fixed_effect_names, beta, random_effects_cov, sigma, phi,
+                real_fit.ar1_result.engine,
             )
         else:
             record = _run_cluster_iteration(
                 iteration_index, seed, real_fit.model_frame, real_fit.outcome_col, real_fit.uid_col,
-                real_fit.date_col, real_fit.fixed_effect_names,
+                real_fit.date_col, real_fit.fixed_effect_names, real_fit.ar1_result.engine,
             )
         append_record(config.checkpoint_path, record)
 
@@ -697,7 +752,7 @@ def run_bootstrap_parallel(real_fit: RealFit, config: BootstrapRunConfig) -> lis
         initializer=_worker_init,
         initargs=(
             real_fit.model_frame, real_fit.outcome_col, real_fit.uid_col, real_fit.date_col,
-            real_fit.fixed_effect_names, beta, random_effects_cov, sigma, phi,
+            real_fit.fixed_effect_names, beta, random_effects_cov, sigma, phi, real_fit.ar1_result.engine,
         ),
         maxtasksperchild=config.maxtasksperchild,
     ) as pool:
