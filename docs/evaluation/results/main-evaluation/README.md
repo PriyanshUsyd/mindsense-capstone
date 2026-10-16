@@ -1,9 +1,32 @@
 # Main-Evaluation Results Format
 
-All `ME-P01`–`ME-P04` questionnaire ratings go in
-`session-responses.csv`. Use one row per session, question and questionnaire
-category. Do not put teammate names in the CSV; use evaluator codes such as
-`ME-P01-E1` and `ME-P01-E2`.
+The main evaluation ran as **3 sessions (S1, S2, S3), all 8 team members
+present at each**, rating every answer by **group consensus** (n = 8). See the
+[roster](../../week8-main-evaluation-roster.md). Its results are in
+`session-responses.csv`: **one row per session and question (12 rows)**. Do not
+put teammate names in the CSV.
+
+## How the consensus rows are recorded
+
+The format below was written for individual per-category ratings. The team
+rated by consensus instead, so each row records:
+
+- `evaluator_code` = `group consensus, n = 8`;
+- `category` = `overall_consensus` (one consensus verdict per answer, not one
+  row per questionnaire dimension);
+- `item_scores` = `consensus pass – no individual scores`;
+- verdict, date, machine and any re-run note in `notes`.
+
+Because there are no individual item scores, the per-item median/range output
+of `scripts/summarize_session_responses.py` does not apply to these rows.
+`architecture_variant` is `rag` because the Ollama runtime defaults to the RAG
+variant and the UI does not send another (`backend/api/app.py`; release
+checklist decision of 2026-10-08).
+
+## Format for individual ratings (if used again)
+
+Use one row per session, question and questionnaire category, with evaluator
+codes such as `S1-E1` and `S1-E2`.
 
 ## Required conventions
 
@@ -28,25 +51,22 @@ category. Do not put teammate names in the CSV; use evaluator codes such as
 - Use the exact backend values for `response_mode` and `rejection_reason`.
 - `architecture_variant` must identify the actual build as `base`, `rag`,
   `agentic` or `rag_agent`. Do not infer a variant from the wording alone.
-- All rows in this round use the RC rc-eval-2 (`d31e05db5560d3cfe109642c4e5675be5d68cb3a`: merge commit of `priyansh-fix-50q`, policy 0.3.3), which replaced rc-eval-1 after ME-P01 attempt 1.
-  Record its full SHA in `commit_sha`.
+- All rows in this round record rc-eval-2 (`d31e05db5560d3cfe109642c4e5675be5d68cb3a`, policy 0.3.3), which replaced rc-eval-1. The 16 Oct S2/S3 re-runs did not record their checkout; the backend is identical to rc-eval-2 on every main commit through `3f49939` (see the roster), and their `notes` say so.
 - `evidence_path` points to the saved question directory under
   `docs/evaluation/evidence/main-evaluation/`.
 
 Example only (do not copy it as a result):
 
 ```csv
-ME-P01,Q1,ME-P01-E1,accuracy_faithfulness,A1=4;A2=5;A3=No,No,none,,uncertainty,,base,<rc-eval-2 SHA>,phi4-mini:3.8b,<recorded prompt version>,<recorded policy version>,docs/evaluation/evidence/main-evaluation/ME-P01/Q1/,Example format only
+S1,Q1,S1-E1,accuracy_faithfulness,A1=4;A2=5;A3=No,No,none,,uncertainty,,base,<rc-eval-2 SHA>,phi4-mini:3.8b,<recorded prompt version>,<recorded policy version>,docs/evaluation/evidence/main-evaluation/<session folder>/Q1/,Example format only
 ```
 
-Evaluator is the confirmed unit: each evaluator writes their own `SESSION`
-row, two per session, per the [pair-session guide](../../pair-session-guide.md)
-(confirmed by the Integration & QA Lead, 2026-10-10). `--unit session` is kept
-for sensitivity only.
-
-The raw item values remain in the CSV. Moe's summary reports the valid
-denominator, median and range per item or dimension, excludes `N/A` from the
-denominator, and reports critical failures separately.
+For individual ratings the evaluator is the unit (two `SESSION` rows per pair
+session in the original [pair-session guide](../../pair-session-guide.md));
+`--unit session` is kept for sensitivity only. The statistics summary reports
+the valid denominator, median and range per item or dimension, excludes `N/A`
+from the denominator, and reports critical failures separately. None of this
+applies to the consensus rows of this round.
 
 ## Summary script build check
 

@@ -24,11 +24,11 @@ ICACLS_BEFORE = (
     "                  S-1-5-21-0000000000-0000000000-0000000000-1001:(I)(OI)(CI)(M,DC)\n"
     "                  NT AUTHORITY\\SYSTEM:(I)(OI)(CI)(F)\n"
     "                  BUILTIN\\Administrators:(I)(OI)(CI)(F)\n"
-    "                  SANDBOX\\[redacted]:(I)(OI)(CI)(F)\n"
+    "                  HOST01\\exampleuser:(I)(OI)(CI)(F)\n"
     "\n"
     "1 個のファイルが正常に処理されました\n"
 )
-ICACLS_AFTER = "outputs\\tier1\\x  SANDBOX\\[redacted]:(OI)(CI)(F)\n\nSuccessfully processed 1 files\n"
+ICACLS_AFTER = "outputs\\tier1\\x  HOST01\\exampleuser:(OI)(CI)(F)\n\nSuccessfully processed 1 files\n"
 
 
 def test_parse_icacls_reads_every_ace_and_ignores_the_status_line():
@@ -38,19 +38,19 @@ def test_parse_icacls_reads_every_ace_and_ignores_the_status_line():
         "S-1-5-21-0000000000-0000000000-0000000000-1001",
         "NT AUTHORITY\\SYSTEM",
         "BUILTIN\\Administrators",
-        "SANDBOX\\[redacted]",
+        "HOST01\\exampleuser",
     ]
     assert aces[0][1] == ["I", "OI", "CI", "M,DC"]
 
 
 def test_acl_with_other_principals_is_not_owner_only():
     aces = pf.parse_icacls(ICACLS_BEFORE, pf.Path("outputs\\tier1\\x"))
-    assert not pf.acl_is_owner_only(aces, "SANDBOX\\[redacted]")
+    assert not pf.acl_is_owner_only(aces, "HOST01\\exampleuser")
 
 
 def test_acl_with_only_the_current_user_is_owner_only_case_insensitively():
     aces = pf.parse_icacls(ICACLS_AFTER, pf.Path("outputs\\tier1\\x"))
-    assert pf.acl_is_owner_only(aces, "SANDBOX\\[redacted]")
+    assert pf.acl_is_owner_only(aces, "host01\\EXAMPLEUSER")
 
 
 def test_empty_or_unparsable_acl_is_not_owner_only():

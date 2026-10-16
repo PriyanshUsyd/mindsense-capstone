@@ -276,7 +276,7 @@ def test_public_output_has_no_evaluator_code_or_session_id(tmp_path):
         assert token not in body
 
 
-PII = ("talked to Alice Smith about this", "see email from moet2244", "call 0412 345 678", "+61-2-9351-0000")
+PII = ("talked to Alice Smith about this", "see email from jdoe9999", "call 0412 345 678", "+61-2-9351-0000")
 
 
 @pytest.mark.parametrize("column", ["na_reason", "notes", "rejection_reason", "response_mode", "model_tag", "evidence_path"])
@@ -292,7 +292,7 @@ def test_free_text_columns_never_reach_the_public_output(column, pii, tmp_path):
     mod.main(["--input", str(write_csv(tmp_path / "s.csv", rows)), "--output", str(out), "--expected-commit", SHA, "--build-label", LABEL])
     for body in (body_text, out.read_text(encoding="utf-8")):
         assert pii not in body
-        for fragment in ("Alice", "Smith", "moet2244", "0412", "9351"):
+        for fragment in ("Alice", "Smith", "jdoe9999", "0412", "9351"):
             assert fragment not in body
 
 

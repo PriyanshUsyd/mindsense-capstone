@@ -69,13 +69,16 @@ Test-Path .\dataset\CES\EMA\general_ema.csv
 Test-Path .\dataset\CES\Demographics\demographics.csv
 ```
 
-If the CES download is stored under `dataset/CES/`, copy the three required
-directories into the production location:
+If the CES download is stored under `dataset/CES/`, copy the three required production CSV files into the expected runtime locations:
 
 ```powershell
-Copy-Item .\dataset\CES\Sensing .\dataset\Sensing -Recurse
-Copy-Item .\dataset\CES\EMA .\dataset\EMA -Recurse
-Copy-Item .\dataset\CES\Demographics .\dataset\Demographics -Recurse
+New-Item -ItemType Directory -Force .\dataset\Sensing | Out-Null
+New-Item -ItemType Directory -Force .\dataset\EMA | Out-Null
+New-Item -ItemType Directory -Force .\dataset\Demographics | Out-Null
+
+Copy-Item -LiteralPath .\dataset\CES\Sensing\sensing.csv -Destination .\dataset\Sensing\sensing.csv
+Copy-Item -LiteralPath .\dataset\CES\EMA\general_ema.csv -Destination .\dataset\EMA\general_ema.csv
+Copy-Item -LiteralPath .\dataset\CES\Demographics\demographics.csv -Destination .\dataset\Demographics\demographics.csv
 ```
 
 This operation is local only. Both the source and provisioned copies remain

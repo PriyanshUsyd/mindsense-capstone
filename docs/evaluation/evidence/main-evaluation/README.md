@@ -2,19 +2,17 @@
 
 ## Evaluation format
 
-The main evaluation ran as **3 sessions involving all 8 team members** on
-rc-eval-2 (`d31e05d`), not as the four pairs `ME-P01`–`ME-P04` originally
-planned (recorded 2026-10-16; see the
-[roster](../../week8-main-evaluation-roster.md#actual-evaluation-format-3-sessions-all-8-members)).
-Session dates, attendance and IDs are TBC (team to confirm).
+The main evaluation ran as **3 sessions (S1–S3), all 8 team members present at
+each**, the same 4 questions in each, rated by group consensus (n = 8), on
+rc-eval-2's response behaviour (see the
+[roster](../../week8-main-evaluation-roster.md)). Folders:
 
-Evidence already saved keeps its original folder ID:
-
-| Folder | Contents | Maps to session |
+| Session | Folder | Contents |
 |---|---|---|
-| `ME-P01/` | `ME-P01.pdf`: transcript with Details lines (username/hostname redacted 2026-10-16) | TBC (team to confirm) |
-| `ME-P04/Q1/`–`Q4/` | `notes.md` per question with Details lines | TBC (team to confirm) |
-| `ME-P01-attempt1-rc-eval-1/` | Superseded rc-eval-1 attempt | Not part of the rc-eval-2 results |
+| S1 (13 Oct, `phi4-mini:3.8b`) | `ME-P01/` | `ME-P01.pdf`: transcript with Details lines (username/hostname redacted 2026-10-16) |
+| S2 (16 Oct re-run, `phi4-mini:3.8b`) | `S2/Q1/`–`Q4/` | `notes.md` per question |
+| S3 (16 Oct re-run, `phi4-mini:3.8b`) | `ME-P04/Q1/`–`Q4/` | `notes.md` per question, including the superseded 13 Oct `demo-stub:1.0` run |
+| — | `ME-P01-attempt1-rc-eval-1/` | Superseded rc-eval-1 attempt; not part of the results |
 
 New evidence goes in one directory per session and question, using the
 session ID the team confirms:

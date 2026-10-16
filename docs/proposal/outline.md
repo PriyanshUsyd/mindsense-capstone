@@ -77,8 +77,8 @@ what's actually real on `main` as of 2026-08-29 for each.
 
 ## 5. SLM Integration & Safety
 
-- Ollama with pinned `phi4-mini:3.8b` baseline and `qwen3:4b` challenger;
-  final selection pending expanded fixed evaluation. Explain why local (`Client_Specs.md` Local SLM section:
+- Ollama with pinned `phi4-mini:3.8b` (final model, selected 16 Oct 2026);
+  `qwen3:4b` kept for comparison only. Explain why local (`Client_Specs.md` Local SLM section:
   *"avoiding the need to send personal sensing information to external
   language-model services"*).
 - The permitted/prohibited claim system — walk through the exact structured
