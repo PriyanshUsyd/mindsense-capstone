@@ -82,6 +82,22 @@ describe('NormalResponse', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
+  it('collapses the wellbeing banner once the conversation has started', async () => {
+    const user = userEvent.setup()
+    mockedRespond.mockResolvedValueOnce(NORMAL_RESPONSE)
+
+    render(<NormalResponse />)
+
+    const banner = screen.getByRole('region', { name: /mindsense wellbeing reminder/i })
+    expect(banner).not.toHaveClass('wellbeing-banner--compact')
+
+    await user.click(screen.getByRole('button', { name: /ask about my recent movement/i }))
+
+    await screen.findByText(NORMAL_RESPONSE.text)
+    expect(banner).toHaveClass('wellbeing-banner--compact')
+    expect(banner).toHaveTextContent('A kinder you.')
+  })
+
   it('shows only the implemented chat section in the sidebar', () => {
     render(<NormalResponse />)
 
