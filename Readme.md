@@ -61,8 +61,8 @@ answers. **Python versions:** CI runs **Python 3.14** and installs
 `requirements.txt` without constraints; the setup scripts also apply
 `constraints-python312.txt`, a scientific-stack pin verified on **Python
 3.12**. If those pins do not install on your Python, use 3.12. R is optional (see
-`docs/statistics/r-bridge-setup.md`); it is needed only for the R-backed
-statistics and the per-person bootstrap evidence.
+`docs/statistics/r-bridge-setup.md`): the per-person evidence cache (step 3)
+builds with or without it.
 
 ### 1. Python environment
 
@@ -90,7 +90,26 @@ repository root (git-ignored), following
 [`docs/data-pipeline/ces_local_provisioning.md`](docs/data-pipeline/ces_local_provisioning.md),
 which also has the preflight check.
 
-### 3. Ollama and the model
+### 3. Per-person evidence cache (baseline comparison)
+
+The comparison with a participant's own baseline needs a B=500 bootstrap
+cache built from the dataset. Build it once, from a clean checkout:
+
+```bash
+python -m backend.statistics.bootstrap_cache --all
+```
+
+It uses R when R is usable in that shell and the pure-Python engine
+otherwise (force one with `--engine python` or `--engine r`). With the Python
+engine both features took 31 minutes on a 12-thread laptop (measured
+16 October 2026, with an R build running alongside); the R engine is much
+slower. The cache is
+written to `outputs/bootstrap_cache/` (git-ignored, owner-only) and must
+never be committed: it is derived from the licensed dataset. Without it the
+app still answers, and says the history is long enough but the comparison
+cannot be reported.
+
+### 4. Ollama and the model
 
 Install Ollama from <https://ollama.com/download> (macOS and Windows
 installers), start it, then pull the pinned model:
@@ -100,7 +119,7 @@ ollama pull phi4-mini:3.8b
 ollama pull qwen3:4b               # optional, comparison only
 ```
 
-### 4. Run
+### 5. Run
 
 Backend with the real local model, macOS / Linux:
 

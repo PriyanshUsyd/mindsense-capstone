@@ -670,3 +670,44 @@ def test_main_without_failures_returns_the_output_dir(monkeypatch, tmp_path):
     monkeypatch.setattr(runner, "run_one_feature", lambda spec, s, e, prefer_r=True: _result(spec.name))
     out = runner.main()
     assert (out / "loc_dist_ep_0_summary.json").exists() and (out / "unlock_num_ep_0_summary.json").exists()
+
+
+# ---------------------------------------------------------------------------
+# Python engine cache
+# ---------------------------------------------------------------------------
+
+
+def test_each_engine_has_its_own_cache_directory(tmp_path):
+    assert bc.cache_dir("f", tmp_path) == tmp_path / "f"
+    assert bc.cache_dir("f", tmp_path, bootstrap.ENGINE_R) == tmp_path / "f"
+    assert bc.cache_dir("f", tmp_path, bootstrap.ENGINE_PYTHON) == tmp_path / "python" / "f"
+
+
+def test_python_engine_environment_does_not_touch_r(monkeypatch):
+    def no_r():
+        raise AssertionError("R must not be loaded for the Python engine")
+
+    monkeypatch.setattr(bc.r_bridge, "_load_r", no_r)
+    env = bc.environment_versions(bootstrap.ENGINE_PYTHON)
+    assert set(env) == {"python", "numpy", "scipy", "pandas"}
+
+
+def test_python_engine_cache_roundtrip_is_separate_from_r(fake_repo, tmp_path):
+    root = tmp_path / "cache"
+    prepared = bootstrap.prepare_model_frame(_frame())
+    keys = bc.raw_key_dict(prepared, SPEC, engine=bootstrap.ENGINE_PYTHON, n_iterations=B, repo_root=fake_repo)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")  # family-size warning: 3 != 214
+        path = bc.write_aggregated_cache(
+            SPEC.name, _real_fit(), _records(), keys, n_iterations=B,
+            cache_root=root, repo_root=fake_repo, git_status=_no_git_changes,
+        )
+    assert path.parent == root / "python" / SPEC.name
+    loaded = bc.load_aggregated_cache(
+        SPEC, _frame(), engine=bootstrap.ENGINE_PYTHON, n_iterations=B, cache_root=root, repo_root=fake_repo
+    )
+    assert loaded is not None and sorted(loaded.intersection["uid"]) == UIDS
+    assert bc.load_aggregated_cache(
+        SPEC, _frame(), engine=bootstrap.ENGINE_R, n_iterations=B, cache_root=root, repo_root=fake_repo,
+        environment=ENV,
+    ) is None
