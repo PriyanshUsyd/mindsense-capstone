@@ -296,6 +296,7 @@ export function NormalResponse() {
 
   return (
     <AppShell
+      compactBanner={!showWelcome}
       modelLabel={visibleModelTag ? 'Processed locally' : undefined}
       modelSelector={modelSelector}
       onNewConversation={

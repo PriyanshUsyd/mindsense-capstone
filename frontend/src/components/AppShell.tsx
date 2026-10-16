@@ -6,6 +6,7 @@ type StatusTone = 'ready' | 'working' | 'normal' | 'caution' | 'boundary'
 
 interface AppShellProps {
   children: ReactNode
+  compactBanner?: boolean
   modelLabel?: string
   modelSelector?: ReactNode
   onNewConversation?: () => void
@@ -15,6 +16,7 @@ interface AppShellProps {
 
 export function AppShell({
   children,
+  compactBanner = false,
   modelLabel = 'Processed locally',
   modelSelector,
   onNewConversation,
@@ -78,7 +80,10 @@ export function AppShell({
           </div>
         </header>
 
-        <section className="wellbeing-banner" aria-label="MindSense wellbeing reminder">
+        <section
+          aria-label="MindSense wellbeing reminder"
+          className={compactBanner ? 'wellbeing-banner wellbeing-banner--compact' : 'wellbeing-banner'}
+        >
           <span className="floating-leaf floating-leaf--one" aria-hidden="true" />
           <span className="floating-leaf floating-leaf--two" aria-hidden="true" />
           <span className="floating-leaf floating-leaf--three" aria-hidden="true" />
