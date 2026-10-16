@@ -104,6 +104,8 @@ describe('NormalResponse', () => {
 
     const selector = await screen.findByRole('combobox', { name: /choose local model/i })
     expect(selector).toHaveValue('phi4-mini:3.8b')
+    expect(screen.getByRole('option', { name: 'Phi-4 Mini · 3.8B (final)' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Qwen 3 · 4B (comparison only)' })).toBeInTheDocument()
     await user.selectOptions(selector, 'qwen3:4b')
     await user.click(screen.getByRole('button', { name: /ask about my recent movement/i }))
 

@@ -12,7 +12,7 @@
 # of the two templates fires; the SLM never chooses between them itself.
 
 template_id: generic_fallback
-template_version: "1.0.0"
+template_version: "1.1.0"
 response_mode: generic_fallback
 allowed_claim_ids:
   - not_enough_data
@@ -25,8 +25,8 @@ prohibited_claim_ids:
 
 text: >
   I'm not able to give a confident answer to that right now. This app can
-  only describe patterns in your own tracked behaviour compared to your own
-  recent history — it doesn't diagnose conditions, explain causes, or give
+  only describe patterns in your own tracked behaviour and, when the
+  evidence allows, compare them with your own baseline — it doesn't diagnose conditions, explain causes, or give
   treatment advice. If you'd like, try asking about one of your tracked
   patterns (like your GPS movement or phone unlock activity) over a recent
   time period.

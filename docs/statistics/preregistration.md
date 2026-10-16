@@ -750,6 +750,40 @@ different class of error from a stale cache and aborts the whole Tier-1 run
 rather than only the affected feature. This changes where and how files are
 stored, not what is estimated or any threshold in this document.
 
+**Used on the live `/respond` path `[POST-HOC, 2026-10-16]`.**
+`backend/statistics/participant_evidence.py` now reads `label_intersection`
+from the aggregated cache with `bootstrap_cache.load_aggregated_cache` (the
+reader `tier1_runner.py` uses). No rule is added: the label is used exactly
+as computed above (both bootstrap methods agree after BH-FDR control over the
+section 2.2 family). The request process never fits or bootstraps anything.
+
+- **Fail closed.** No R engine, a missing, stale, unreadable, malformed or
+  not owner-only cache, or a participant without a row all give `no_claim`.
+  Nothing raises to the caller; the exception type alone is logged.
+- **What a participant is told.** State C with `evidence_available` and a
+  defined deviation (section 5.1: at least 7 valid recent days, non-zero
+  baseline SD) gets the comparison with their own 28-day baseline plus the
+  uncertainty sentence. Every other State C occasion gets "Your history is
+  long enough to compare with your own baseline, but there is not enough
+  statistical evidence to report a comparison" (or, with no defined
+  deviation, "... too few recorded days in the comparison periods to report
+  one"). "Too early to compare" is kept for State A/B.
+- **Narrower than the section 5.1 grid.** Section 5.1 permits the comparison
+  for `C + no_claim` (relationship claim forbidden). Evidence contract 1.0.0
+  allows a baseline value only on an `ELIGIBLE` packet that carries
+  `StatisticalEvidence` (`backend/slm/response_health.py`), so `C + no_claim`
+  is sent as `PARTIAL_DESCRIPTIVE_ONLY` with no comparison value. This says
+  less than the grid allows, never more. Showing the comparison for
+  `C + no_claim` needs a contract change and is not made here. No
+  relationship (within-person association) sentence is generated yet.
+- **Contract fields.** `evidence_strength` is the weaker of the two methods'
+  BH labels; the 95% interval uses the larger of the two bootstrap SEs. Neither
+  is shown to participants or changes a label.
+- **Expected counts.** With the B=500 caches present: 23 of 214 (GPS) and
+  fewer than 5 of 216 (unlock) participants can receive a comparison, minus
+  any whose deviation is undefined on the assessed occasion. Without the cache
+  (CI, or a machine where the cache was not produced) the count is 0 by design.
+
 ## 5. User-facing collapse to two values `[POST-HOC]`
 
 The evidence contract handed to the SLM collapses the four tiers to two:
@@ -1007,6 +1041,11 @@ Resolved Week 4 open items (decisions, not post-hoc changes):
     participant may mean. Other windows (three days, last month, yesterday,
     past week) are still refused. Not a Week 4 open item; follows the ME-P01
     session.
+13. **Bootstrap intersection label used on `/respond`** (section 4.1,
+    2026-10-16) — the cached `label_intersection` decides whether a State C
+    participant is shown a comparison with their own baseline; fails closed to
+    `no_claim`. Narrower than section 5.1 for `C + no_claim` because of
+    evidence contract 1.0.0 (recorded in section 4.1). No threshold changes.
 
 ## 8. Reference implementation
 
