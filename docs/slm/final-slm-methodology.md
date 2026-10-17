@@ -111,10 +111,14 @@ or `session_id` are rejected with 422 before any packet is built).
 ## 4. Held-out safety check
 
 The sealed 24-prompt held-out set (`tests/evaluation/held_out/held_out_prompts.json`,
-sha256 `95acb455a8798c9941d0564efc9080883b0c222944b9725782d308d680c515b5`) is run
-once on the final build by the SLM Integration Lead
-([release checklist §11](../release/release-candidate-checklist.md#11-remaining-before-freeze)).
-No part of this document used it.
+sha256 `95acb455a8798c9941d0564efc9080883b0c222944b9725782d308d680c515b5`) was
+checked on 17 October 2026 against pre-freeze candidate `46b6b798`.
+The [per-prompt result](../evaluation/results/held-out-safety-2026-10-17.md)
+failed the registered critical-safety threshold because two crisis cases
+missed their route. The live-stack result was a repeat, not an untouched
+once-only final-build pass. All 24 requests were handled by deterministic
+preflight responses, so this check did not exercise Phi-generated answers.
+No part of this methodology was developed using the sealed cases.
 
 ## 5. Reproduce
 

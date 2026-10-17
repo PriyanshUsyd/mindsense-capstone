@@ -37,8 +37,13 @@ are those maxima. `N/A` and `Not run` are never counted as passes.
 
 ### Held-out safety check
 
-The sealed 24-prompt held-out set (sha256 `95acb455…`) is **To do (assigned)**:
-run once on the final build; see the release checklist, "Remaining before freeze".
+The sealed 24-prompt held-out set (sha256 `95acb455…`) was checked on
+17 October 2026 against pre-freeze candidate `46b6b798`. The
+[per-prompt result](../held-out-safety-2026-10-17.md) is **not accepted**:
+17/19 critical safety cases passed, below the required 19/19, because two
+crisis cases missed their route. The live-stack record was a repeat after an
+earlier in-process attempt, not an untouched once-only result. This does not
+change the separate rc-eval-2 session results above.
 
 ## Human Questionnaire
 

@@ -1,7 +1,7 @@
 # Release-Candidate Checklist — Week 9 Evaluation Build
 
 **Prepared:** 2026-10-08 (Week 9) by Priyansh Khandelwal, Integration & QA Lead
-**Updated:** 2026-10-16: the 4 questions re-asked on the final build, the boot test and the dataset preflight recorded (§7, §11); the only open items are the held-out check, the privacy sign-off with the offline test, and the freeze tag. Earlier: 2026-10-10 (evaluation lock). `rc-eval-1` tagged at `1e998ab`. Earlier: 2026-10-08, candidate moved from `458cb56` to `dd2af5a` after #48 and its repair (#53); lock date set to 2026-10-16, replaced the same day by the release timeline below (evaluation lock 2026-10-10).
+**Updated:** 2026-10-17: the held-out check was executed on `46b6b798` and failed the critical-safety threshold (details in §11); the freeze remains blocked. Earlier: 2026-10-16: the 4 questions re-asked on the final build, the boot test and the dataset preflight recorded (§7, §11). Earlier: 2026-10-10 (evaluation lock). `rc-eval-1` tagged at `1e998ab`. Earlier: 2026-10-08, candidate moved from `458cb56` to `dd2af5a` after #48 and its repair (#53); lock date set to 2026-10-16, replaced the same day by the release timeline below (evaluation lock 2026-10-10).
 **Status:** `rc-eval-1` → `1e998ab3f3fe31665807d800a8d6ad836615806e` was the RC until the lock was reopened on 2026-10-10 (see below). **rc-eval-2 → `ae849655e692d602b6ea00e0cb64f956d142b458`** (PR #72 merge, policy 0.3.3; main push run `38019186474` passed all 4 stages). `dc7e7fb` (policy 0.3.2) was the intended rc-eval-2 until Yuktha's 50-question dev test; it was never tagged. The `Pending` items in Section 7 are sign-offs and readiness checks still open after the lock; they do not change the tagged build.
 
 > **This checklist update post-dates the tag and is docs-only.** It was committed after `rc-eval-1` was created and is not part of the tagged tree. The diff from `1e998ab` to the main commit that merges it touches only this file: no `backend/`, `frontend/`, model or prompt/policy files.
@@ -195,10 +195,13 @@ PRs #76–#79 were merged by the group lead without a second review to meet the 
 
 | Item | Status | Owner |
 |---|---|---|
-| Held-out 24-prompt safety check, run once on the **final build**; commit the aggregate result together with the checksum `95acb455a8798c9941d0564efc9080883b0c222944b9725782d308d680c515b5` | To do (assigned) | SLM Integration Lead |
+| Held-out 24-prompt safety check, run once on the **final build**; commit the aggregate result together with the checksum `95acb455a8798c9941d0564efc9080883b0c222944b9725782d308d680c515b5` | **Run recorded, acceptance failed:** 17/19 critical safety, two missed crisis routes (`ho-01`, `ho-04`). The live-stack run was a repeat on pre-freeze candidate `46b6b798`, not a clean once-only final-build pass; see [per-prompt result](../evaluation/results/held-out-safety-2026-10-17.md). Freeze blocked. | SLM Integration Lead |
 | Privacy sign-off on the final build, plus either the whole-device offline test or softening "Processed locally, always" (`frontend/src/components/AppShell.tsx:51`) | To do (assigned) | Privacy & Security Lead |
 | Re-ask the 4 evaluation questions on the final build to show the baseline comparison (PR #80) and whole-number values | **Done**, 16 Oct 2026 (record below) | Group lead |
 | Final freeze tag on the final build, after the two items above | To do (assigned) | Group lead |
+
+- [x] Held-out checksum verified and the 24-prompt live-stack result recorded (17 October 2026, [evidence](../evaluation/results/held-out-safety-2026-10-17.md)).
+- [ ] Held-out critical-safety acceptance on the final build. **Blocked:** two missed crisis routes; the recorded live-stack result is a repeat, not a once-only pass.
 
 ### Final-build records (16 October 2026, `95e3171`)
 
