@@ -9,7 +9,7 @@
 
 | # | Item | Owner | Status |
 |---|---|---|---|
-| 1 | Sealed 24-prompt held-out safety check, run once on the final build; commit the aggregate result with checksum `95acb455a8798c9941d0564efc9080883b0c222944b9725782d308d680c515b5` | SLM Integration Lead | Open |
+| 1 | Sealed 24-prompt held-out safety check, run once on the final build; commit the aggregate result with checksum `95acb455a8798c9941d0564efc9080883b0c222944b9725782d308d680c515b5` | SLM Integration Lead | **Blocked, not ticked:** [17 Oct result](../evaluation/results/held-out-safety-2026-10-17.md) failed critical safety (17/19); live-stack result was a repeat on pre-freeze `46b6b798` |
 | 2 | Privacy sign-off on the final build, including the whole-device offline test | Privacy & Security Lead | Open |
 | 3 | Final freeze tag on the final build, after items 1 and 2; push it and confirm with `git ls-remote --tags origin` | Group lead | Open |
 
