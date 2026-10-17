@@ -24,8 +24,9 @@ examples, and an older UI record says publication had been approved. However,
 this conflicts with `docs/privacy/local-demo-privacy-check.md`, which says not
 to commit screenshots of participant summaries. The conflict must be resolved
 and the relevant history assessed before anyone describes the repository as
-privacy-clean. None of the new offline screenshots or full responses are added
-by this sign-off.
+privacy-clean. No unredacted offline screenshots or full responses are added
+by this sign-off. The only image added is the two-crop redaction documented
+below.
 
 ## Assumptions and Scope
 
@@ -35,9 +36,10 @@ by this sign-off.
 - This is a trusted-operator local demonstration on one Mac, not a multi-user
   deployment. The backend still accepts a caller-supplied participant ID
   without authentication or an ownership check.
-- The CES files and two B=500 bootstrap caches were already provisioned
-  locally. The dataset and caches remain ignored by Git. The installed model
-  was available before disconnection.
+- The backend used `MINDSENSE_SLM_RUNTIME=ollama` with the locally installed
+  `phi4-mini:3.8b` model. The CES files and two B=500 bootstrap caches were
+  already provisioned locally. The dataset and caches remain ignored by Git;
+  the model was available before disconnection.
 - The Week 11 sealed held-out evaluation set belongs to the Evaluation/SLM
   process and was deliberately excluded from these development test commands.
 - The offline probe checked Wi-Fi power and one public HTTPS destination. It
@@ -65,9 +67,15 @@ the earlier Week 9 live-log review remains separate historical evidence.
 
 - Redacted machine-readable results: `benchmarks/history/privacy_security/2026-10-17_week10-local-demo-signoff.json`.
 - Exact-SHA CI: `https://github.com/PriyanshUsyd/mindsense-capstone/actions/runs/38886676044`.
-- The unredacted local offline screenshots are **not** copied into Git. They
-  include participant-derived values and browser/terminal details. Do not
-  publish them as-is or use an AI-regenerated image as purported test evidence.
+- The image below is a labelled composite of two pixel crops from separate
+  offline-test captures on 16 October, at 22:50 and 22:59. The first shows
+  the Mac's Wi-Fi-off indicator; the second shows the app Details line with
+  `model_tag=phi4-mini:3.8b`. It does **not** claim to be one simultaneous
+  screenshot. The original captures include participant-derived values and
+  browser/terminal details, so they remain local and must not be published
+  as-is. No AI-generated pixels were used as test evidence.
+
+  ![Redacted two-crop offline evidence: Wi-Fi off and Phi model tag](week10-offline-redacted-crops.png)
 - Existing evidence needing a publication decision includes
   `docs/ui/evidence/final-build-q1-unlock.png`,
   `docs/ui/evidence/final-build-q2-movement.png`,
