@@ -1,0 +1,90 @@
+{
+  "record_type": "privacy_local_demo_signoff",
+  "week": 10,
+  "decision_date_local": "2026-10-17",
+  "offline_test_date_local": "2026-10-16",
+  "timezone": "Australia/Sydney",
+  "operator_role": "Privacy and Security Lead",
+  "branch": "codex/privacy-week10-signoff",
+  "tested_commit": "df66eac843ddce2f99b9f0a73dee46f6465911a9",
+  "scope": "trusted-operator single-Mac local demo using phi4-mini:3.8b",
+  "assumptions": [
+    "CES, model weights, and dependencies were provisioned locally before offline testing",
+    "Week 11 sealed held-out content was excluded from development tests",
+    "Services used the documented loopback-only local-demo configuration",
+    "The public HTTPS probe is one connectivity check, not a packet capture or all-interface audit"
+  ],
+  "checks": {
+    "full_unsealed_suite": {
+      "passed": 1062,
+      "failed": 0,
+      "skipped": 21,
+      "warnings": 82,
+      "elapsed_seconds": 92.43,
+      "macos_loopback_profile": true
+    },
+    "focused_privacy_suite": {
+      "passed": 49,
+      "failed": 0,
+      "skipped": 2,
+      "skip_reason": "local R/rpy2 package stack not usable for those cases"
+    },
+    "frontend": {
+      "tests_passed": 41,
+      "tests_failed": 0,
+      "lint": "passed",
+      "production_build": "passed"
+    },
+    "dependency_consistency": "pip check passed",
+    "exact_commit_ci": {
+      "run_id": 38886676044,
+      "conclusion": "success",
+      "stages": [
+        "Python application and integration",
+        "R statistical runtime",
+        "Frontend test lint and build",
+        "Privacy and security gates"
+      ],
+      "all_stages_succeeded": true
+    },
+    "offline_local_probe": {
+      "wifi_off_asserted": true,
+      "public_https_probe_unreachable": true,
+      "frontend_http_status": 200,
+      "frontend_asset_http_status": 200,
+      "api_health_http_status": 200,
+      "local_runtime": "ollama",
+      "default_model_tag": "phi4-mini:3.8b",
+      "feature_categories_checked": ["movement", "unlocks"],
+      "each_response_http_status": 200,
+      "each_response_mode": "uncertainty",
+      "each_model_invoked": true,
+      "any_fallback": false,
+      "each_cache_control": "no-store",
+      "wifi_restored": true,
+      "public_https_reachable_after_restore": true,
+      "raw_request_or_response_retained_in_git": false
+    },
+    "manual_browser": {
+      "local_app_rendered_with_wifi_off": true,
+      "phi_movement_and_unlock_answers_observed": true,
+      "original_screenshots_committed": false,
+      "qwen_comparison_approved": false
+    },
+    "repository_inventory": {
+      "tracked_dataset_files": 0,
+      "tracked_outputs_files": 0,
+      "tracked_env_files": 0,
+      "dataset_and_cache_directories_mode": "700",
+      "cache_files_mode": "600",
+      "tracked_text_credential_email_or_real_home_path_match": false,
+      "pre_existing_ces_derived_person_summary_in_binary_and_text_evidence": true
+    }
+  },
+  "decision": {
+    "local_phi_demo_runtime": "approved_for_tested_configuration_only",
+    "repository_evidence_publication": "hold_pending_policy_alignment_and_evidence_cleanup_decision",
+    "real_user_deployment": "not_approved"
+  },
+  "redaction": "No participant ID, response text, feature value, personal path, or unredacted screenshot is included"
+}
