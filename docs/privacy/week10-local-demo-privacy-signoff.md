@@ -25,8 +25,7 @@ this conflicts with `docs/privacy/local-demo-privacy-check.md`, which says not
 to commit screenshots of participant summaries. The conflict must be resolved
 and the relevant history assessed before anyone describes the repository as
 privacy-clean. No unredacted offline screenshots or full responses are added
-by this sign-off. The only image added is the two-crop redaction documented
-below.
+by this sign-off. The two redacted screenshots are documented below.
 
 ## Assumptions and Scope
 
@@ -67,15 +66,14 @@ the earlier Week 9 live-log review remains separate historical evidence.
 
 - Redacted machine-readable results: `benchmarks/history/privacy_security/2026-10-17_week10-local-demo-signoff.json`.
 - Exact-SHA CI: `https://github.com/PriyanshUsyd/mindsense-capstone/actions/runs/38886676044`.
-- The image below is a labelled composite of two pixel crops from separate
-  offline-test captures on 16 October, at 22:50 and 22:59. The first shows
-  the Mac's Wi-Fi-off indicator; the second shows the app Details line with
-  `model_tag=phi4-mini:3.8b`. It does **not** claim to be one simultaneous
-  screenshot. The original captures include participant-derived values and
-  browser/terminal details, so they remain local and must not be published
-  as-is. No AI-generated pixels were used as test evidence.
+- The two redacted screenshots supplied on 17 October each show the Mac's
+  Wi-Fi-off indicator and the app Details line with
+  `model_tag=phi4-mini:3.8b`. Participant-derived values are covered; the
+  unredacted originals remain local.
 
-  ![Redacted two-crop offline evidence: Wi-Fi off and Phi model tag](week10-offline-redacted-crops.png)
+  ![Offline unlock response with value redacted](week10-offline-test-1.jpg)
+
+  ![Offline movement response with value redacted](week10-offline-test-2.jpg)
 - Existing evidence needing a publication decision includes
   `docs/ui/evidence/final-build-q1-unlock.png`,
   `docs/ui/evidence/final-build-q2-movement.png`,
