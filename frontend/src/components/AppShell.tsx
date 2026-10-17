@@ -50,7 +50,7 @@ export function AppShell({
             ✓
           </span>
           <strong>Private by design</strong>
-          <p>Your data stays on this device. Processed locally, always.</p>
+          <p>Your data stays on this device. Processed locally.</p>
         </section>
 
         <p className="sidebar-signoff"><span aria-hidden="true">◆</span> A calmer, kinder you.</p>
