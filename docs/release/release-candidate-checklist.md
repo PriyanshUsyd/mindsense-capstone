@@ -1,7 +1,7 @@
 # Release-Candidate Checklist — Week 9 Evaluation Build
 
 **Prepared:** 2026-10-08 (Week 9) by Priyansh Khandelwal, Integration & QA Lead
-**Updated:** 2026-10-17: the held-out check was executed on `46b6b798` and failed the critical-safety threshold (details in §11); the freeze remains blocked. Earlier: 2026-10-16: the 4 questions re-asked on the final build, the boot test and the dataset preflight recorded (§7, §11). Earlier: 2026-10-10 (evaluation lock). `rc-eval-1` tagged at `1e998ab`. Earlier: 2026-10-08, candidate moved from `458cb56` to `dd2af5a` after #48 and its repair (#53); lock date set to 2026-10-16, replaced the same day by the release timeline below (evaluation lock 2026-10-10).
+**Updated:** 2026-10-17: the held-out check was executed on `46b6b798` and failed the critical-safety threshold (details in §11); the freeze remains blocked. Privacy sign-off with the offline test recorded (#86, with #87's redactions; §7, §11). Earlier: 2026-10-16: the 4 questions re-asked on the final build, the boot test and the dataset preflight recorded (§7, §11). Earlier: 2026-10-10 (evaluation lock). `rc-eval-1` tagged at `1e998ab`. Earlier: 2026-10-08, candidate moved from `458cb56` to `dd2af5a` after #48 and its repair (#53); lock date set to 2026-10-16, replaced the same day by the release timeline below (evaluation lock 2026-10-10).
 **Status:** `rc-eval-1` → `1e998ab3f3fe31665807d800a8d6ad836615806e` was the RC until the lock was reopened on 2026-10-10 (see below). **rc-eval-2 → `ae849655e692d602b6ea00e0cb64f956d142b458`** (PR #72 merge, policy 0.3.3; main push run `38019186474` passed all 4 stages). `dc7e7fb` (policy 0.3.2) was the intended rc-eval-2 until Yuktha's 50-question dev test; it was never tagged. The `Pending` items in Section 7 are sign-offs and readiness checks still open after the lock; they do not change the tagged build.
 
 > **This checklist update post-dates the tag and is docs-only.** It was committed after `rc-eval-1` was created and is not part of the tagged tree. The diff from `1e998ab` to the main commit that merges it touches only this file: no `backend/`, `frontend/`, model or prompt/policy files.
@@ -161,7 +161,7 @@ This is a post-session change and is part of the final build, not of rc-eval-2.
 
 | Item | Status | Owner | Evidence so far |
 |---|---|---|---|
-| Privacy sign-off on the **final build** (was: on `dd2af5a`) | **To do (assigned)** — see "Remaining before freeze" | Privacy & Security Lead | The Week 9 re-check in `docs/privacy/master-test-register.md` (commit `e124354`) was run on base `3d7f322`, before #46, #48, #49 and #53 were merged |
+| Privacy sign-off on the **final build** (was: on `dd2af5a`) | **Done (scoped)**, 17 Oct 2026 — PR #86 | Privacy & Security Lead | [`week10-local-demo-privacy-signoff.md`](../privacy/week10-local-demo-privacy-signoff.md), tested at `df66eac`: single-machine local demo with `phi4-mini:3.8b`, including the Wi-Fi-off test on 16 Oct. Not approval for real-user accounts. Repository evidence publication stays on hold (Git history, tracked text, three `demo-machine-*.jpeg`); #87 redacted the final-build PNGs and `ME-P01.pdf`. #84, #85 and #89 merged after `df66eac` and add no network, storage or file-I/O calls |
 | Dataset preflight | **Done on the final build** (16 Oct 2026) | Data Pipeline Lead | Run on the group lead's machine at `95e3171`: all three file checks `True`, `verify_ces.py` gated eligibility 214 of 220 (97.3%), recorded in [`final-pipeline-methodology.md` §6.1](../data-pipeline/final-pipeline-methodology.md#61-dataset-preflight-ces_local_provisioningmd-preflight-check). The session machines' preflight output was not committed; all three sessions returned the same values (29.0 km/day, 121.0 unlocks/day) |
 | `bootstrap_cache.py` `feature_id` decision | **Done** | Moe Tanaka | Fixed by `37abb5b` (PR #62); now line 445 |
 | Session times confirmed; critical-failure mapping covers all questions | **Done** | Evaluation Design Lead | Three sessions with dates (S1 13 Oct; S2, S3 re-run 16 Oct) in `docs/evaluation/week8-main-evaluation-roster.md`; mapping applied to all 12 answers (Section 8; `pass-threshold-summary.md`) |
@@ -178,7 +178,7 @@ From `docs/evaluation/pass-threshold.md` (line 10):
 
 ## 9. Lock
 
-- [ ] All `Pending` items above closed or explicitly waived (record who waived it and why). Open: privacy sign-off and the held-out check (see "Remaining before freeze")
+- [ ] All `Pending` items above closed or explicitly waived (record who waived it and why). Open: the held-out check (see "Remaining before freeze"); privacy sign-off done (#86)
 - [x] PR #48 decision: merged (`4af260c`), repaired by #53 (`dd2af5a`); provisional candidate SHA updated
 - [x] Every "Must land before lock" item (Section 1) landed or explicitly deferred (4 Done; Honghao's preflight Deferred to before each machine's first session)
 - [x] Both decisions recorded: RAG stays default; Richard authorised for one held-out run by 2026-10-23 (approved by Priyansh, 2026-10-08)
@@ -196,7 +196,7 @@ PRs #76–#79 were merged by the group lead without a second review to meet the 
 | Item | Status | Owner |
 |---|---|---|
 | Held-out 24-prompt safety check, run once on the **final build**; commit the aggregate result together with the checksum `95acb455a8798c9941d0564efc9080883b0c222944b9725782d308d680c515b5` | **Run recorded, acceptance failed:** 17/19 critical safety, two missed crisis routes (`ho-01`, `ho-04`). The live-stack run was a repeat on pre-freeze candidate `46b6b798`, not a clean once-only final-build pass; see [per-prompt result](../evaluation/results/held-out-safety-2026-10-17.md). Freeze blocked. | SLM Integration Lead |
-| Privacy sign-off on the final build, plus either the whole-device offline test or softening "Processed locally, always" (`frontend/src/components/AppShell.tsx:51`) | To do (assigned) | Privacy & Security Lead |
+| Privacy sign-off on the final build, plus either the whole-device offline test or softening "Processed locally, always" (`frontend/src/components/AppShell.tsx:51`) | **Done**, 17 Oct 2026: scoped local-demo sign-off with the Wi-Fi-off test ([#86](../privacy/week10-local-demo-privacy-signoff.md)); evidence redactions in #87. Repository publication hold remains | Privacy & Security Lead |
 | Re-ask the 4 evaluation questions on the final build to show the baseline comparison (PR #80) and whole-number values | **Done**, 16 Oct 2026 (record below) | Group lead |
 | Final freeze tag on the final build, after the two items above | To do (assigned) | Group lead |
 
