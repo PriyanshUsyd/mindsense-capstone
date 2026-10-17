@@ -7,7 +7,8 @@ requests are routed to their refusal templates, and only recognised
 MindSense evidence questions continue to the local model. Off-topic requests
 get the short refusal only when they are clearly unrelated and show no
 distress; every other off-topic default carries the support line, so a
-crisis phrase the rules miss is still answered safely (policy 0.3.4).
+missed crisis phrase may receive support information (policy 0.3.4). This
+safety net does not establish correct crisis routing or complete coverage.
 
 This is a development guardrail, not a clinical risk assessment.  The rule
 set and participant-facing wording still require Evaluation/client review
@@ -22,7 +23,7 @@ from enum import Enum
 
 from pydantic import BaseModel, ConfigDict
 
-REQUEST_POLICY_VERSION = "0.3.4"
+REQUEST_POLICY_VERSION = "0.3.5"
 
 _logger = logging.getLogger(__name__)
 
@@ -171,6 +172,73 @@ _CRISIS_PATTERNS = (
     ),
 )
 
+# Policy 0.3.5: bounded combinations of cues, rather than treating an isolated
+# medication, farewell or absence word as a crisis. These supplement the
+# existing rules and still select only the reviewed deterministic template.
+_SELF_REFERENCE = re.compile(r"\b(?:i|me|my|myself)\b", re.IGNORECASE)
+_CONTEXTUAL_CRISIS_CUES = (
+    (
+        re.compile(
+            r"\b(?:would|will|could)\b.{0,45}\b(?:better off|better life|relieved|happier)\b",
+            re.IGNORECASE,
+        ),
+        re.compile(
+            r"\bmy permanent (?:absence|disappearance)\b"
+            r"|\bme (?:gone for good|gone|no longer (?:here|around))\b"
+            r"|\bif i (?:just |simply |really )?(?:wasn['’]?t|weren['’]?t|"
+            r"was not|were not|no longer (?:was|were)) (?:here|around|alive)\b"
+            r"|\bif i (?:just |simply )?(?:no longer existed|ceased to exist)\b",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        re.compile(
+            r"\b(?:pills?|tablets?|medication|medicine|bottle)\b", re.IGNORECASE
+        ),
+        _SELF_REFERENCE,
+        re.compile(
+            r"\b(?:never (?:have to )?wake(?: up)?(?: again)?|"
+            r"(?:not|do not|don['’]?t) wake(?: up)?(?: again)?|"
+            r"sleep (?:forever|permanently)|end my (?:own )?life)\b"
+            r"(?!\s+(?:up|again|early|at|for|before|during|in|on|until|to)\b)",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        re.compile(
+            r"\b(?:giv(?:e|ing|en) away|hand(?:ed|ing)? (?:over|out)|"
+            r"pass(?:ed|ing)? on)\b.{0,55}\b(?:belongings|possessions|stuff|books)\b"
+            r"|\bmy (?:belongings|possessions|stuff)\b.{0,40}\b(?:going to|given to)\b",
+            re.IGNORECASE,
+        ),
+        _SELF_REFERENCE,
+        re.compile(
+            r"\b(?:farewell|goodbye|good-bye) (?:letters?|notes?|messages?)\b"
+            r"|\b(?:say|said|saying) goodbye\b",
+            re.IGNORECASE,
+        ),
+        re.compile(
+            r"\b(?:leave (?:this|the) world|permanent (?:absence|disappearance))\b"
+            r"|\b(?:time|ready)\b.{0,35}\b(?:disappear|vanish)\b"
+            r"|\b(?:disappear|vanish) (?:forever|for good)\b",
+            re.IGNORECASE,
+        ),
+    ),
+)
+
+
+def _has_contextual_crisis_cues(question: str) -> bool:
+    """Require all cues in a bounded neighbourhood of the primary signal."""
+
+    normalised = " ".join(question.split())
+    for anchor, *required in _CONTEXTUAL_CRISIS_CUES:
+        for match in anchor.finditer(normalised):
+            context = normalised[max(0, match.start() - 160) : match.end() + 160]
+            if all(pattern.search(context) for pattern in required):
+                return True
+    return False
+
+
 # Policy 0.3.4: softer distress signals. They do not trigger the crisis
 # template on their own, but an off-topic refusal that contains one always
 # carries the support line (see _CLEARLY_UNRELATED_PATTERNS below).
@@ -310,6 +378,19 @@ _PROHIBITED_PATTERNS: tuple[
                 r".*\b(?:confirm|prove|back (?:it|that|this) up|agree|consistent with)",
                 re.IGNORECASE,
             ),
+            # Policy 0.3.5: interpreting one's feature data as a named
+            # condition is a diagnostic request, even without "do I have".
+            # A condition name alone or a comparison to a baseline is not.
+            re.compile(
+                r"^(?=.*\b(?:my|me|i)\b)"
+                r"(?=.*\b(?:data|pattern|record|movement|gps|unlocks?|"
+                r"phone use|phone usage|screen time)\b)"
+                r".*\b(?:look(?:s|ing)? like|signs? of|symptoms? of|indicative of|"
+                r"indicat(?:e|es|ing)|suggest(?:s|ing)?|evidence of|point(?:s|ing)? to)"
+                r"\b[^.!?;]{0,60}\b(?:adhd|ptsd|ocd|bpd|autism|bipolar|"
+                r"depression|anxiety|panic disorder|mental (?:illness|disorder))\b",
+                re.IGNORECASE | re.DOTALL,
+            ),
         ),
     ),
     (
@@ -438,9 +519,15 @@ _PROHIBITED_PATTERNS: tuple[
             re.compile(r"\bis .{0,80}\bthe (?:reason|cause)\b", re.IGNORECASE),
             # Policy 0.3.3 (dev Q29/Q47): "because"/"due to" questions and
             # requests for proof; needed once a feature word alone is in scope.
-            # Any "because"/"due to" refuses (fail closed): MindSense never
-            # confirms or rejects a stated cause.
-            re.compile(r"\b(?:because|due to)\b", re.IGNORECASE),
+            # Policy 0.3.5: require an evidence/wellbeing subject as well as
+            # the causal connective; ordinary explanations remain off-topic.
+            re.compile(
+                r"^(?=.*\b(?:movement|gps|distance|unlocks?|baseline|data|"
+                r"phone use|phone usage|screen time|mental health|well[- ]?being|"
+                r"mood|sad|anxi\w*|depress\w*|stress\w*)\b)"
+                r".*\b(?:because|due to)\b",
+                re.IGNORECASE | re.DOTALL,
+            ),
             re.compile(r"\bprov(?:e|es|ed|ing)\b|\bproof\b", re.IGNORECASE),
             # Policy 0.3.4: "root cause", "what is causing/behind", "why is X
             # making me Y", "X is making me anxious".
@@ -625,7 +712,13 @@ _GPS_NAMED_FEATURE_PATTERNS = (
     re.compile(r"\bmovement\b", re.IGNORECASE),
     re.compile(r"\bmobility\b", re.IGNORECASE),
     # Policy 0.3.3 (dev Q1/Q15): everyday wording for distance moved.
-    re.compile(r"\bmov(?:e|ed|es|ing)\b|\bhow far\b", re.IGNORECASE),
+    # Policy 0.3.5: relocating home is not a sensed movement measurement.
+    re.compile(
+        r"\bmov(?:e|ed|es|ing)\b"
+        r"(?!\s+(?:house|home|abroad|(?:to|into|out of) (?:a |an |my |our |the )?"
+        r"(?:house|home|flat|apartment))\b)|\bhow far\b",
+        re.IGNORECASE,
+    ),
 )
 _GPS_FEATURE_PATTERNS = _GPS_NAMED_FEATURE_PATTERNS + (
     re.compile(r"\bgps\b", re.IGNORECASE),
@@ -802,7 +895,9 @@ def classify_request(question: str) -> RequestPolicyDecision:
     """Classify one untrusted question without inspecting participant data."""
 
     clean_question = question.strip()
-    if any(pattern.search(clean_question) for pattern in _CRISIS_PATTERNS):
+    if any(pattern.search(clean_question) for pattern in _CRISIS_PATTERNS) or (
+        _has_contextual_crisis_cues(clean_question)
+    ):
         return RequestPolicyDecision(
             disposition=RequestDisposition.CRISIS,
             category=RequestCategory.CRISIS_SELF_HARM,

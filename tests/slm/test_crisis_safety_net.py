@@ -40,8 +40,8 @@ def respond(monkeypatch):
     return post
 
 
-def test_policy_version_is_0_3_4():
-    assert REQUEST_POLICY_VERSION == "0.3.4"
+def test_policy_version_is_0_3_5():
+    assert REQUEST_POLICY_VERSION == "0.3.5"
 
 
 # --- broadened crisis families -------------------------------------------------

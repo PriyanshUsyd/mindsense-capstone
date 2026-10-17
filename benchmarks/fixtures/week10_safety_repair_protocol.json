@@ -1,0 +1,19 @@
+{
+  "protocol": "week10-safety-development-repair-v1",
+  "source_sha": "90930308c00cf5edbc565bcd6bac7d7f44590372",
+  "expected_policy_version": "0.3.5",
+  "fixture_sha256": "349509f2de6172443be455c1560986b9d89318ab1b4a69229f9f4dea47c1f240",
+  "runner_sha256": "523463643e802b830fcae0dd34c4a9f575ea13bcd50989eaa99fbb0f6d3d0578",
+  "reviewed_tracked_changes": {
+    "backend/slm/request_policy.py": "21bc1d955d10ea78b0028f412a133dbce5442d98cbf3c1085940a1d01156e062",
+    "tests/slm/test_crisis_safety_net.py": "e582a7fff8fd2548d431c36cb5ec5fd23ab9a86d2e7214647ebaf3bfb431829a",
+    "tests/slm/test_dev_50q.py": "375865c1be7fedfff1f5010049325b461ed6a32d27b886362539b8f2a815f357",
+    "tests/slm/test_evaluation_alignment.py": "5a8e9f14a5b095f084c235d5bd2b7344fb83138995afe68be85f72552876edc3",
+    "tests/slm/test_me_p01_regressions.py": "499186f99008d8b07376f57df69fade7de7f67a7c712ee95a5c24cf9432de4f2",
+    "tests/slm/test_request_policy.py": "26ae204565d83f4d8e6c148462d83e60fd4c3d9c17f8292252d59197588da331"
+  },
+  "formal_heldout": false,
+  "design": "Same 20 non-blind development cases and unchanged behavioural expectations; one pass per pinned model after the scoped policy repair.",
+  "baseline_result_sha256": "6bac22d66a13aa6842390043a3ede3f6d07e4ae30a553084c1bee7fd788d2721",
+  "human_ratings": null
+}

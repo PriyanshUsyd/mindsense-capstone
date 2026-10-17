@@ -43,8 +43,8 @@ def _forbid_data_load(monkeypatch):
 
 
 def test_policy_version_is_current():
-    # 0.3.4 (crisis safety net) supersedes 0.3.3; see test_crisis_safety_net.py.
-    assert REQUEST_POLICY_VERSION == "0.3.4"
+    # 0.3.5 adds contextual routing; the original pilot expectations remain.
+    assert REQUEST_POLICY_VERSION == "0.3.5"
 
 
 # --- F1: capability question ---------------------------------------------
