@@ -20,7 +20,7 @@
   - saying goodbye
 
   26 new crisis variants written for this change are permanent tests (`tests/slm/test_crisis_safety_net.py`). Crisis is still checked first and overrides every other route.
-- **Prohibited categories.** Broader families cover diagnosis (qualified self-assessment, named conditions, "what's wrong with me"), cause ("root cause", "what is causing", "X is making me anxious"), treatment (plans, recommendations, "what should I do to feel less …"), risk ("am I at risk of", "will my mood get worse") and prompt injection (any determiner before "rules", persona and jailbreak framings).
+- **Prohibited categories.** Broader families cover diagnosis (qualified self-assessment, named conditions), cause (requests for an underlying cause, "X is making me feel Y"), treatment (plans, recommendations, emotional-coping goals), risk (forecasts about mood or mental state, own risk level) and prompt injection (any determiner before "rules", persona and jailbreak framings).
 - **Not changed.** Explicit time windows such as "this week" or "last month" still get `unsupported_time_window`. The evidence covers only the fixed trailing 14-day window (`[-14, -1]`), so answering a 7-day or 30-day question from it would misstate what was asked.
 
 ## Result (post-hoc)

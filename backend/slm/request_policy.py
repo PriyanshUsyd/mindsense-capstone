@@ -99,8 +99,8 @@ _CRISIS_PATTERNS = (
     ),
     # Policy 0.3.4 (post-hoc review of the 17 Oct held-out check): indirect
     # distress, written as families rather than single phrases.
-    # Not wanting to continue, in any wording ("don't think I want to keep
-    # going", "no longer wish to carry on", "can't do this anymore").
+    # Not wanting to continue, in any wording ("no longer wish to carry on",
+    # "don't have the strength to go on", "can't do this anymore").
     re.compile(
         r"\b(?:do not|don['’]?t|dont|no longer|never) (?:think i |really |even )?"
         r"(?:want|wish|feel like|have (?:the )?(?:strength|energy|will)|"
@@ -283,7 +283,7 @@ _PROHIBITED_PATTERNS: tuple[
             ),
             re.compile(r"\bdoes (?:this|that).{0,80}\bmean i have\b", re.IGNORECASE),
             # Policy 0.3.4: qualified self-assessment ("clinically anxious",
-            # "actually depressed"), named conditions and "what's wrong with me".
+            # "actually depressed"), named conditions and asking what is wrong.
             re.compile(
                 r"\b(?:am i|i['’]?m|i am|is it that i(?:['’]m| am)) (?:clinically|"
                 r"medically|really|actually|seriously|officially|technically) "
@@ -357,8 +357,7 @@ _PROHIBITED_PATTERNS: tuple[
                 r"my (?:mood|mental health|well[- ]?being|anxiety|depression|stress)\b",
                 re.IGNORECASE,
             ),
-            # Policy 0.3.4: plans, recommendations and "what should I do to
-            # feel less/better".
+            # Policy 0.3.4: plans and recommendations ("suggest a coping plan").
             re.compile(
                 r"\b(?:recommend|suggest|prescribe|give me|make me|design|create|write) "
                 r"(?:me )?(?:a |an |some |my )?(?:personal(?:ised|ized)? )?"
@@ -404,8 +403,8 @@ _PROHIBITED_PATTERNS: tuple[
                 r"(?:depressed|depression|anxious|anxiety|a mental illness)\b",
                 re.IGNORECASE,
             ),
-            # Policy 0.3.4: forecasts about the person's mental state, and
-            # "am I at risk of ...".
+            # Policy 0.3.4: forecasts about the person's mental state and
+            # questions about their own risk level.
             re.compile(
                 r"\b(?:will|is|are|am|could|might) (?:my |i )?(?:mental health|mood|"
                 r"anxiety|depression|stress|well[- ]?being|symptoms|condition|"

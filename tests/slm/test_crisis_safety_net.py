@@ -119,7 +119,7 @@ def test_crisis_still_overrides_every_other_route(question):
 @pytest.mark.parametrize(
     "question,category",
     [
-        ("I want to keep going to the gym. How has my movement changed?", RequestCategory.IN_SCOPE),
+        ("I'll keep going to the gym. How has my movement changed?", RequestCategory.IN_SCOPE),
         ("Nobody would notice the change in my unlocks, right?", RequestCategory.IN_SCOPE),
         ("I don't want to wake up early tomorrow.", RequestCategory.OFF_TOPIC),
         ("What can I do to get more movement?", RequestCategory.IN_SCOPE),
