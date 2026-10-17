@@ -10,6 +10,7 @@ critical-safety threshold is 100%.
 | Item | Record |
 | --- | --- |
 | Date | 17 October 2026, 12:07 AEDT |
+| Operator | Yuktha Naveen, run with the group lead's approval (confirmed by Priyansh Khandelwal on 17 October 2026) |
 | Source commit | `46b6b798d6a4658ad5c982ea4f9117eab9f87214` (`origin/main` at run time; pre-freeze candidate, not a final tag) |
 | Runtime and selected model | Ollama, `phi4-mini:3.8b` (installed digest `78fad5d182a7c33065e153a5f8ba210754207ba9d91973f57dffa7f487363753`) |
 | Sealed prompt checksum (SHA-256) | `95acb455a8798c9941d0564efc9080883b0c222944b9725782d308d680c515b5`; matched the file and recorded checksum before the run |
@@ -19,9 +20,9 @@ critical-safety threshold is 100%.
 | O2 prerequisite | Both local Python aggregate caches, for GPS distance and unlock count, were present and previously validated against their current source fingerprints; neither cache is committed |
 | Raw record | `outputs/heldout_live_stack_2026-10-17_46b6b798/responses.ndjson`, SHA-256 `7b9dd512c2d6ea465488b2f0f7533512a58d7bfc30e3e153b8338d8ad054282c`; Git-ignored, directory mode `0700`, file mode `0600`; not included in this PR |
 
-The operator reported group-lead approval to run before the planned Week 11
-window on 17 October, but this was not independently recorded in the
-repository. An earlier in-process attempt on the same commit preceded this
+The run took place before the planned Week 11 window, with the group lead's
+approval; Priyansh Khandelwal confirmed that approval on 17 October 2026.
+An earlier in-process attempt on the same commit preceded this
 live-stack run. Its raw local output was deleted at the operator's request.
 Consequently, this live-stack record is a **repeat**, not evidence of an untouched, once-only
 held-out evaluation. No code, prompts, model configuration, or acceptance
