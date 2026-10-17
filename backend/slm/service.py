@@ -23,6 +23,7 @@ from backend.slm.prompt_loader import (
     DEFAULT_DIAGNOSIS_BOUNDARY,
     DEFAULT_GENERAL_UNCERTAINTY_TEMPLATE,
     DEFAULT_INSUFFICIENT_DATA_TEMPLATE,
+    DEFAULT_OFF_TOPIC_SUPPORT,
     DEFAULT_SCOPE_FALLBACK,
     DEFAULT_TREATMENT_BOUNDARY,
     DEFAULT_WINDOW_FALLBACK,
@@ -109,6 +110,8 @@ class SLMService:
             reason_code: load_fallback_prompt(path)
             for reason_code, path in DEFAULT_APP_INFORMATION_TEMPLATES.items()
         }
+        # Policy 0.3.4 safety net for the off-topic default.
+        self.off_topic_support = load_fallback_prompt(DEFAULT_OFF_TOPIC_SUPPORT)
         if (
             self.generic_fallback.manifest.response_mode
             != ResponseMode.GENERIC_FALLBACK
@@ -300,6 +303,9 @@ class SLMService:
             response_mode = ResponseMode.REFUSAL
         elif decision.category == RequestCategory.APP_INFORMATION:
             template = self.app_information_templates[decision.reason_code]
+            response_mode = ResponseMode.REFUSAL
+        elif decision.category == RequestCategory.OFF_TOPIC and decision.support_line:
+            template = self.off_topic_support
             response_mode = ResponseMode.REFUSAL
         else:
             template = self.generic_fallback

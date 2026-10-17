@@ -133,6 +133,10 @@ DEFAULT_TREATMENT_BOUNDARY = (
 DEFAULT_CLINICAL_SCORE_BOUNDARY = (
     Path(__file__).resolve().parent / "prompts" / "clinical_score_boundary.yaml"
 )
+# Policy 0.3.4: off-topic refusal that carries the support line.
+DEFAULT_OFF_TOPIC_SUPPORT = (
+    Path(__file__).resolve().parent / "prompts" / "off_topic_support.yaml"
+)
 DEFAULT_APP_INFORMATION_TEMPLATES = {
     reason_code: Path(__file__).resolve().parent / "prompts" / f"{reason_code}.yaml"
     for reason_code in (

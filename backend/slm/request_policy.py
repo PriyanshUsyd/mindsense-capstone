@@ -3,8 +3,11 @@
 The local SLM service must refuse high-severity requests even when the UI is
 not available.  This module deliberately uses a small, reviewable rule
 set: crisis language is routed to the versioned crisis template, prohibited
-and off-topic requests are routed to the generic refusal template, and only
-recognised MindSense evidence questions continue to the local model.
+requests are routed to their refusal templates, and only recognised
+MindSense evidence questions continue to the local model. Off-topic requests
+get the short refusal only when they are clearly unrelated and show no
+distress; every other off-topic default carries the support line, so a
+crisis phrase the rules miss is still answered safely (policy 0.3.4).
 
 This is a development guardrail, not a clinical risk assessment.  The rule
 set and participant-facing wording still require Evaluation/client review
@@ -19,7 +22,7 @@ from enum import Enum
 
 from pydantic import BaseModel, ConfigDict
 
-REQUEST_POLICY_VERSION = "0.3.3"
+REQUEST_POLICY_VERSION = "0.3.4"
 
 _logger = logging.getLogger(__name__)
 
@@ -52,6 +55,9 @@ class RequestPolicyDecision(BaseModel):
     disposition: RequestDisposition
     category: RequestCategory
     reason_code: str | None = None
+    # Policy 0.3.4 safety net: an off-topic refusal that must carry the
+    # support line (GP, mental-health professional, crisis line).
+    support_line: bool = False
 
 
 _CRISIS_PATTERNS = (
@@ -91,6 +97,119 @@ _CRISIS_PATTERNS = (
         r"take (?:it|this) any ?more|take much more)\b",
         re.IGNORECASE,
     ),
+    # Policy 0.3.4 (post-hoc review of the 17 Oct held-out check): indirect
+    # distress, written as families rather than single phrases.
+    # Not wanting to continue, in any wording ("no longer wish to carry on",
+    # "don't have the strength to go on", "can't do this anymore").
+    re.compile(
+        r"\b(?:do not|don['’]?t|dont|no longer|never) (?:think i |really |even )?"
+        r"(?:want|wish|feel like|have (?:the )?(?:strength|energy|will)|"
+        r"have it in me) (?:to )?(?:keep going|go on|carry on|keep living|"
+        r"keep trying|exist|wake up|be alive|live any ?more)\b"
+        # "keep going to the gym", "wake up early" are everyday plans.
+        r"(?! (?:to|early|at|for|before|on time|in time)\b)"
+        r"|\b(?:can['’]?t|cannot|can not) (?:do|handle|face) (?:this|it|life|"
+        r"anything) any ?more\b"
+        r"|\bi['’]?m (?:so )?(?:done|finished) with (?:life|living|everything|"
+        r"it all)\b|\bwant (?:it all|everything|the pain) to (?:stop|end)\b",
+        re.IGNORECASE,
+    ),
+    # Absence and burden: nobody would notice, care or miss me if I were gone.
+    re.compile(
+        r"\b(?:nobody|no one|no-one|noone) (?:else )?(?:would|will|is going to|"
+        r"even|really|actually|ever|would even|would really)? ?"
+        r"(?:(?:care[sd]? (?:about me|if i|whether i|what happens to me)|"
+        r"miss(?:es|ed)? me|notice[sd]? (?:me|if i|when i|that i)|"
+        r"remember[sd]? me|love[sd]? me|want[sd]? me)\b|cares?\s*[.!]*\s*$)"
+        r"|\bif i (?:disappeared|vanished|was gone|were gone|wasn['’]?t here|"
+        r"weren['’]?t here|wasn['’]?t around|weren['’]?t around|died|left for good)\b"
+        r"|\b(?:i['’]?m|i am|i feel like) (?:just )?(?:a |such a )?burden\b"
+        r"|\b(?:everyone|everybody|they|people|my family) (?:would|will) be better "
+        r"off\b",
+        re.IGNORECASE,
+    ),
+    # Wanting to disappear, not exist or not wake up.
+    re.compile(
+        r"\b(?:want|wish|wishing|like) (?:i could |to )?(?:just )?(?:disappear|vanish|"
+        r"stop existing|not exist|cease to exist|fall asleep and not wake|"
+        r"sleep forever|never wake up|not wake up)\b"
+        r"|\bhope i (?:don['’]?t|do not|never) wake up\b",
+        re.IGNORECASE,
+    ),
+    # Life not worth living, no way out, no future.
+    re.compile(
+        r"\b(?:life|living|it|any of this)(?: is|['’]s| isn['’]?t| is not)? "
+        r"(?:not )?worth (?:living|it any ?more|going on)\b"
+        r"|\bnot worth living\b|\bno way out\b|\b(?:there['’]?s|there is) no "
+        r"future for me\b|\bnothing (?:will|is going to|is ever going to) "
+        r"(?:get better|change|help)\b",
+        re.IGNORECASE,
+    ),
+    # Overwhelm: not coping, breaking point, falling apart.
+    re.compile(
+        r"\b(?:can['’]?t|cannot|can not|unable to) (?:cope|handle (?:it|this|life)|"
+        r"bear (?:it|this)|stand (?:it|this|myself|living))\b"
+        r"|\b(?:not|barely) coping\b|\b(?:at|reached|hit) (?:my |the )?breaking point\b"
+        r"|\b(?:i['’]?m|i am) falling apart\b|\bend of my (?:rope|tether)\b"
+        r"|\btoo much (?:for me )?to (?:bear|handle|take)\b",
+        re.IGNORECASE,
+    ),
+    # Self-harm and safety, beyond the literal "hurt myself".
+    re.compile(
+        r"\b(?:cut|cutting|burn|burning|punish|punishing|starve|starving) myself\b"
+        r"|\boverdos(?:e|ed|ing)\b|\bself[- ]?injur\w*\b"
+        r"|\b(?:don['’]?t|do not|no longer) feel safe (?:with|around|by) myself\b"
+        r"|\bnot safe (?:with|around|by) myself\b",
+        re.IGNORECASE,
+    ),
+    # Saying goodbye or not being around much longer.
+    re.compile(
+        r"\bwon['’]?t be (?:around|here) (?:much longer|for long|any ?more|tomorrow)\b"
+        r"|\bnot (?:be )?(?:around|here) (?:much longer|for much longer)\b"
+        r"|\bthis is (?:my )?goodbye\b|\bgoodbye forever\b|\bmy final (?:message|goodbye)\b",
+        re.IGNORECASE,
+    ),
+)
+
+# Policy 0.3.4: softer distress signals. They do not trigger the crisis
+# template on their own, but an off-topic refusal that contains one always
+# carries the support line (see _CLEARLY_UNRELATED_PATTERNS below).
+_DISTRESS_PATTERNS = (
+    re.compile(
+        r"\b(?:stress(?:ed|ful)?|anxious|anxiety|panic\w*|depress\w*|sad|unhappy|"
+        r"miserable|lonely|alone|isolated|overwhelm\w*|struggl\w*|exhausted|"
+        r"burn(?:t|ed) out|empty|numb|scared|afraid|frightened|upset|crying|cry|"
+        r"tearful|distress\w*|hurting|in pain|low mood|feel(?:s|ing)? (?:so |really |"
+        r"very |quite |pretty |a bit |kind of |super |extremely )?(?:low|down|"
+        r"awful|terrible|horrible|bad|lost|broken)|hate myself|hate my life)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(r"\b(?:can['’]?t|cannot) (?:sleep|stop crying|stop worrying)\b", re.IGNORECASE),
+)
+
+# Policy 0.3.4: questions that are clearly about something unrelated
+# (weather, sport, cooking, trivia...). Only these keep the short off-topic
+# refusal; every other off-topic default carries the support line, so a
+# crisis phrase the rules above miss still gets a safe answer.
+_CLEARLY_UNRELATED_PATTERNS = (
+    re.compile(
+        r"\b(?:weather|forecast|temperature|rain(?:ing|y)?|sunny|snow(?:ing)?)\b"
+        r"|\b(?:football|soccer|cricket|rugby|tennis|basketball|nba|nfl|afl|nrl|"
+        r"olympics?|world cup|grand prix|formula (?:1|one))\b"
+        r"|\bwho (?:won|is winning|will win)\b|\b(?:score|result) of the (?:game|match)\b"
+        r"|\b(?:recipe|cook(?:ing)?|bake|baking|restaurant|dinner ideas?)\b"
+        r"|\b(?:movie|film|tv show|series|song|album|band|singer|actor|actress)\b"
+        r"|\b(?:tell me a joke|joke|riddle|poem|story)\b"
+        r"|\b(?:capital (?:city )?of|population of|translate|spell)\b"
+        r"|\b\d+(?:\.\d+)?\s*[-+*/x×÷^]\s*\d+(?:\.\d+)?\b|\b(?:maths?|algebra|"
+        r"equation)\b"
+        r"|\b(?:stock price|share price|bitcoin|crypto(?:currency)?|exchange rate)\b"
+        r"|\b(?:python|javascript|java|sql|html|css|code|coding|programming|"
+        r"homework|essay)\b"
+        r"|\b(?:recommend|buy|choose) (?:a|an|me a) (?:phone|laptop|car|game|book)\b"
+        r"|\b(?:phone|laptop|car|game|book) recommendations?\b",
+        re.IGNORECASE,
+    ),
 )
 
 _PROHIBITED_PATTERNS: tuple[
@@ -112,6 +231,29 @@ _PROHIBITED_PATTERNS: tuple[
                 r"\b(?:bypass|disable|override) (?:the )?(?:safety|guardrail|policy)\b",
                 re.IGNORECASE,
             ),
+            # Policy 0.3.4: any determiner before the rules ("your safety
+            # rules", "all content filters"), and more verbs.
+            re.compile(
+                r"\b(?:bypass|disable|override|ignore|turn off|switch off|get around|"
+                r"break|remove|forget|drop) (?:all |the |your |any |these |those |of "
+                r"your )?(?:own )?(?:safety |content |usual )?(?:rules|restrictions|"
+                r"guard ?rails?|filters?|policies|policy|limits|limitations|"
+                r"guidelines|instructions|programming)\b",
+                re.IGNORECASE,
+            ),
+            # Persona and jailbreak framings ("you are now X with no content
+            # policy", "DAN", "developer mode"). "Pretend you're a
+            # psychiatrist" stays a diagnosis request (dev Q42).
+            re.compile(
+                r"\byou are (?:now|no longer)\b|\bfrom now on,? you(?: are|['’]re| will)\b"
+                r"|\b(?:with|has|have) no (?:content )?(?:policy|policies|rules|"
+                r"restrictions|filters|limits|guidelines)\b"
+                r"|\bwithout (?:any )?(?:content )?(?:policy|policies|rules|restrictions|"
+                r"filters|limits|guidelines)\b"
+                r"|\b(?:developer|god|unrestricted|jailbreak) mode\b|\bjailbr(?:ea|o)k\w*\b",
+                re.IGNORECASE,
+            ),
+            re.compile(r"\bDAN\b"),
         ),
     ),
     (
@@ -140,6 +282,25 @@ _PROHIBITED_PATTERNS: tuple[
                 re.IGNORECASE,
             ),
             re.compile(r"\bdoes (?:this|that).{0,80}\bmean i have\b", re.IGNORECASE),
+            # Policy 0.3.4: qualified self-assessment ("clinically anxious",
+            # "actually depressed"), named conditions and asking what is wrong.
+            re.compile(
+                r"\b(?:am i|i['’]?m|i am|is it that i(?:['’]m| am)) (?:clinically|"
+                r"medically|really|actually|seriously|officially|technically) "
+                r"(?:depressed|anxious|bipolar|mentally ill|unwell|ill|sick|"
+                r"disordered|traumati[sz]ed)\b",
+                re.IGNORECASE,
+            ),
+            re.compile(
+                r"\b(?:what['’]?s|what is|is (?:there )?(?:something|anything)) wrong "
+                r"with me\b"
+                r"|\b(?:do|could|might) i (?:have|suffer from) (?:an? )?"
+                r"(?:anxiety|depressive|mood|panic|eating|personality|bipolar|"
+                r"mental|psychological|psychiatric) (?:disorder|condition|illness)\b"
+                r"|\b(?:do|could|might) i have (?:adhd|ptsd|ocd|bipolar|bpd|"
+                r"autism|an eating disorder|burnout|clinical depression)\b",
+                re.IGNORECASE,
+            ),
             # Policy 0.3.3 (dev Q38): asking the data to confirm a named
             # condition, e.g. "My doctor says I'm depressed. Does my data
             # confirm it?"
@@ -196,6 +357,34 @@ _PROHIBITED_PATTERNS: tuple[
                 r"my (?:mood|mental health|well[- ]?being|anxiety|depression|stress)\b",
                 re.IGNORECASE,
             ),
+            # Policy 0.3.4: plans and recommendations ("suggest a coping plan").
+            re.compile(
+                r"\b(?:recommend|suggest|prescribe|give me|make me|design|create|write) "
+                r"(?:me )?(?:a |an |some |my )?(?:personal(?:ised|ized)? )?"
+                r"(?:treatment|therapy|medication|medicine|recovery|care|coping|"
+                r"self[- ]care|wellness|mental[- ]health) "
+                r"(?:plan|options?|strateg(?:y|ies)|programme|program|regime|routine)?\b"
+                r"|\btreatment (?:plan|options?)\b",
+                re.IGNORECASE,
+            ),
+            re.compile(
+                # Emotional or clinical goals only: "what can I do to get more
+                # movement?" is a feature question and stays in scope.
+                r"\bwhat (?:should|can|could|do) i (?:do|try|take) (?:to|so (?:that )?i) "
+                r"(?:feel|be (?:happier|calmer|less|more|better|okay|ok)|"
+                r"get (?:better|over|rid of|through)|stop (?:feeling|being|worrying|"
+                r"panicking|crying)|cope|calm down|relax|manage (?:my )?(?:stress|"
+                r"anxiety|mood|feelings)|reduce (?:my )?(?:stress|anxiety)|beat|"
+                r"overcome|deal with (?:my )?(?:stress|anxiety|feelings|this)|"
+                r"sleep better)\b"
+                r"|\bhow (?:can|do|could|should) i (?:feel|be) (?:less|more|better)\b"
+                r"|\bhow (?:can|do|could|should) i get better\b"
+                r"|\bhow (?:can|do|could|should) i (?:stop|cope with|deal with|manage|"
+                r"beat|overcome|reduce|treat|cure) (?:my |the |this )?(?:anxiety|"
+                r"depression|stress|panic|sadness|low mood|feelings?|symptoms|"
+                r"mental health)\b",
+                re.IGNORECASE,
+            ),
         ),
     ),
     (
@@ -212,6 +401,27 @@ _PROHIBITED_PATTERNS: tuple[
             re.compile(
                 r"\bwill i (?:become|get|develop) "
                 r"(?:depressed|depression|anxious|anxiety|a mental illness)\b",
+                re.IGNORECASE,
+            ),
+            # Policy 0.3.4: forecasts about the person's mental state and
+            # questions about their own risk level.
+            re.compile(
+                r"\b(?:will|is|are|am|could|might) (?:my |i )?(?:mental health|mood|"
+                r"anxiety|depression|stress|well[- ]?being|symptoms|condition|"
+                r"mental state|state of mind|i)? ?(?:going to |likely to |about to )?"
+                r"(?:get worse|get better|deteriorate|decline|worsen|improve|relapse|"
+                r"break down|crash|spiral)\b",
+                re.IGNORECASE,
+            ),
+            re.compile(
+                r"\b(?:am i|are you saying i(?:['’]m| am)|is there a|what(?:['’]s| is) "
+                r"the) (?:at |in )?(?:high |low |any |serious )?(?:risk|chance|"
+                r"likelihood|danger|odds) (?:of|for)\b"
+                r"|\bam i (?:at|in) (?:high |low |any |serious )?(?:risk|danger)\b"
+                r"|\b(?:risk|chance|likelihood|odds) of (?:a |me having a |having a |me )?"
+                r"(?:breakdown|relapse|burnout|crisis|depression|anxiety|getting worse)\b"
+                r"|\bam i (?:going|likely|about) to (?:have a breakdown|break down|"
+                r"relapse|get worse|crash|burn out)\b",
                 re.IGNORECASE,
             ),
         ),
@@ -232,6 +442,18 @@ _PROHIBITED_PATTERNS: tuple[
             # confirms or rejects a stated cause.
             re.compile(r"\b(?:because|due to)\b", re.IGNORECASE),
             re.compile(r"\bprov(?:e|es|ed|ing)\b|\bproof\b", re.IGNORECASE),
+            # Policy 0.3.4: "root cause", "what is causing/behind", "why is X
+            # making me Y", "X is making me anxious".
+            re.compile(
+                r"\b(?:root )?caus(?:e|es|ed|ing) of\b|\broot cause\b"
+                r"|\bwhat(?:['’]s| is| are) (?:causing|behind|driving|triggering)\b"
+                r"|\bwhy (?:is|are|does|do|did|was|were|am)\b.{0,80}\b(?:making|made|"
+                r"causing|caused|giving|leaving|turning)\b"
+                r"|\b(?:is|are|was|were|keeps?) (?:making|leaving) me (?:feel )?"
+                r"(?:anxious|sad|depressed|stressed|tired|lonely|worse|unhappy|low|"
+                r"down|nervous|upset|on edge)\b",
+                re.IGNORECASE,
+            ),
         ),
     ),
     (
@@ -611,10 +833,20 @@ def classify_request(question: str) -> RequestPolicyDecision:
         )
 
     if not clean_question or not _is_in_scope(clean_question):
+        # Safety net: a crisis phrase the rules above miss lands here, so only
+        # a clearly unrelated question with no distress signal keeps the
+        # short refusal; everything else gets the support line.
+        clearly_unrelated = any(
+            pattern.search(clean_question) for pattern in _CLEARLY_UNRELATED_PATTERNS
+        )
+        distressed = any(
+            pattern.search(clean_question) for pattern in _DISTRESS_PATTERNS
+        )
         return RequestPolicyDecision(
             disposition=RequestDisposition.REFUSE,
             category=RequestCategory.OFF_TOPIC,
             reason_code="off_topic_request_detected",
+            support_line=distressed or not clearly_unrelated,
         )
 
     return RequestPolicyDecision(
