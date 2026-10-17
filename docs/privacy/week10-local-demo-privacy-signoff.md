@@ -17,15 +17,18 @@ answers while this Mac's Wi-Fi was off and a direct public-network probe was
 unreachable. This is a scoped runtime privacy pass, not approval for real-user
 accounts or a claim that the entire computer can never transmit data.
 
-**Repository evidence publication remains on hold.** Older tracked UI images,
-an evaluation PDF, and accompanying text contain CES-derived single-person
-activity summaries. They show no visible participant ID in the inspected
-examples, and an older UI record says publication had been approved. However,
+**Repository evidence publication remains on hold.** PR #87 redacted
+`final-build-q1-unlock.png`, `final-build-q2-movement.png`, and `ME-P01.pdf`
+on main, so their current versions no longer expose per-person values. Their
+unredacted versions remain in Git history, while tracked text and three
+`demo-machine-*.jpeg` screenshots still show CES-derived single-person
+summaries. An older UI record says publication had been approved. However,
 this conflicts with `docs/privacy/local-demo-privacy-check.md`, which says not
 to commit screenshots of participant summaries. The conflict must be resolved
 and the relevant history assessed before anyone describes the repository as
 privacy-clean. No unredacted offline screenshots or full responses are added
-by this sign-off. The two redacted screenshots are documented below.
+by this sign-off. The only image added is the two-crop redaction documented
+below.
 
 ## Assumptions and Scope
 
@@ -56,7 +59,7 @@ by this sign-off. The two redacted screenshots are documented below.
 | Live offline API and model | On 16 Oct, verified Wi-Fi Off and public HTTPS probe failure, then requested local frontend/asset, `/health`, `/models`, and two `/respond` feature categories | Local pages and API returned HTTP 200. Movement and unlock requests returned `uncertainty` with `model_tag=phi4-mini:3.8b`, `model_invoked=true`, `used_fallback=false`, and `Cache-Control: no-store`. Wi-Fi and public reachability were restored afterward. | Demonstrates usable local inference during the tested disconnection. Only redacted response metadata is retained. |
 | Manual browser workflow | Reviewed the privacy lead's Chrome captures made while the Mac showed Wi-Fi off | Phi-selected movement and unlock answers rendered in the local app | Confirms the user-facing flow. A later Qwen selection/fallback display is not evidence that Qwen worked offline; Qwen is outside this sign-off. Original captures remain local because they show participant-derived values and browser details. |
 | Local storage and Git inventory | Checked Git tracking/ignore rules and filesystem modes | No `dataset/`, `outputs/`, or `.env` file was tracked. Dataset and both cache directories were owner-only (`700`); cache files were owner-only (`600`). | Prevents these local raw/cache files being added by an ordinary `git add`. It does not erase already-tracked evidence or stop root/same-account access. |
-| Tracked text and binary spot-check | Searched tracked text for credential, email/home-path, and raw UID-shaped patterns; visually inspected selected evidence images and extracted evaluation-PDF text | No match for the tested credential, email, or real home-path patterns in tracked text; one documented Windows example path uses `you`. Existing images/PDF/text do expose CES-derived individual summary values without visible IDs. | This is the repository-publication hold. Automated privacy tests do not cover image/PDF contents. The spot-check is not a proof that every embedded binary field is harmless. |
+| Tracked text and binary spot-check | Searched tracked text for credential, email/home-path, and raw UID-shaped patterns; visually inspected selected evidence images and extracted evaluation-PDF text | No match for the tested credential, email, or real home-path patterns in tracked text; one documented Windows example path uses `you`. PR #87 redacted the final-build PNGs and ME-P01 PDF on main, so their current versions no longer expose individual values. Tracked text and three demo-machine JPEGs still show CES-derived single-person values. | This is the repository-publication hold. Automated privacy tests do not cover image/PDF contents. The spot-check is not a proof that every embedded binary field is harmless. |
 
 The backend was launched with `--no-access-log` for the offline demo. This
 sign-off does not claim a fresh exhaustive review of every library log line;
@@ -66,22 +69,21 @@ the earlier Week 9 live-log review remains separate historical evidence.
 
 - Redacted machine-readable results: `benchmarks/history/privacy_security/2026-10-17_week10-local-demo-signoff.json`.
 - Exact-SHA CI: `https://github.com/PriyanshUsyd/mindsense-capstone/actions/runs/38886676044`.
-- The two redacted screenshots supplied on 17 October each show the Mac's
-  Wi-Fi-off indicator and the app Details line with
-  `model_tag=phi4-mini:3.8b`. Participant-derived values are covered; the
-  unredacted originals remain local.
+- The image below is a labelled composite of two pixel crops from separate
+  offline-test captures on 16 October, at 22:50 and 22:59. The first shows
+  the Mac's Wi-Fi-off indicator; the second shows the app Details line with
+  `model_tag=phi4-mini:3.8b`. It does **not** claim to be one simultaneous
+  screenshot. The original captures include participant-derived values and
+  browser/terminal details, so they remain local and must not be published
+  as-is. No AI-generated pixels were used as test evidence.
 
-  ![Offline unlock response with value redacted](week10-offline-test-1.jpg)
-
-  ![Offline movement response with value redacted](week10-offline-test-2.jpg)
-- Existing evidence needing a publication decision includes
-  `docs/ui/evidence/final-build-q1-unlock.png`,
-  `docs/ui/evidence/final-build-q2-movement.png`,
-  `docs/ui/final-build-screenshots.md`, and
-  `docs/evaluation/evidence/main-evaluation/ME-P01/ME-P01.pdf`. Other tracked
-  demo/evaluation screenshots and text should be reviewed at the same time.
-  If these are removed or redacted, ordinary deletion commits do not remove
-  prior Git history; coordinate any history cleanup with the repository lead.
+  ![Redacted two-crop offline evidence: Wi-Fi off and Phi model tag](week10-offline-redacted-crops.png)
+- The publication hold covers unredacted pre-#87 versions in Git history,
+  tracked text documents that quote per-person values, and the three
+  `demo-machine-*.jpeg` screenshots. The current final-build PNGs and ME-P01
+  PDF were redacted by #87 and are not on this list. Ordinary deletion commits
+  do not remove prior Git history; coordinate any history cleanup with the
+  repository lead.
 - Before real-user access, implement authentication, verified sessions,
   backend-only participant ownership mapping, access tests, and a retention/
   deletion decision. No PIN-only lookup or caller-chosen participant ID is
