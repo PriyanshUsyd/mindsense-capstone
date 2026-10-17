@@ -9,7 +9,7 @@ rc-eval-2's response behaviour (see the
 
 | Session | Folder | Contents |
 |---|---|---|
-| S1 (13 Oct, `phi4-mini:3.8b`) | `ME-P01/` | `ME-P01.pdf`: transcript with Details lines (username/hostname redacted 2026-10-16) |
+| S1 (13 Oct, `phi4-mini:3.8b`) | `ME-P01/` | `ME-P01.pdf`: transcript with Details lines (username/hostname redacted 2026-10-16; per-person values redacted 2026-10-17) |
 | S2 (16 Oct re-run, `phi4-mini:3.8b`) | `S2/Q1/`–`Q4/` | `notes.md` per question |
 | S3 (16 Oct re-run, `phi4-mini:3.8b`) | `ME-P04/Q1/`–`Q4/` | `notes.md` per question, including the superseded 13 Oct `demo-stub:1.0` run |
 | — | `ME-P01-attempt1-rc-eval-1/` | Superseded rc-eval-1 attempt; not part of the results |
