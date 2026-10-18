@@ -160,6 +160,45 @@ describe('session chat memory', () => {
     expect(screen.queryByRole('button', { name: /^end session$/i })).not.toBeInTheDocument()
   })
 
+  it('opens the session sidebar as a slide-over from the Chats button', async () => {
+    // The button and panel styling only apply below 900 px (CSS); jsdom has no
+    // media queries, so this checks the panel's behaviour.
+    const user = userEvent.setup()
+    render(<NormalResponse />)
+    await threeChats(user)
+
+    const toggle = screen.getByRole('button', { name: /^chats$/i })
+    const sidebar = document.getElementById('session-sidebar')
+    expect(toggle).toHaveAttribute('aria-controls', 'session-sidebar')
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    expect(sidebar).not.toHaveClass('sidebar--open')
+
+    await user.click(toggle)
+    expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    expect(sidebar).toHaveClass('sidebar--open')
+    await user.click(screen.getByRole('button', { name: /close chats/i }))
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    expect(sidebar).not.toHaveClass('sidebar--open')
+
+    // The backdrop closes it too.
+    await user.click(toggle)
+    await user.click(screen.getByTestId('sidebar-backdrop'))
+    expect(sidebar).not.toHaveClass('sidebar--open')
+
+    // Picking a chat reopens it and closes the panel.
+    await user.click(toggle)
+    await user.click(within(sessionList()).getByRole('button', { name: /how far did i travel/i }))
+    expect(sidebar).not.toHaveClass('sidebar--open')
+    expect(screen.getByText(`Synthetic answer to: ${QUESTIONS.movement}`)).toBeInTheDocument()
+
+    // End session is reachable from the panel and closes it.
+    await user.click(toggle)
+    await user.click(screen.getByRole('button', { name: /^end session$/i }))
+    await user.click(screen.getByRole('button', { name: /yes, end session/i }))
+    expect(sidebar).not.toHaveClass('sidebar--open')
+    expect(sessionButtons()).toHaveLength(0)
+  })
+
   it('keeps nothing after the page is reloaded (remount)', async () => {
     const user = userEvent.setup()
     const view = render(<NormalResponse />)

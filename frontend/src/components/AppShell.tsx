@@ -43,11 +43,36 @@ export function AppShell({
   statusTone,
 }: AppShellProps) {
   const [confirmingEnd, setConfirmingEnd] = useState(false)
+  // Below 900 px the sidebar is hidden; the Chats button opens it as a
+  // slide-over panel so the session list and End session stay reachable.
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   return (
     <div className="app-shell">
-      <aside className="sidebar" aria-label="MindSense sidebar">
-        <BrandMark />
+      {sidebarOpen && (
+        <div
+          aria-hidden="true"
+          className="sidebar-backdrop"
+          data-testid="sidebar-backdrop"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+      <aside
+        aria-label="MindSense sidebar"
+        className={sidebarOpen ? 'sidebar sidebar--open' : 'sidebar'}
+        id="session-sidebar"
+      >
+        <div className="sidebar-top">
+          <BrandMark />
+          <button
+            aria-label="Close chats"
+            className="sidebar-close"
+            onClick={() => setSidebarOpen(false)}
+            type="button"
+          >
+            <span aria-hidden="true">×</span>
+          </button>
+        </div>
 
         <p className="eyebrow sidebar-heading">Your space</p>
         <div className="nav-list" aria-label="Current MindSense section">
@@ -75,7 +100,10 @@ export function AppShell({
                         : 'session-chat'
                     }
                     disabled={sessionBusy}
-                    onClick={() => onSelectChat?.(chat.id)}
+                    onClick={() => {
+                      setSidebarOpen(false)
+                      onSelectChat?.(chat.id)
+                    }}
                     title={chat.title}
                     type="button"
                   >
@@ -103,6 +131,7 @@ export function AppShell({
                     disabled={sessionBusy}
                     onClick={() => {
                       setConfirmingEnd(false)
+                      setSidebarOpen(false)
                       onEndSession()
                     }}
                     type="button"
@@ -161,6 +190,16 @@ export function AppShell({
             </div>
           </div>
           <div className="header-badges">
+            <button
+              aria-controls="session-sidebar"
+              aria-expanded={sidebarOpen}
+              className="chats-toggle"
+              onClick={() => setSidebarOpen((open) => !open)}
+              type="button"
+            >
+              <span aria-hidden="true">☰</span>
+              Chats
+            </button>
             {onNewChat && (
               <button className="new-conversation-button" onClick={onNewChat} type="button">
                 <span aria-hidden="true">＋</span>
