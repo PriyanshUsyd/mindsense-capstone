@@ -8,8 +8,11 @@
 # "nothing leaves the device": whole-device offline verification is still
 # outstanding (privacy/initial_dependency_audit.md; master test register).
 
+# 1.1.0 (session chat memory): chats are kept in the open app for the session
+# and cleared on End session, closing or refreshing, not on each new chat.
+
 template_id: app_info_data_storage
-template_version: "1.0.0"
+template_version: "1.1.0"
 response_mode: refusal
 allowed_claim_ids:
   - non_diagnostic_boundary
@@ -22,8 +25,9 @@ prohibited_claim_ids:
 text: >
   In this study version, MindSense runs on this computer. Your questions are
   answered by a model running locally, not by an online service, and the
-  app doesn't save your chat: it is cleared when you start a new
-  conversation or close the page. The study data it summarises is kept on
+  app doesn't save your chats: they are kept only while the app is open,
+  and cleared when you end the session, close or refresh the page. The
+  study data it summarises is kept on
   this computer. For questions about how the study stores or keeps your
   data, please ask the research team.
 

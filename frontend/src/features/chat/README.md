@@ -6,7 +6,18 @@ Home for the 7 chat-state components described in
 `NormalResponse.tsx` retains the API wrapper established by Priyansh and the
 Week 5 visual system merged in PR #10. The Week 6 flow keeps successful turns
 visible, accepts subsequent questions, prevents duplicate in-flight requests,
-supports Enter-to-send, and can reset to a new conversation.
+supports Enter-to-send, and can start a new chat.
+
+Session chat memory: every conversation from one browser session is kept in
+React state only. The sidebar lists them newest first, titled by the first
+question with its time, and clicking one reopens all of its turns, badges and
+Details lines. "New chat" starts a fresh conversation without discarding the
+others. Chats are kept only while the app is open and are cleared on End
+session (after a confirmation), closing or refreshing the tab. Nothing is
+written to Web Storage, IndexedDB, cookies or a service-worker cache, and each
+`/respond` call still sends only the current question: no history field, and
+every call is independent. Below 900 px the sidebar (and so the session list)
+is hidden, as before; "New chat" stays in the header.
 
 Every turn posts a local participant alias and question to
 `backend/api/app.py`. The backend selects the approved local evidence, then

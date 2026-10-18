@@ -63,9 +63,13 @@ network boundary to make a missing dependency download succeed.
   caught at the API boundary emit only `event=local_api_unexpected_failure`,
   without request values, exception messages or traceback. This does not
   sanitise arbitrary logs printed independently by future libraries.
-- Chat text is transient React state. Clear it with New conversation and
-  close the tab after testing. No Web Storage writes occurred in the tested
-  paths; this is not forensic erasure of browser or OS memory.
+- Chat text is transient React state. Chats from one browser session are kept
+  in memory only while the app is open and listed in the sidebar; End session
+  (with a confirmation), closing or refreshing the tab clears them. End the
+  session and close the tab after testing. The app uses no Web Storage,
+  IndexedDB, cookies or service-worker cache, and each `/respond` request
+  carries only the current question; this is not forensic erasure of browser
+  or OS memory.
 - The existing client requests a five-minute model keep-alive. Native prompt
   caching was observed in memory; it must not be described as immediate
   deletion. Unload the model and stop the demo daemon at session end.
