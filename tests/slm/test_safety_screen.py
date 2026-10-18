@@ -86,30 +86,51 @@ def test_screen_labels(outcome, label):
 
 
 @pytest.mark.parametrize(
-    "outcome,label,reason",
-    [
-        (YES, SafetyScreenLabel.YES, "safety_screen_flagged"),
-        ("???", SafetyScreenLabel.UNCLEAR, "safety_screen_flagged"),
-        (
-            SLMUnavailableError("down"),
-            SafetyScreenLabel.ERROR,
-            "safety_screen_unavailable",
-        ),
-        (SLMTimeoutError("slow"), SafetyScreenLabel.ERROR, "safety_screen_unavailable"),
-    ],
-    ids=["yes", "unclear", "error", "timeout"],
+    "outcome,label",
+    [(YES, SafetyScreenLabel.YES), ("???", SafetyScreenLabel.UNCLEAR)],
+    ids=["yes", "unclear"],
 )
-def test_anything_but_no_fails_closed_to_crisis(outcome, label, reason):
+def test_yes_or_unclear_routes_to_crisis(outcome, label):
     service, _ = service_with(outcome)
     response = service.preflight_response(BENIGN, require_feature=True)
     assert response is not None
     assert response.request_disposition == RequestDisposition.CRISIS
     assert response.request_category == RequestCategory.CRISIS_SELF_HARM
     assert response.response_mode.value == "crisis_aware_fallback"
-    assert response.rejection_reason == reason
+    assert response.rejection_reason == "safety_screen_flagged"
     assert response.safety_screen == label
     assert response.model_invoked is False
     assert "13 11 14" in response.text
+
+
+SCREEN_FAILURES = [SLMUnavailableError("down"), SLMTimeoutError("slow")]
+
+
+@pytest.mark.parametrize("failure", SCREEN_FAILURES, ids=["error", "timeout"])
+def test_screen_failure_falls_back_to_rules_for_in_scope(failure):
+    service, _ = service_with(failure)
+    # Rules-only: an in-scope question still goes on to generation.
+    assert service.preflight_response(BENIGN, require_feature=True) is None
+    assert service.safety_screen_label(BENIGN) == SafetyScreenLabel.ERROR
+
+
+@pytest.mark.parametrize("failure", SCREEN_FAILURES, ids=["error", "timeout"])
+def test_screen_failure_keeps_the_rule_refusal_and_support_line(failure):
+    service, _ = service_with(failure)
+    response = service.preflight_response("Do I have ADHD?")
+    assert response.request_disposition == RequestDisposition.REFUSE
+    assert response.request_category == RequestCategory.DIAGNOSIS_SEEKING
+    assert response.safety_screen == SafetyScreenLabel.ERROR
+    assert "Lifeline on 13 11 14" in response.text
+
+
+@pytest.mark.parametrize("failure", SCREEN_FAILURES, ids=["error", "timeout"])
+def test_screen_failure_does_not_weaken_rule_crisis(failure):
+    service, model = service_with(failure)
+    response = service.preflight_response("I want to hurt myself.")
+    assert response.request_disposition == RequestDisposition.CRISIS
+    assert response.safety_screen == SafetyScreenLabel.NOT_RUN
+    assert model.payloads == []
 
 
 def test_no_keeps_the_rule_route():

@@ -493,6 +493,33 @@ _PROHIBITED_PATTERNS: tuple[
                 r"mental health)\b",
                 re.IGNORECASE,
             ),
+            # Policy 0.3.5: treatment by meaning. A medication, supplement or
+            # therapy word together with any advice or change cue.
+            re.compile(
+                r"^(?=.*\b(?:medications?|medicines?|meds|pills?|tablets?|"
+                r"antidepressants?|ssris?|sertraline|fluoxetine|escitalopram|"
+                r"citalopram|lexapro|zoloft|prozac|venlafaxine|ritalin|adderall|"
+                r"stimulants?|lithium|benzos?|xanax|melatonin|supplements?|"
+                r"vitamins?|therapy|therapist|counsell?(?:ing|or)|cbt|psychiatrist|"
+                r"psychologist|treatment)\b)"
+                r".*\b(?:should|would|could|will|can|do i need|help|helps|helping|"
+                r"recommend\w*|suggest\w*|advise|advice|try|start|stop|quit|take|"
+                r"taking|increase|decrease|reduce|raise|up|lower|change|switch|"
+                r"dose|dosage|worth it|work for me|better)\b",
+                re.IGNORECASE | re.DOTALL,
+            ),
+            # "Should I see / ask / start ...?" and "what should I do about".
+            re.compile(
+                r"\bshould i (?:see|get|go to|talk to|speak to|ask|book|try|start|"
+                r"stop|take|change|increase|reduce|lower|up|switch|quit|come off|"
+                r"seek|get help|call)\b"
+                r"|\bwhat (?:should|can|could|do|would you suggest) i (?:do|try) "
+                r"about\b"
+                r"|\bwhat (?:should|can|could) i do (?:now|next|to fix)\b"
+                r"|\bhow (?:do|can|should|could) i (?:treat|fix|cure|get help|get "
+                r"treatment|get (?:some )?support)\b",
+                re.IGNORECASE,
+            ),
         ),
     ),
     (
@@ -530,6 +557,23 @@ _PROHIBITED_PATTERNS: tuple[
                 r"(?:breakdown|relapse|burnout|crisis|depression|anxiety|getting worse)\b"
                 r"|\bam i (?:going|likely|about) to (?:have a breakdown|break down|"
                 r"relapse|get worse|crash|burn out)\b",
+                re.IGNORECASE,
+            ),
+            # Policy 0.3.5: risk and forecasts by meaning ("will I", "chance
+            # of", "likely to", "going to get"). Questions about seeing a
+            # baseline or comparison are app questions, not forecasts.
+            re.compile(
+                r"\bwill i\b(?! (?:be able to )?(?:see|get|have) (?:a |my |the )?"
+                r"(?:baseline|comparison|results?|answer)\b)"
+                r"|\b(?:chances?|odds|probability|likelihood|percentage|risk) "
+                r"(?:of|that|for)\b"
+                r"|\b(?:how )?likely (?:to|is it|am i|that|is that)\b"
+                r"|\b(?:am i|is (?:it|this|that|my \w+(?: \w+)?)|are (?:my \w+|things)|"
+                r"will (?:it|things|this|my \w+(?: \w+)?)) going to (?:get|be|become|"
+                r"end up|turn)\b"
+                r"|\bgoing to get (?:worse|better|bad|harder|easier|sick|ill|"
+                r"depressed|anxious)\b"
+                r"|\b(?:predict|forecast)\w*\b",
                 re.IGNORECASE,
             ),
         ),

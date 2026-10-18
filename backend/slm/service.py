@@ -328,8 +328,9 @@ class SLMService:
     ) -> tuple[RequestPolicyDecision, SafetyScreenLabel]:
         """Rules first; then, unless already crisis, the local safety screen.
 
-        The screen can only add a crisis route. Yes, unclear, timeout and
-        error all fail closed to the crisis template.
+        The screen can only add a crisis route: yes or unclear goes to the
+        crisis template. A timeout or error keeps the rules-only decision
+        (every refusal still carries the support line) and is logged as error.
         """
 
         decision = classify_request(question)
@@ -338,17 +339,13 @@ class SLMService:
         if self.safety_screen is None:
             return decision, SafetyScreenLabel.SKIPPED
         label = self._screen(question.strip())
-        if label == SafetyScreenLabel.NO:
+        if label in {SafetyScreenLabel.NO, SafetyScreenLabel.ERROR}:
             return decision, label
         return (
             RequestPolicyDecision(
                 disposition=RequestDisposition.CRISIS,
                 category=RequestCategory.CRISIS_SELF_HARM,
-                reason_code=(
-                    "safety_screen_unavailable"
-                    if label == SafetyScreenLabel.ERROR
-                    else "safety_screen_flagged"
-                ),
+                reason_code="safety_screen_flagged",
             ),
             label,
         )

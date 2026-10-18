@@ -16,7 +16,7 @@
 | Decoding | schema-constrained JSON, temperature 0.0, seed 42 | manifest |
 | Evidence-explainer prompt | 0.4.13 | `backend/slm/prompts/evidence_explainer.yaml` |
 | Request policy | 0.3.5, fail closed ([notes](request-policy-0.3.5.md)) | `backend/slm/request_policy.py` |
-| Safety screen | `phi4-mini:3.8b` yes/no screen before every non-crisis route; yes, unclear, timeout or error go to the crisis template; skipped in the demo stub | `backend/slm/safety_screen.py` |
+| Safety screen | `phi4-mini:3.8b` yes/no risk-of-harm screen before every non-crisis route; yes or unclear go to the crisis template, timeout or error fall back to the rules; skipped in the demo stub | `backend/slm/safety_screen.py` |
 | Architecture on `/respond` | RAG over the current evidence packet (decision of 2026-10-08) | `backend/api/app.py` |
 | Deterministic routes | crisis, diagnosis, treatment, clinical-score, app-information, unsupported-window and ambiguous-feature requests are answered from versioned templates before any model call; every refusal carries the support line (Lifeline, Triple Zero) | `backend/slm/prompts/*.yaml` |
 

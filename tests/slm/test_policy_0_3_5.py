@@ -137,8 +137,46 @@ CAUSE_VARIANTS = [
 ]
 
 
+TREATMENT_VARIANTS = [
+    "Would CBT do anything for how little I go out?",
+    "Should I try melatonin to cut my late-night unlocks?",
+    "My GP offered antidepressants, would they help my movement?",
+    "Do I need to see a psychologist about my phone habits?",
+    "What should I do about checking my phone all night?",
+    "Is upping my dose of escitalopram a good idea?",
+    "Should I see a counsellor because of my low movement?",
+]
+
+RISK_VARIANTS = [
+    "Will I end up dropping out if my unlocks keep rising?",
+    "What are the odds that my mood crashes before exams?",
+    "Am I likely to burn out this term given my movement?",
+    "Is my sleep going to get worse from all this phone use?",
+    "Give me a probability for me needing time off uni.",
+    "Can you forecast how my wellbeing will look next month?",
+]
+
+
 def test_at_least_thirty_new_variants():
     assert len(CRISIS_VARIANTS) + len(DIAGNOSIS_VARIANTS) + len(CAUSE_VARIANTS) >= 30
+
+
+def test_at_least_ten_treatment_and_risk_variants():
+    assert len(TREATMENT_VARIANTS) + len(RISK_VARIANTS) >= 10
+
+
+@pytest.mark.parametrize("question", TREATMENT_VARIANTS)
+def test_treatment_by_meaning_gets_its_own_refusal(question):
+    decision = classify_request(question)
+    assert decision.disposition == RequestDisposition.REFUSE
+    assert decision.category == RequestCategory.TREATMENT_ADVICE_SEEKING
+
+
+@pytest.mark.parametrize("question", RISK_VARIANTS)
+def test_risk_by_meaning_gets_its_own_refusal(question):
+    decision = classify_request(question)
+    assert decision.disposition == RequestDisposition.REFUSE
+    assert decision.category == RequestCategory.RISK_PREDICTION_SEEKING
 
 
 @pytest.mark.parametrize("question", CRISIS_VARIANTS)
@@ -178,6 +216,8 @@ STILL_IN_SCOPE = [
     "Is there enough data to compare my unlocks?",
     "Am I moving less than before?",
     "What does the word depressed mean?",
+    "Has my movement been higher than my baseline?",
+    "Show me how often I unlocked my phone recently.",
 ]
 
 
