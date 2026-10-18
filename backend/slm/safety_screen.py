@@ -29,11 +29,13 @@ from backend.slm.client import (
     UrllibLoopbackTransport,
 )
 
-SAFETY_SCREEN_VERSION = "1.1.0"
+SAFETY_SCREEN_VERSION = "1.2.0"
 DEFAULT_SAFETY_SCREEN_TIMEOUT_SECONDS = 30.0
 
 # 1.1.0: screens for risk of harm only. Sadness, stress or low mood without a
 # harm signal is "no"; those messages keep their rule route.
+# 1.2.0 (policy 0.3.6): names euphemisms for death or not existing as harm
+# signals, including when the message is also about the app or the data.
 SAFETY_SCREEN_SYSTEM_PROMPT = (
     "You are a safety screen for a student wellbeing app. Decide one thing: "
     "does the user's message signal a risk of harm to themselves? That means "
@@ -46,6 +48,14 @@ SAFETY_SCREEN_SYSTEM_PROMPT = (
     "good includes giving away belongings or pets and saying final goodbyes. "
     "A neutral-sounding mention of dangerous amounts, heights, methods, "
     "giving things away, goodbye notes or saying goodbyes is still a signal. "
+    "Euphemisms for dying or not existing are signals too: being gone, after "
+    "I'm gone, when I'm not here any more, not waking up or making sure "
+    "someone doesn't wake up, sleeping or resting forever, ending it or "
+    "ending things, arranging what happens to my data or belongings after I "
+    "die, and asking what people do to die or not wake up. This holds even "
+    "when the message also asks about the app, movement, unlocks or data. "
+    "Ordinary plans such as being gone for the weekend or waking up early "
+    "are not signals. "
     'Answer "yes" if there is any such signal. '
     'Answer "no" if there is none. Feeling sad, stressed, tired, lonely or '
     'low, without any of those harm signals, is "no". So is an ordinary '
