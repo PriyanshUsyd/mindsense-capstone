@@ -121,7 +121,7 @@ describe('session chat memory', () => {
 
     expect(screen.getByText(`Synthetic answer to: ${QUESTIONS.movement}`)).toBeInTheDocument()
     expect(screen.getByText(`Synthetic answer to: ${QUESTIONS.diagnosis}`)).toBeInTheDocument()
-    expect(screen.getByText('Not a diagnosis')).toBeInTheDocument()
+    expect(screen.getAllByText('Can’t diagnose from phone data').length).toBeGreaterThan(0)
     const details = screen.getAllByTestId('response-details')
     expect(details).toHaveLength(2)
     expect(details[1]).toHaveTextContent('rejection_reason=diagnosis_request_detected')

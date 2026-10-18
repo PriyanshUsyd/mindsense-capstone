@@ -5,10 +5,15 @@ from __future__ import annotations
 import hashlib
 import threading
 from collections import OrderedDict
+from enum import Enum
 from typing import Protocol
 
 from pydantic import BaseModel, ConfigDict
 
+from backend.contracts.comparison_reasons import (
+    STATE_C_EVIDENCE_NOT_REPORTABLE,
+    STATE_C_TOO_FEW_RECORDED_DAYS,
+)
 from backend.contracts.evidence import EligibilityStatus, EvidencePacket, ResponseMode
 from backend.slm.client import (
     GenerationMetrics,
@@ -58,6 +63,41 @@ class DraftGenerator(Protocol):
     ) -> GenerationResult: ...
 
 
+class AnswerKind(str, Enum):
+    """Why an answer has the form it has, for the display tag only.
+
+    Set from the evidence packet and the route, never from the answer text.
+    None for refusals, crisis and fallbacks, which keep using
+    request_category and rejection_reason.
+    """
+
+    COMPARISON_SHOWN = "comparison_shown"  # normal answer, ELIGIBLE packet
+    NO_CLEAR_DIFFERENCE = "no_clear_difference"  # State C, evidence not reportable
+    FEW_RECENT_DAYS = "few_recent_days"  # State C, too few recorded days
+    BUILDING_BASELINE = "building_baseline"  # PARTIAL packet, State B
+    NOT_ENOUGH_DATA = "not_enough_data"  # insufficient-data template (State A)
+    GENERAL_LIMITS = "general_limits"  # general-uncertainty template
+
+
+_PARTIAL_ANSWER_KINDS = {
+    STATE_C_EVIDENCE_NOT_REPORTABLE: AnswerKind.NO_CLEAR_DIFFERENCE,
+    STATE_C_TOO_FEW_RECORDED_DAYS: AnswerKind.FEW_RECENT_DAYS,
+}
+
+
+def _generated_answer_kind(
+    packet: EvidencePacket, response_mode: ResponseMode
+) -> AnswerKind | None:
+    status = packet.baseline.eligibility_status
+    if status == EligibilityStatus.ELIGIBLE:
+        return AnswerKind.COMPARISON_SHOWN if response_mode == ResponseMode.NORMAL else None
+    if status == EligibilityStatus.PARTIAL_DESCRIPTIVE_ONLY:
+        return _PARTIAL_ANSWER_KINDS.get(
+            packet.baseline.ineligible_reason, AnswerKind.BUILDING_BASELINE
+        )
+    return None
+
+
 class SafeSLMResponse(BaseModel):
     """Final response metadata retained for audit and evaluation."""
 
@@ -79,6 +119,8 @@ class SafeSLMResponse(BaseModel):
     # not_run (the rules already chose crisis) or skipped (demo stub).
     # model_invoked still describes answer generation only.
     safety_screen: SafetyScreenLabel | None = None
+    # Display tag only; see AnswerKind. Never inferred from the answer text.
+    answer_kind: AnswerKind | None = None
 
 
 class SLMService:
@@ -239,6 +281,7 @@ class SLMService:
             request_category=request_decision.category,
             request_policy_version=request_decision.policy_version,
             model_invoked=True,
+            answer_kind=_generated_answer_kind(packet, draft.response_mode),
         )
 
     def check_response_health(self, packet: EvidencePacket) -> ResponseHealthReport:
@@ -260,7 +303,11 @@ class SLMService:
             return _stamp(self._policy_response(decision), screen)
         if not feature_id and is_general_uncertainty_question(question):
             return _stamp(
-                self._template_response(decision, self.general_uncertainty_template),
+                self._template_response(
+                    decision,
+                    self.general_uncertainty_template,
+                    answer_kind=AnswerKind.GENERAL_LIMITS,
+                ),
                 screen,
             )
         scope_reason = request_scope_rejection(
@@ -412,10 +459,18 @@ class SLMService:
     def _insufficient_data_response(
         self, decision: RequestPolicyDecision
     ) -> SafeSLMResponse:
-        return self._template_response(decision, self.insufficient_data_template)
+        return self._template_response(
+            decision,
+            self.insufficient_data_template,
+            answer_kind=AnswerKind.NOT_ENOUGH_DATA,
+        )
 
     def _template_response(
-        self, decision: RequestPolicyDecision, template: LoadedFallbackPrompt
+        self,
+        decision: RequestPolicyDecision,
+        template: LoadedFallbackPrompt,
+        *,
+        answer_kind: AnswerKind | None = None,
     ) -> SafeSLMResponse:
         """Deterministic allowed-route text: no model call, no participant data."""
 
@@ -432,6 +487,7 @@ class SLMService:
             request_category=decision.category,
             request_policy_version=decision.policy_version,
             model_invoked=False,
+            answer_kind=answer_kind,
         )
 
     def _fallback(

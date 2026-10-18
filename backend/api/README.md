@@ -91,6 +91,23 @@ versioned generic fallback with `rejection_reason=approved_context_unavailable`
 and `model_invoked=false`. Existing sanitised errors and `Cache-Control:
 no-store` remain in place. No context or tool traces are added to HTTP responses.
 
+## `answer_kind` (display tag only)
+
+`SafeSLMResponse` carries one optional field, `answer_kind`, so the UI can say
+why an answer has its form. `SLMService` sets it from the evidence packet and
+the route, never from the answer text; it is preserved on the context-variant
+path. It changes no answer, route, policy, threshold or statistic.
+
+| Value | When |
+|---|---|
+| `comparison_shown` | Generated `normal` answer, `ELIGIBLE` packet |
+| `no_clear_difference` | Generated answer, `PARTIAL` packet, reason `state_c_history_sufficient_evidence_not_reportable` |
+| `few_recent_days` | Generated answer, `PARTIAL` packet, reason `state_c_history_sufficient_too_few_recorded_days` |
+| `building_baseline` | Generated answer, `PARTIAL` packet, any other reason (State B) |
+| `not_enough_data` | Insufficient-data template (State A) |
+| `general_limits` | General-uncertainty template |
+| `null` | Everything else: refusals, crisis and fallbacks keep using `request_category` / `rejection_reason`; a generated `uncertainty` answer on an `ELIGIBLE` packet is also `null` |
+
 The API retains PR #39's aggregated-summary configuration; configuration is not
 Privacy sign-off. The new validation uses public synthetic packets only.
 Personal-data enablement and joint acceptance still require owner review.

@@ -1029,9 +1029,36 @@
 }
 
 .response-mode-badge {
+  max-width: 100%;
   color: var(--sage-700);
   background: var(--mint-50);
   border: 1px solid var(--mint-200);
+  overflow-wrap: anywhere;
+}
+
+/* Reason-based tags: colour by severity, not by answer text. */
+.response-mode-badge[data-tone="comparison"] {
+  color: var(--sage-700);
+  background: var(--mint-50);
+  border-color: var(--mint-200);
+}
+
+.response-mode-badge[data-tone="pattern"] {
+  color: var(--forest-900);
+  background: #f4f5f1;
+  border-color: #dfe3dc;
+}
+
+.response-mode-badge[data-tone="data"] {
+  color: var(--amber-700);
+  background: var(--amber-100);
+  border-color: #efdaa5;
+}
+
+.response-mode-badge[data-tone="boundary"] {
+  color: #4f5652;
+  background: #f1f2ef;
+  border-color: #dcdfd9;
 }
 
 .evidence-card {
