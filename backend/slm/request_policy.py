@@ -323,6 +323,8 @@ _CRISIS_PATTERNS = (
         r"passed(?: away)?)\b"
         r"(?!\s+(?:for|to|on|at|from|away|out|off|until|till|over|this|next|"
         r"all|by|a|an|the|back|home|in|into|during|tomorrow|today|tonight)\b)"
+        r"|\b(?:i['’]ll|i will|i['’]m going to|i am going to) be gone\b"
+        r"(?=\s*(?:$|[.!?,;]|(?:soon|forever|for good|anyway|now|and)\b))"
         r"|\b(?:after|when|once|if) i (?:die|pass away|pass on)\b"
         r"|\b(?:after|upon) my (?:death|passing)\b"
         r"|\bmy (?:own )?(?:funeral|last wishes|final wishes|final arrangements)\b",
@@ -1073,11 +1075,48 @@ def _is_in_scope(question: str) -> bool:
     )
 
 
+# Policy 0.3.6: informal spellings match like their full forms in every crisis
+# family. Applied only to the text used for crisis matching, so the rule
+# holds for current and future families without each one listing variants.
+# "ill" becomes "i'll" only before a verb or adverb, so "I feel ill" is
+# unaffected.
+_INFORMAL_SPELLINGS: tuple[tuple[re.Pattern[str], str], ...] = (
+    (re.compile(r"\bwanna\b", re.IGNORECASE), "want to"),
+    (re.compile(r"\bgonna\b", re.IGNORECASE), "going to"),
+    (re.compile(r"\bgotta\b", re.IGNORECASE), "got to"),
+    (re.compile(r"\btryna\b", re.IGNORECASE), "trying to"),
+    (re.compile(r"\bdont\b", re.IGNORECASE), "don't"),
+    (re.compile(r"\bcant\b", re.IGNORECASE), "can't"),
+    (re.compile(r"\bim\b", re.IGNORECASE), "i'm"),
+    (re.compile(r"\bive\b", re.IGNORECASE), "i've"),
+    (
+        re.compile(
+            r"\bill\b(?=\s+(?:\w+ly\s+)?(?:be|just|never|not|end|do|kill|hurt|"
+            r"take|go|make|try|die|jump|cut|disappear|vanish|leave|stop|finally|"
+            r"have|get|give|say|write|sleep|swallow|overdose|miss|see)\b)",
+            re.IGNORECASE,
+        ),
+        "i'll",
+    ),
+    (re.compile(r"\bu\b", re.IGNORECASE), "you"),
+    (re.compile(r"\bur\b", re.IGNORECASE), "your"),
+)
+
+
+def normalise_informal_spelling(text: str) -> str:
+    """Rewrite informal spellings to full forms for crisis matching."""
+
+    for pattern, full_form in _INFORMAL_SPELLINGS:
+        text = pattern.sub(full_form, text)
+    return text
+
+
 def classify_request(question: str) -> RequestPolicyDecision:
     """Classify one untrusted question without inspecting participant data."""
 
     clean_question = question.strip()
-    if any(pattern.search(clean_question) for pattern in _CRISIS_PATTERNS):
+    crisis_text = normalise_informal_spelling(clean_question)
+    if any(pattern.search(crisis_text) for pattern in _CRISIS_PATTERNS):
         return RequestPolicyDecision(
             disposition=RequestDisposition.CRISIS,
             category=RequestCategory.CRISIS_SELF_HARM,

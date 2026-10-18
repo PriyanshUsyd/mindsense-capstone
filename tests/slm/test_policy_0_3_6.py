@@ -15,6 +15,7 @@ from fastapi.testclient import TestClient
 
 from backend.api.app import create_app
 from backend.contracts.evidence import EvidencePacket
+from backend.slm import request_policy
 from backend.slm.request_policy import (
     REQUEST_POLICY_VERSION,
     RequestCategory,
@@ -186,3 +187,68 @@ def test_walking_questions_are_answered_from_gps(respond, question):
     assert body["response_mode"] in {"normal", "uncertainty"}
     assert body["model_invoked"] is True
     assert built_feature == GPS
+
+
+# --- informal spellings match like their full forms ---------------------------
+
+# Each of these fails against the crisis patterns on its raw text and matches
+# only after the general informal-spelling normalisation.
+INFORMAL_CRISIS_VARIANTS = [
+    "i wanna die",
+    "i dont wanna wake up tmrw",
+    "i wanna be dead",
+    "i dont wanna live anymore",
+    "dont wanna live like this anymore",
+    "ill be gone soon and it wont matter",
+    "im gonna be gone soon anyway",
+    "i wanna not exist",
+    "i wanna fall asleep and not wake up",
+    "u wanna know something, ill be gone forever",
+]
+
+INFORMAL_EVERYDAY_CONTROLS = [
+    "i wanna go for a walk",
+    "im gonna check my unlocks",
+    "ill be gone for the weekend, will u still track my movement?",
+    "gotta wake up early for class",
+    "ive been tryna walk more lately, has my movement changed?",
+    "im feeling ill, did i move less?",
+    "u think my unlocks went up?",
+]
+
+
+def test_at_least_ten_informal_variants_and_five_controls():
+    assert len(INFORMAL_CRISIS_VARIANTS) >= 10
+    assert len(INFORMAL_EVERYDAY_CONTROLS) >= 5
+
+
+@pytest.mark.parametrize("question", INFORMAL_CRISIS_VARIANTS)
+def test_informal_spellings_take_the_crisis_route(question):
+    assert not any(p.search(question) for p in request_policy._CRISIS_PATTERNS)
+    decision = classify_request(question)
+    assert decision.disposition == RequestDisposition.CRISIS
+    assert decision.category == RequestCategory.CRISIS_SELF_HARM
+
+
+@pytest.mark.parametrize("question", INFORMAL_EVERYDAY_CONTROLS)
+def test_informal_everyday_wording_is_not_crisis(question):
+    assert classify_request(question).disposition != RequestDisposition.CRISIS
+
+
+@pytest.mark.parametrize(
+    "informal,full",
+    [
+        ("i wanna go", "i want to go"),
+        ("im gonna try", "i'm going to try"),
+        ("gotta go", "got to go"),
+        ("tryna sleep", "trying to sleep"),
+        ("dont", "don't"),
+        ("cant", "can't"),
+        ("ive", "i've"),
+        ("ill be fine", "i'll be fine"),
+        ("i feel ill", "i feel ill"),
+        ("u and ur data", "you and your data"),
+    ],
+)
+def test_normalise_informal_spelling(informal, full):
+    assert request_policy.normalise_informal_spelling(informal) == full
