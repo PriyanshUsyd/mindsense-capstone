@@ -33,33 +33,33 @@ function base(overrides: Partial<SafeSLMResponse> = {}): SafeSLMResponse {
 
 describe('responseTag mapping', () => {
   it.each([
-    ['comparison_shown', 'normal', 'Compared with your own baseline', 'comparison'],
-    ['no_clear_difference', 'uncertainty', 'Enough history · no clear difference to report', 'pattern'],
-    ['few_recent_days', 'uncertainty', 'Enough history · too few recent days recorded', 'pattern'],
-    ['building_baseline', 'uncertainty', 'Still building your baseline', 'pattern'],
-    ['not_enough_data', 'insufficient_data', 'Not enough data yet', 'data'],
-    ['general_limits', 'uncertainty', 'How to read these results', 'pattern'],
+    ['comparison_shown', 'normal', 'Compared with your usual', 'comparison'],
+    ['no_clear_difference', 'uncertainty', 'No clear difference from your usual', 'pattern'],
+    ['few_recent_days', 'uncertainty', 'Too few recent days recorded', 'pattern'],
+    ['building_baseline', 'uncertainty', 'Still learning your usual', 'pattern'],
+    ['not_enough_data', 'insufficient_data', 'Too little data so far', 'data'],
+    ['general_limits', 'uncertainty', 'App limits explained', 'pattern'],
   ] as const)('answer_kind %s -> "%s"', (kind, mode, label, tone) => {
     expect(responseTag(base({ answer_kind: kind, response_mode: mode }))).toEqual({ label, tone })
   })
 
-  it('crisis mode -> "Support is available"', () => {
+  it('crisis mode -> "Crisis support information"', () => {
     expect(
       responseTag(
         base({ response_mode: 'crisis_aware_fallback', request_category: 'crisis_self_harm' }),
       ),
-    ).toEqual({ label: 'Support is available', tone: 'support' })
+    ).toEqual({ label: 'Crisis support information', tone: 'support' })
   })
 
   it.each([
-    ['diagnosis_seeking', 'Can’t diagnose from phone data'],
-    ['treatment_advice_seeking', 'Can’t give treatment advice'],
-    ['clinical_score_request', 'No clinical scores here'],
-    ['causal_inference_seeking', 'Can’t tell what caused a change'],
-    ['risk_prediction_seeking', 'Can’t predict what will happen'],
-    ['prompt_injection', 'Can’t change how MindSense works'],
-    ['sensitive_data_request', 'Private data stays private'],
-    ['off_topic', 'Outside what MindSense tracks'],
+    ['diagnosis_seeking', 'Not a diagnosis'],
+    ['treatment_advice_seeking', 'Not medical advice'],
+    ['clinical_score_request', 'No clinical scores'],
+    ['causal_inference_seeking', 'Cause cannot be determined'],
+    ['risk_prediction_seeking', 'Future risk cannot be predicted'],
+    ['prompt_injection', 'Request not allowed'],
+    ['sensitive_data_request', 'Privacy protected'],
+    ['off_topic', 'Unrelated topic'],
     ['capability_question', 'What MindSense can do'],
     ['app_information', 'About MindSense'],
   ] as const)('request_category %s -> "%s"', (category, label) => {
@@ -69,9 +69,9 @@ describe('responseTag mapping', () => {
   })
 
   it.each([
-    ['unsupported_time_window', 'Only the recent two weeks are available'],
-    ['ambiguous_feature_request', 'Pick one: movement or phone unlocks'],
-    ['feature_request_mismatch', 'Pick one: movement or phone unlocks'],
+    ['unsupported_time_window', 'Last 2 weeks only'],
+    ['ambiguous_feature_request', 'Movement or phone unlocks?'],
+    ['feature_request_mismatch', 'Movement or phone unlocks?'],
   ])('rejection_reason %s -> "%s"', (reason, label) => {
     expect(
       responseTag(base({ response_mode: 'generic_fallback', rejection_reason: reason })),
@@ -79,11 +79,11 @@ describe('responseTag mapping', () => {
   })
 
   it.each(['model_timeout', 'grounding_claim_mismatch', 'evidence_source_unavailable'])(
-    'any other generic_fallback (%s) -> "Couldn’t answer safely right now"',
+    'any other generic_fallback (%s) -> "Couldn’t answer right now"',
     (reason) => {
       expect(
         responseTag(base({ response_mode: 'generic_fallback', rejection_reason: reason })),
-      ).toEqual({ label: 'Couldn’t answer safely right now', tone: 'boundary' })
+      ).toEqual({ label: 'Couldn’t answer right now', tone: 'boundary' })
     },
   )
 
@@ -109,7 +109,7 @@ describe('responseTag mapping', () => {
             rejection_reason: 'unsupported_time_window',
           }),
         ).label,
-      ).toBe('How to read these results')
+      ).toBe('App limits explained')
     })
 
     it('crisis mode wins over request_category and rejection_reason', () => {
@@ -121,7 +121,7 @@ describe('responseTag mapping', () => {
             rejection_reason: 'safety_screen_flagged',
           }),
         ).label,
-      ).toBe('Support is available')
+      ).toBe('Crisis support information')
     })
 
     it('request_category wins over rejection_reason', () => {
@@ -133,7 +133,7 @@ describe('responseTag mapping', () => {
             rejection_reason: 'unsupported_time_window',
           }),
         ).label,
-      ).toBe('Outside what MindSense tracks')
+      ).toBe('Unrelated topic')
     })
 
     it('rejection_reason wins over the generic fallback tag', () => {
@@ -141,7 +141,7 @@ describe('responseTag mapping', () => {
         responseTag(
           base({ response_mode: 'generic_fallback', rejection_reason: 'unsupported_time_window' }),
         ).label,
-      ).toBe('Only the recent two weeks are available')
+      ).toBe('Last 2 weeks only')
     })
   })
 })
@@ -153,13 +153,13 @@ describe('rendered tags', () => {
   })
 
   it.each([
-    [base({ answer_kind: 'comparison_shown', response_mode: 'normal', model_invoked: true }), 'Compared with your own baseline', 'comparison'],
-    [base({ answer_kind: 'no_clear_difference' }), 'Enough history · no clear difference to report', 'pattern'],
-    [base({ answer_kind: 'not_enough_data', response_mode: 'insufficient_data' }), 'Not enough data yet', 'data'],
-    [base({ response_mode: 'crisis_aware_fallback', request_category: 'crisis_self_harm', request_disposition: 'crisis' }), 'Support is available', 'support'],
-    [base({ response_mode: 'refusal', request_category: 'risk_prediction_seeking', request_disposition: 'refuse' }), 'Can’t predict what will happen', 'boundary'],
-    [base({ response_mode: 'generic_fallback', rejection_reason: 'feature_request_mismatch' }), 'Pick one: movement or phone unlocks', 'boundary'],
-    [base({ response_mode: 'generic_fallback', rejection_reason: 'model_timeout', used_fallback: true }), 'Couldn’t answer safely right now', 'boundary'],
+    [base({ answer_kind: 'comparison_shown', response_mode: 'normal', model_invoked: true }), 'Compared with your usual', 'comparison'],
+    [base({ answer_kind: 'no_clear_difference' }), 'No clear difference from your usual', 'pattern'],
+    [base({ answer_kind: 'not_enough_data', response_mode: 'insufficient_data' }), 'Too little data so far', 'data'],
+    [base({ response_mode: 'crisis_aware_fallback', request_category: 'crisis_self_harm', request_disposition: 'crisis' }), 'Crisis support information', 'support'],
+    [base({ response_mode: 'refusal', request_category: 'risk_prediction_seeking', request_disposition: 'refuse' }), 'Future risk cannot be predicted', 'boundary'],
+    [base({ response_mode: 'generic_fallback', rejection_reason: 'feature_request_mismatch' }), 'Movement or phone unlocks?', 'boundary'],
+    [base({ response_mode: 'generic_fallback', rejection_reason: 'model_timeout', used_fallback: true }), 'Couldn’t answer right now', 'boundary'],
   ])('shows the tag on the answer card (%#)', async (response, label, tone) => {
     const user = userEvent.setup()
     vi.mocked(respond).mockResolvedValueOnce(response)

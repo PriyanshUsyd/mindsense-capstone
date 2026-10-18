@@ -3,9 +3,11 @@
 # no model is called for this route.
 # 1.1.0: explains the "no clear difference to report" tag, which replaced the
 # old "Uncertain evidence" tag. The question's routing is unchanged.
+# 1.2.0: explains the final tag wording "No clear difference from your usual".
+# The question's routing is unchanged.
 
 template_id: app_info_uncertain_evidence
-template_version: "1.1.0"
+template_version: "1.2.0"
 response_mode: refusal
 allowed_claim_ids:
   - uncertainty_disclosure
@@ -17,9 +19,9 @@ prohibited_claim_ids:
   - risk_prediction
 
 text: >
-  MindSense now labels these answers "no clear difference to report". It
-  means you have enough history to compare with your own usual pattern, but
-  your recent pattern is not clearly enough different from your usual to
+  MindSense now labels these answers "No clear difference from your usual".
+  It means you have enough history to compare with your own usual pattern,
+  but your recent pattern is not clearly different enough from your usual to
   report a change. It is not a sign that anything is wrong, and it is not a
   diagnosis.
 

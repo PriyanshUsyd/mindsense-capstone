@@ -234,7 +234,7 @@ def test_w5_clinical_score_refusal(respond):
     [
         ("What data do you use?", ("GPS distance", "unlocked", "not the places")),
         ("Is my data stored anywhere?", ("runs on this computer", "doesn't save your chat", "research team")),
-        ('What does "uncertain evidence" mean?', ("not clearly enough", "not a diagnosis")),
+        ('What does "uncertain evidence" mean?', ("not clearly different enough", "not a diagnosis")),
         ("Why can't you compare with my baseline?", ("enough earlier history", "won't guess")),
         ("How reliable is this information?", ("two weeks", "missing", "not an explanation")),
     ],

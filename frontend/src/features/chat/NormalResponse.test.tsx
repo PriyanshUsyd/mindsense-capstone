@@ -235,7 +235,7 @@ describe('NormalResponse', () => {
 
     expect(await screen.findByText(NORMAL_RESPONSE.text)).toBeInTheDocument()
     expect(document.querySelector('[data-response-mode="normal"]')).toBeInTheDocument()
-    expect(screen.getAllByText('Compared with your own baseline')).toHaveLength(2)
+    expect(screen.getAllByText('Compared with your usual')).toHaveLength(2)
     expect(screen.getByText('Local evidence response')).toBeInTheDocument()
     expect(screen.getByText(/an observation from your local data/i)).toBeInTheDocument()
     expect(screen.queryByText('Synthetic demo data')).not.toBeInTheDocument()
@@ -399,11 +399,11 @@ describe('NormalResponse', () => {
   // ME-P01 F1/F4: refusal badge follows request_category (reason-based tags).
   it.each([
     ['capability_question', 'What MindSense can do'],
-    ['diagnosis_seeking', 'Can’t diagnose from phone data'],
-    ['treatment_advice_seeking', 'Can’t give treatment advice'],
-    ['clinical_score_request', 'No clinical scores here'],
+    ['diagnosis_seeking', 'Not a diagnosis'],
+    ['treatment_advice_seeking', 'Not medical advice'],
+    ['clinical_score_request', 'No clinical scores'],
     ['app_information', 'About MindSense'],
-    ['off_topic', 'Outside what MindSense tracks'],
+    ['off_topic', 'Unrelated topic'],
   ] as const)('labels a %s refusal as "%s"', async (category, label) => {
     const user = userEvent.setup()
     mockedRespond.mockResolvedValueOnce({
