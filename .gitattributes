@@ -2,6 +2,7 @@
 tests/evaluation/held_out/held_out_prompts.json text eol=lf
 tests/evaluation/held_out/*.sha256 text eol=lf
 tests/evaluation/held_out_v2/held_out_v2_prompts.json text eol=lf
+tests/evaluation/held_out_v3/held_out_v3_prompts.json text eol=lf
 
 # Reports are reviewed as rendered artifacts, not line-oriented source.
 *.pdf binary
