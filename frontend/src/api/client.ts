@@ -43,7 +43,20 @@ export interface SafeSLMResponse {
     | 'app_information'
   request_policy_version: string
   model_invoked: boolean
+  // Policy 0.3.5 local-model safety screen label.
+  safety_screen?: 'yes' | 'no' | 'unclear' | 'error' | 'not_run' | 'skipped' | null
+  // Why the answer has its form, for the display tag only (backend
+  // SLMService). Null for refusals, crisis and fallbacks.
+  answer_kind?: AnswerKind | null
 }
+
+export type AnswerKind =
+  | 'comparison_shown'
+  | 'no_clear_difference'
+  | 'few_recent_days'
+  | 'building_baseline'
+  | 'not_enough_data'
+  | 'general_limits'
 
 export interface GenerationMetrics {
   total_duration_ns: number | null

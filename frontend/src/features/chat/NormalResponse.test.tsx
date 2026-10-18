@@ -226,14 +226,16 @@ describe('NormalResponse', () => {
 
   it('renders the normal state without inventing unavailable evidence fields', async () => {
     const user = userEvent.setup()
-    mockedRespond.mockResolvedValueOnce(NORMAL_RESPONSE)
+    // Reason-based tags: the badge and the header status show the tag for
+    // answer_kind instead of the old "Normal response" mode label.
+    mockedRespond.mockResolvedValueOnce({ ...NORMAL_RESPONSE, answer_kind: 'comparison_shown' })
 
     render(<NormalResponse />)
     await user.click(screen.getByRole('button', { name: /ask about my recent movement/i }))
 
     expect(await screen.findByText(NORMAL_RESPONSE.text)).toBeInTheDocument()
     expect(document.querySelector('[data-response-mode="normal"]')).toBeInTheDocument()
-    expect(screen.getAllByText('Normal response')).toHaveLength(2)
+    expect(screen.getAllByText('Compared with your own baseline')).toHaveLength(2)
     expect(screen.getByText('Local evidence response')).toBeInTheDocument()
     expect(screen.getByText(/an observation from your local data/i)).toBeInTheDocument()
     expect(screen.queryByText('Synthetic demo data')).not.toBeInTheDocument()
@@ -394,14 +396,14 @@ describe('NormalResponse', () => {
     expect(document.querySelector(`[data-response-mode="${mode}"]`)).toBeInTheDocument()
   })
 
-  // ME-P01 F1/F4: refusal badge follows request_category.
+  // ME-P01 F1/F4: refusal badge follows request_category (reason-based tags).
   it.each([
     ['capability_question', 'What MindSense can do'],
-    ['diagnosis_seeking', 'Not a diagnosis'],
-    ['treatment_advice_seeking', 'Not medical advice'],
-    ['clinical_score_request', 'No clinical scores'],
+    ['diagnosis_seeking', 'Can’t diagnose from phone data'],
+    ['treatment_advice_seeking', 'Can’t give treatment advice'],
+    ['clinical_score_request', 'No clinical scores here'],
     ['app_information', 'About MindSense'],
-    ['off_topic', 'Outside MindSense’s scope'],
+    ['off_topic', 'Outside what MindSense tracks'],
   ] as const)('labels a %s refusal as "%s"', async (category, label) => {
     const user = userEvent.setup()
     mockedRespond.mockResolvedValueOnce({
@@ -413,7 +415,7 @@ describe('NormalResponse', () => {
     await user.click(screen.getByRole('button', { name: /ask about my recent movement/i }))
 
     expect(await screen.findByText('Deterministic boundary text')).toBeInTheDocument()
-    expect(screen.getByText(label)).toBeInTheDocument()
+    expect(document.querySelector('.state-card .response-mode-badge')).toHaveTextContent(label)
   })
 
   // ME-P01 F5: per-answer routing metadata for evaluators, no identifiers.

@@ -19,6 +19,7 @@ import {
   UncertaintyState,
   WelcomeState,
 } from './ChatStates'
+import { responseTag, type TagTone } from './responseTags'
 
 // FIXED 2026-09-16: this component used to build a hardcoded
 // EXAMPLE_ELIGIBLE_GPS_PACKET (eligibility_status/evidence_strength pinned
@@ -70,25 +71,13 @@ interface RequestFailure {
   status?: number
 }
 
-const responseLabels: Record<SafeSLMResponse['response_mode'], string> = {
-  crisis_aware_fallback: 'Safety support',
-  generic_fallback: 'Fallback',
-  insufficient_data: 'More data needed',
-  normal: 'Normal response',
-  refusal: 'Safe boundary',
-  uncertainty: 'Uncertain evidence',
-}
-
-// Policy 0.3.2 (ME-P01 F1/F4): a refusal's badge follows the backend's
-// request_category, so a capability answer or a diagnosis boundary is not
-// labelled as off-topic.
-const refusalLabels: Partial<Record<SafeSLMResponse['request_category'], string>> = {
-  capability_question: 'What MindSense can do',
-  diagnosis_seeking: 'Not a diagnosis',
-  // Policy 0.3.3 (50-question dev test W4/W5/O4).
-  treatment_advice_seeking: 'Not medical advice',
-  clinical_score_request: 'No clinical scores',
-  app_information: 'About MindSense',
+// Header status tone for the latest answer's tag (display only).
+const headerTone: Record<TagTone, 'normal' | 'ready' | 'caution' | 'boundary'> = {
+  comparison: 'normal',
+  pattern: 'ready',
+  data: 'caution',
+  support: 'boundary',
+  boundary: 'ready',
 }
 
 // ME-P01 F5: evaluators record these per answer. Only routing metadata from
@@ -305,20 +294,17 @@ export function NormalResponse() {
 
   function renderTurn(turn: ConversationTurn) {
     const { question, response } = turn
+    const tag = responseTag(response)
     switch (response.response_mode) {
       case 'normal':
-        return <NormalState question={question} response={response} />
+        return <NormalState question={question} response={response} tag={tag} />
       case 'insufficient_data':
-        return <InsufficientDataState message={response.text} question={question} />
+        return <InsufficientDataState message={response.text} question={question} tag={tag} />
       case 'uncertainty':
-        return <UncertaintyState message={response.text} question={question} />
+        return <UncertaintyState message={response.text} question={question} tag={tag} />
       case 'refusal':
         return (
-          <RefusalState
-            label={refusalLabels[response.request_category]}
-            message={response.text}
-            question={question}
-          />
+          <RefusalState message={response.text} question={question} tag={tag} />
         )
       case 'generic_fallback':
         return (
@@ -326,10 +312,13 @@ export function NormalResponse() {
             message={response.text}
             onRetry={() => handleAsk(question)}
             question={question}
+            tag={tag}
           />
         )
       case 'crisis_aware_fallback':
-        return <CrisisAwareFallbackState message={response.text} question={question} />
+        return (
+          <CrisisAwareFallbackState message={response.text} question={question} tag={tag} />
+        )
     }
   }
 
@@ -351,16 +340,10 @@ export function NormalResponse() {
           tone: 'caution' as const,
         }
       : latestResponse
-        ? {
-            label: responseLabels[latestResponse.response_mode],
-            tone:
-              latestResponse.response_mode === 'normal'
-                ? ('normal' as const)
-                : latestResponse.response_mode === 'crisis_aware_fallback' ||
-                    latestResponse.response_mode === 'refusal'
-                  ? ('boundary' as const)
-                  : ('caution' as const),
-          }
+        ? (() => {
+            const tag = responseTag(latestResponse)
+            return { label: tag.label, tone: headerTone[tag.tone] }
+          })()
         : { label: 'Ready', tone: 'ready' as const }
 
   const showWelcome = turns.length === 0 && !pendingQuestion && !requestFailure

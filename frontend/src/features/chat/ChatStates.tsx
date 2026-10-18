@@ -2,6 +2,13 @@ import { useState, type ReactNode } from 'react'
 
 import type { SafeSLMResponse } from '../../api/client'
 import { BrandMark } from '../../components/BrandMark'
+import {
+  ANSWER_KIND_TAGS,
+  DEFAULT_TAG,
+  FALLBACK_TAG,
+  SUPPORT_TAG,
+  type ResponseTag,
+} from './responseTags'
 
 interface QuestionProps {
   question: string
@@ -9,6 +16,14 @@ interface QuestionProps {
 
 interface ResponseProps extends QuestionProps {
   message: string
+}
+
+function TagBadge({ tag }: { tag: ResponseTag }) {
+  return (
+    <span className="response-mode-badge" data-tone={tag.tone}>
+      {tag.label}
+    </span>
+  )
 }
 
 function QuestionBubble({ question }: QuestionProps) {
@@ -137,9 +152,10 @@ export function LoadingState({ question, showColdStartNotice = false }: LoadingS
 
 interface NormalStateProps extends QuestionProps {
   response: SafeSLMResponse
+  tag?: ResponseTag
 }
 
-export function NormalState({ question, response }: NormalStateProps) {
+export function NormalState({ question, response, tag = DEFAULT_TAG }: NormalStateProps) {
   const [feedback, setFeedback] = useState<'yes' | 'partly' | 'no' | null>(null)
 
   return (
@@ -150,9 +166,9 @@ export function NormalState({ question, response }: NormalStateProps) {
           <span className="insight-icon" aria-hidden="true">◇</span>
           <span>
             <strong>Local evidence response</strong>
-            <small>Compared with your own baseline</small>
+            <small>From your own tracked data</small>
           </span>
-          <span className="response-mode-badge">Normal response</span>
+          <TagBadge tag={tag} />
         </div>
         <p>{response.text}</p>
         <p className="state-boundary">
@@ -185,24 +201,29 @@ export function NormalState({ question, response }: NormalStateProps) {
 
 function StateCard({
   children,
-  label,
   message,
   mode,
   question,
   role = 'status',
+  tag,
 }: ResponseProps & {
   children?: ReactNode
-  label: string
+  tag: ResponseTag
   mode: SafeSLMResponse['response_mode']
   role?: 'alert' | 'status'
 }) {
   return (
     <section className="chat-thread" aria-live={role === 'alert' ? 'assertive' : 'polite'}>
       <QuestionBubble question={question} />
-      <article className={`state-card state-card--${mode}`} data-response-mode={mode} role={role}>
+      <article
+        className={`state-card state-card--${mode}`}
+        data-response-mode={mode}
+        data-tone={tag.tone}
+        role={role}
+      >
         <span className="state-card-icon" aria-hidden="true" />
         <div>
-          <span className="response-mode-badge">{label}</span>
+          <TagBadge tag={tag} />
           <p>{message}</p>
           {children}
         </div>
@@ -211,10 +232,14 @@ function StateCard({
   )
 }
 
-export function InsufficientDataState({ message, question }: ResponseProps) {
+export function InsufficientDataState({
+  message,
+  question,
+  tag = ANSWER_KIND_TAGS.not_enough_data,
+}: ResponseProps & { tag?: ResponseTag }) {
   return (
     <StateCard
-      label="Not enough data yet"
+      tag={tag}
       message={message}
       mode="insufficient_data"
       question={question}
@@ -227,10 +252,14 @@ export function InsufficientDataState({ message, question }: ResponseProps) {
   )
 }
 
-export function UncertaintyState({ message, question }: ResponseProps) {
+export function UncertaintyState({
+  message,
+  question,
+  tag = DEFAULT_TAG,
+}: ResponseProps & { tag?: ResponseTag }) {
   return (
     <StateCard
-      label="Uncertain evidence"
+      tag={tag}
       message={message}
       mode="uncertainty"
       question={question}
@@ -243,13 +272,13 @@ export function UncertaintyState({ message, question }: ResponseProps) {
 }
 
 export function RefusalState({
-  label = 'Outside MindSense’s scope',
   message,
   question,
-}: ResponseProps & { label?: string }) {
+  tag = DEFAULT_TAG,
+}: ResponseProps & { tag?: ResponseTag }) {
   return (
     <StateCard
-      label={label}
+      tag={tag}
       message={message}
       mode="refusal"
       question={question}
@@ -259,6 +288,7 @@ export function RefusalState({
 
 interface FallbackProps extends ResponseProps {
   onRetry?: () => void
+  tag?: ResponseTag
   technicalDetail?: string
 }
 
@@ -266,11 +296,12 @@ export function GenericFallbackState({
   message,
   onRetry,
   question,
+  tag = FALLBACK_TAG,
   technicalDetail,
 }: FallbackProps) {
   return (
     <StateCard
-      label="Unable to answer safely"
+      tag={tag}
       message={message}
       mode="generic_fallback"
       question={question}
@@ -286,10 +317,14 @@ export function GenericFallbackState({
   )
 }
 
-export function CrisisAwareFallbackState({ message, question }: ResponseProps) {
+export function CrisisAwareFallbackState({
+  message,
+  question,
+  tag = SUPPORT_TAG,
+}: ResponseProps & { tag?: ResponseTag }) {
   return (
     <StateCard
-      label="Immediate support information"
+      tag={tag}
       message={message}
       mode="crisis_aware_fallback"
       question={question}
