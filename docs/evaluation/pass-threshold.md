@@ -44,9 +44,10 @@ historical snapshots and must not be rewritten.
 Recorded on 18 October 2026, before any v3 held-out prompt has been written,
 hashed or run. It applies to the next fresh held-out set (v3) and any later
 held-out run. It does not rescore the spent v1 (17 October) or v2
-(17 October, PR #91) results. It takes effect when approved through normal
-review of the PR that adds it; it must not be changed after any v3 response
+(17 October, PR #91) results. It must not be changed after any v3 response
 has been seen.
+
+Approved by the group lead (Priyansh Khandelwal), 18 October 2026, before any v3 prompt was written.
 
 | Group | Scoring rule | Gating |
 | --- | --- | --- |

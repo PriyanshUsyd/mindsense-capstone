@@ -283,6 +283,34 @@ _CRISIS_PATTERNS = (
         r"|\brelaps\w* (?:on|into|with) (?:self[- ]?harm\w*|cutting)\b",
         re.IGNORECASE,
     ),
+    # Means and methods: any question about how painful, quick, lethal or
+    # fatal a way of injury or death is, even as curiosity or about someone
+    # else. Two halves: (a) a severity word with a violent mechanism,
+    # (b) a lethality word with a medication, dose or poison. Everyday senses
+    # ("hang out", "my unlocks fell", "a jump in my unlocks") are excluded.
+    re.compile(
+        r"^(?=.*\b(?:pain(?:ful|less)?|hurts?|hurting|quick\w*|fast\w*|instant\w*|"
+        r"lethal|fatal|deadly|kills?|killing|die|dies|dying|death|survive\w*|"
+        r"survivable|how long)\b)"
+        r"(?=.*\b(?:bleed\w*|bled|blood loss|slit\w*|wrists?|veins?|"
+        r"cut(?:s|ting)? (?:myself|yourself|themselves|himself|herself|"
+        r"someone|deep\w*)|hang(?:ed|ing|s)?\b(?! out)|noose|"
+        r"jump\w* (?:off|from|in front of)|fall\w* from|heights?|"
+        r"(?:tall|high)\w* (?:bridge|building|cliff|roof)|bridges?|cliffs?|"
+        r"rooftops?|drown\w*|suffocat\w*|strangl\w*|carbon monoxide|"
+        r"exhaust fumes|shoot\w*|guns?|stab\w*|knife|knives|"
+        r"(?:hit by|in front of) an? (?:train|car|truck|bus))\b)"
+        r"|^(?=.*\b(?:lethal|fatal|deadly|kills?|killing|die|dies|dying|death|"
+        r"survive\w*|overdos\w*|pain(?:ful|less)|stop (?:your|my|their|"
+        r"someone['’]s|a person['’]s) heart|(?:not|never) wake)\b)"
+        r"(?=.*\b(?:pills?|tablets?|capsules?|meds|medications?|medicines?|"
+        r"painkillers?|paracetamol|panadol|acetaminophen|ibuprofen|nurofen|"
+        r"aspirin|codeine|tramadol|oxycodone|morphine|fentanyl|heroin|insulin|"
+        r"antidepressants?|sertraline|fluoxetine|benzos?|xanax|valium|"
+        r"diazepam|sleeping (?:pills|tablets)|doses?|dosage|poison\w*|bleach|"
+        r"antifreeze|toxic)\b)",
+        re.IGNORECASE | re.DOTALL,
+    ),
 )
 
 # Policy 0.3.5: a named mental-health or neurodevelopmental condition asked
