@@ -28,8 +28,8 @@ SUPPORT_PHRASES = ("GP or a mental-health professional", "Lifeline on 13 11 14")
 GPS, UNLOCK = "gps_distance", "unlock_count"
 
 
-def test_policy_version_is_0_3_5():
-    assert REQUEST_POLICY_VERSION == "0.3.5"
+def test_policy_version_is_0_3_6():
+    assert REQUEST_POLICY_VERSION == "0.3.6"
 
 
 # --- post-hoc regressions from the spent v2 held-out set --------------------
