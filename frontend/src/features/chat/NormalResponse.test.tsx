@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -320,7 +320,9 @@ describe('NormalResponse', () => {
     expect(mockedRespond.mock.calls[1][1]).toBe('How confident is this insight?')
   })
 
-  it('can clear the visible history and begin a new conversation', async () => {
+  it('starts a new chat with an empty panel and keeps the earlier chat in the session', async () => {
+    // Session chat memory: "New chat" replaced "New conversation". The earlier
+    // chat is no longer discarded; it stays in the in-memory session list.
     const user = userEvent.setup()
     mockedRespond.mockResolvedValueOnce(NORMAL_RESPONSE)
 
@@ -328,9 +330,15 @@ describe('NormalResponse', () => {
     await user.click(screen.getByRole('button', { name: /ask about my recent movement/i }))
     expect(await screen.findByText(NORMAL_RESPONSE.text)).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: /new conversation/i }))
+    await user.click(screen.getByRole('button', { name: /new chat/i }))
 
     expect(screen.queryByText(NORMAL_RESPONSE.text)).not.toBeInTheDocument()
+    expect(
+      within(screen.getByRole('region', { name: /chats from this session/i })).getAllByRole(
+        'button',
+        { name: /how was my movement different/i },
+      ),
+    ).toHaveLength(1)
     expect(
       screen.getByRole('heading', { name: /understand your patterns, at your own pace/i }),
     ).toBeInTheDocument()

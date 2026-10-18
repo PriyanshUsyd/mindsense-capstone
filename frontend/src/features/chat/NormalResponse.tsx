@@ -49,6 +49,20 @@ interface ConversationTurn {
   response: SafeSLMResponse
 }
 
+// Session chat memory: every conversation from this browser session lives in
+// React state only. Nothing is written to Web Storage, IndexedDB, cookies or
+// any cache, so closing or refreshing the tab clears it, as does End session.
+// Each /respond call still sends only the current question.
+interface Conversation {
+  id: number
+  startedAt: Date | null
+  turns: ConversationTurn[]
+}
+
+function emptyConversation(id: number): Conversation {
+  return { id, startedAt: null, turns: [] }
+}
+
 interface RequestFailure {
   kind: 'model' | 'network' | 'server' | 'unknown'
   message: string
@@ -91,7 +105,15 @@ function ResponseDetails({ response }: { response: SafeSLMResponse }) {
 
 export function NormalResponse() {
   const [draft, setDraft] = useState(DEFAULT_QUESTION)
-  const [turns, setTurns] = useState<ConversationTurn[]>([])
+  const [conversations, setConversations] = useState<Conversation[]>(() => [
+    emptyConversation(1),
+  ])
+  const [activeConversationId, setActiveConversationId] = useState(1)
+  const nextConversationId = useRef(2)
+  const activeConversation =
+    conversations.find((conversation) => conversation.id === activeConversationId) ??
+    conversations[0]
+  const turns = activeConversation.turns
   const [pendingQuestion, setPendingQuestion] = useState<string | null>(null)
   const [showColdStartNotice, setShowColdStartNotice] = useState(false)
   const [requestFailure, setRequestFailure] = useState<RequestFailure | null>(null)
@@ -166,6 +188,7 @@ export function NormalResponse() {
     if (!question || requestInFlight.current) return
 
     requestInFlight.current = true
+    const conversationId = activeConversation.id
     setDraft(question)
     setRequestFailure(null)
     setShowColdStartNotice(false)
@@ -180,7 +203,17 @@ export function NormalResponse() {
       )
       const turn = { id: nextTurnId.current, question, response }
       nextTurnId.current += 1
-      setTurns((currentTurns) => [...currentTurns, turn])
+      setConversations((current) =>
+        current.map((conversation) =>
+          conversation.id === conversationId
+            ? {
+                ...conversation,
+                startedAt: conversation.startedAt ?? new Date(),
+                turns: [...conversation.turns, turn],
+              }
+            : conversation,
+        ),
+      )
       setDraft('')
     } catch (error) {
       if (error instanceof RespondError) {
@@ -215,15 +248,60 @@ export function NormalResponse() {
     }
   }
 
-  function handleNewConversation() {
-    if (requestInFlight.current) return
-    setTurns([])
+  function resetComposer() {
     setRequestFailure(null)
     setPendingQuestion(null)
     setShowColdStartNotice(false)
     setDraft(DEFAULT_QUESTION)
+  }
+
+  // Starts a fresh conversation; earlier ones stay in the session sidebar.
+  function handleNewChat() {
+    if (requestInFlight.current) return
+    if (activeConversation.turns.length > 0) {
+      const conversation = emptyConversation(nextConversationId.current)
+      nextConversationId.current += 1
+      setConversations((current) => [...current, conversation])
+      setActiveConversationId(conversation.id)
+    }
+    resetComposer()
+  }
+
+  function handleSelectConversation(conversationId: number) {
+    if (requestInFlight.current || conversationId === activeConversation.id) return
+    // Leave an unused empty chat out of the session rather than keep a blank entry.
+    setConversations((current) =>
+      current.filter(
+        (conversation) =>
+          conversation.turns.length > 0 || conversation.id === conversationId,
+      ),
+    )
+    setActiveConversationId(conversationId)
+    setRequestFailure(null)
+    setShowColdStartNotice(false)
+    setDraft('')
+  }
+
+  // Clears every conversation from this session and returns to an empty chat.
+  function handleEndSession() {
+    if (requestInFlight.current) return
+    const conversation = emptyConversation(nextConversationId.current)
+    nextConversationId.current += 1
+    setConversations([conversation])
+    setActiveConversationId(conversation.id)
+    resetComposer()
     nextTurnId.current = 1
   }
+
+  const sessionChats = conversations
+    .filter((conversation) => conversation.turns.length > 0)
+    .map((conversation) => ({
+      active: conversation.id === activeConversation.id,
+      id: conversation.id,
+      startedAt: conversation.startedAt ?? new Date(),
+      title: conversation.turns[0].question,
+    }))
+    .sort((a, b) => b.startedAt.getTime() - a.startedAt.getTime() || b.id - a.id)
 
   function renderTurn(turn: ConversationTurn) {
     const { question, response } = turn
@@ -305,9 +383,11 @@ export function NormalResponse() {
       compactBanner={!showWelcome}
       modelLabel={visibleModelTag ? 'Processed locally' : undefined}
       modelSelector={modelSelector}
-      onNewConversation={
-        turns.length > 0 && !pendingQuestion ? handleNewConversation : undefined
-      }
+      onEndSession={sessionChats.length > 0 ? handleEndSession : undefined}
+      onNewChat={turns.length > 0 && !pendingQuestion ? handleNewChat : undefined}
+      onSelectChat={handleSelectConversation}
+      sessionBusy={pendingQuestion !== null}
+      sessionChats={sessionChats}
       statusLabel={status.label}
       statusTone={status.tone}
     >
