@@ -44,7 +44,7 @@ def _forbid_data_load(monkeypatch):
 
 def test_policy_version_is_current():
     # 0.3.4 (crisis safety net) supersedes 0.3.3; see test_crisis_safety_net.py.
-    assert REQUEST_POLICY_VERSION == "0.3.4"
+    assert REQUEST_POLICY_VERSION == "0.3.5"
 
 
 # --- F1: capability question ---------------------------------------------
@@ -217,9 +217,10 @@ def test_f4_crisis_language_still_takes_precedence_over_diagnosis():
     assert response.request_category == RequestCategory.CRISIS_SELF_HARM
 
 
-def test_other_refusals_keep_the_generic_text():
+def test_other_refusals_carry_the_support_line():
     # "What medication should I take?" moved to treatment_boundary.yaml in
-    # policy 0.3.3 (dev Q32); see test_dev_50q.py.
+    # policy 0.3.3 (dev Q32); see test_dev_50q.py. From policy 0.3.5 every
+    # refusal without its own template uses off_topic_support.yaml.
     service = SLMService(MustNotRun())
     for question in (
         "What is the capital of France?",
@@ -227,4 +228,5 @@ def test_other_refusals_keep_the_generic_text():
     ):
         response = service.preflight_response(question, require_feature=True)
         assert response.response_mode == ResponseMode.REFUSAL
-        assert response.fallback_prompt_sha256 == service.generic_fallback.sha256
+        assert response.fallback_prompt_sha256 == service.off_topic_support.sha256
+        assert "Lifeline on 13 11 14" in response.text

@@ -119,7 +119,9 @@ def test_prohibited_phrase_uses_fallback(
         update={"text": "Your phone use caused your anxiety."}
     )
     response = SLMService(StubGenerator(_generation(unsafe))).respond(
-        eligible_packet, "Why did my phone unlock pattern change?"
+        # Policy 0.3.5 refuses "why" questions about a feature before the
+        # model, so the output gate is exercised with a descriptive question.
+        eligible_packet, "How did my phone unlock pattern change?"
     )
 
     assert response.used_fallback is True

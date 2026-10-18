@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import hashlib
+import threading
+from collections import OrderedDict
 from typing import Protocol
 
 from pydantic import BaseModel, ConfigDict
@@ -40,6 +43,7 @@ from backend.slm.request_policy import (
 )
 from backend.slm.response_health import ResponseHealthReport, check_response_health
 from backend.slm.safety_gate import validate_draft
+from backend.slm.safety_screen import OllamaSafetyScreen, SafetyScreenLabel
 
 FALLBACK_REASON_EVIDENCE_SOURCE_UNAVAILABLE = "evidence_source_unavailable"
 FALLBACK_REASON_MODEL_TIMEOUT = "model_timeout"
@@ -71,6 +75,10 @@ class SafeSLMResponse(BaseModel):
     request_category: RequestCategory
     request_policy_version: str
     model_invoked: bool
+    # Policy 0.3.5 local-model safety screen: yes, no, unclear, error,
+    # not_run (the rules already chose crisis) or skipped (demo stub).
+    # model_invoked still describes answer generation only.
+    safety_screen: SafetyScreenLabel | None = None
 
 
 class SLMService:
@@ -83,8 +91,14 @@ class SLMService:
         generic_fallback: LoadedFallbackPrompt | None = None,
         crisis_fallback: LoadedFallbackPrompt | None = None,
         insufficient_data_template: LoadedFallbackPrompt | None = None,
+        safety_screen: OllamaSafetyScreen | None = None,
     ) -> None:
         self.client = client
+        self.safety_screen = safety_screen
+        # Deterministic yes/no results only, keyed by a hash of the question,
+        # so /respond screens once across preflight and generation.
+        self._screen_cache: OrderedDict[str, SafetyScreenLabel] = OrderedDict()
+        self._screen_lock = threading.Lock()
         self.generic_fallback = generic_fallback or load_fallback_prompt()
         self.crisis_fallback = crisis_fallback or load_fallback_prompt(
             DEFAULT_CRISIS_FALLBACK
@@ -110,7 +124,8 @@ class SLMService:
             reason_code: load_fallback_prompt(path)
             for reason_code, path in DEFAULT_APP_INFORMATION_TEMPLATES.items()
         }
-        # Policy 0.3.4 safety net for the off-topic default.
+        # Support-line refusal: policy 0.3.4 off-topic default, every refusal
+        # without its own template from 0.3.5.
         self.off_topic_support = load_fallback_prompt(DEFAULT_OFF_TOPIC_SUPPORT)
         if (
             self.generic_fallback.manifest.response_mode
@@ -131,7 +146,15 @@ class SLMService:
             )
 
     def respond(self, packet: EvidencePacket, question: str) -> SafeSLMResponse:
-        request_decision = classify_request(question)
+        request_decision, screen = self._classify(question)
+        return _stamp(self._respond(packet, question, request_decision), screen)
+
+    def _respond(
+        self,
+        packet: EvidencePacket,
+        question: str,
+        request_decision: RequestPolicyDecision,
+    ) -> SafeSLMResponse:
         if request_decision.disposition != RequestDisposition.ALLOW:
             return self._policy_response(request_decision)
         health = self.check_response_health(packet)
@@ -232,17 +255,20 @@ class SLMService:
     ) -> SafeSLMResponse | None:
         """Route deterministic policy cases before participant data is loaded."""
 
-        decision = classify_request(question)
+        decision, screen = self._classify(question)
         if decision.disposition != RequestDisposition.ALLOW:
-            return self._policy_response(decision)
+            return _stamp(self._policy_response(decision), screen)
         if not feature_id and is_general_uncertainty_question(question):
-            return self._template_response(
-                decision, self.general_uncertainty_template
+            return _stamp(
+                self._template_response(decision, self.general_uncertainty_template),
+                screen,
             )
         scope_reason = request_scope_rejection(
             question, feature_id=feature_id, require_feature=require_feature
         )
-        return self._scope_response(decision, scope_reason) if scope_reason else None
+        if scope_reason:
+            return _stamp(self._scope_response(decision, scope_reason), screen)
+        return None
 
     def context_unavailable_response(self, question: str) -> SafeSLMResponse:
         """Safe public boundary for failed retrieval, tools or context validation."""
@@ -250,10 +276,14 @@ class SLMService:
         preflight = self.preflight_response(question)
         if preflight is not None:
             return preflight
-        return self._fallback(
-            "approved_context_unavailable",
-            request_decision=classify_request(question),
-            model_invoked=False,
+        decision, screen = self._classify(question)
+        return _stamp(
+            self._fallback(
+                "approved_context_unavailable",
+                request_decision=decision,
+                model_invoked=False,
+            ),
+            screen,
         )
 
     def _scope_response(
@@ -276,14 +306,67 @@ class SLMService:
     def evidence_unavailable_response(self, question: str) -> SafeSLMResponse:
         """Fail closed when the approved local evidence source cannot be read."""
 
-        decision = classify_request(question)
+        decision, screen = self._classify(question)
         if decision.disposition != RequestDisposition.ALLOW:
-            return self._policy_response(decision)
-        return self._fallback(
-            FALLBACK_REASON_EVIDENCE_SOURCE_UNAVAILABLE,
-            request_decision=decision,
-            model_invoked=False,
+            return _stamp(self._policy_response(decision), screen)
+        return _stamp(
+            self._fallback(
+                FALLBACK_REASON_EVIDENCE_SOURCE_UNAVAILABLE,
+                request_decision=decision,
+                model_invoked=False,
+            ),
+            screen,
         )
+
+    def safety_screen_label(self, question: str) -> SafetyScreenLabel:
+        """Screen label for a question (cached after the first yes/no)."""
+
+        return self._classify(question)[1]
+
+    def _classify(
+        self, question: str
+    ) -> tuple[RequestPolicyDecision, SafetyScreenLabel]:
+        """Rules first; then, unless already crisis, the local safety screen.
+
+        The screen can only add a crisis route. Yes, unclear, timeout and
+        error all fail closed to the crisis template.
+        """
+
+        decision = classify_request(question)
+        if decision.disposition == RequestDisposition.CRISIS:
+            return decision, SafetyScreenLabel.NOT_RUN
+        if self.safety_screen is None:
+            return decision, SafetyScreenLabel.SKIPPED
+        label = self._screen(question.strip())
+        if label == SafetyScreenLabel.NO:
+            return decision, label
+        return (
+            RequestPolicyDecision(
+                disposition=RequestDisposition.CRISIS,
+                category=RequestCategory.CRISIS_SELF_HARM,
+                reason_code=(
+                    "safety_screen_unavailable"
+                    if label == SafetyScreenLabel.ERROR
+                    else "safety_screen_flagged"
+                ),
+            ),
+            label,
+        )
+
+    def _screen(self, question: str) -> SafetyScreenLabel:
+        key = hashlib.sha256(question.encode("utf-8")).hexdigest()
+        with self._screen_lock:
+            cached = self._screen_cache.get(key)
+        if cached is not None:
+            return cached
+        assert self.safety_screen is not None
+        label = self.safety_screen.screen(question)
+        if label in {SafetyScreenLabel.YES, SafetyScreenLabel.NO}:
+            with self._screen_lock:
+                self._screen_cache[key] = label
+                while len(self._screen_cache) > 256:
+                    self._screen_cache.popitem(last=False)
+        return label
 
     def _policy_response(self, decision: RequestPolicyDecision) -> SafeSLMResponse:
         if decision.disposition == RequestDisposition.CRISIS:
@@ -304,7 +387,10 @@ class SLMService:
         elif decision.category == RequestCategory.APP_INFORMATION:
             template = self.app_information_templates[decision.reason_code]
             response_mode = ResponseMode.REFUSAL
-        elif decision.category == RequestCategory.OFF_TOPIC and decision.support_line:
+        elif decision.support_line:
+            # Policy 0.3.5: every refusal without its own template (off-topic,
+            # cause, risk, prompt injection, sensitive data) carries the
+            # support line.
             template = self.off_topic_support
             response_mode = ResponseMode.REFUSAL
         else:
@@ -373,3 +459,7 @@ class SLMService:
             request_policy_version=request_decision.policy_version,
             model_invoked=model_invoked,
         )
+
+
+def _stamp(response: SafeSLMResponse, label: SafetyScreenLabel) -> SafeSLMResponse:
+    return response.model_copy(update={"safety_screen": label})
