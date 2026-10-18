@@ -4,9 +4,11 @@
 # Crisis language still takes precedence and uses crisis_aware.yaml.
 # 1.1.0 (policy 0.3.3, dev Q28): condition-neutral; 1.0.0 named depression
 # even when the question was about anxiety.
+# 1.2.0 (policy 0.3.5): ends with the support line from off_topic_support.yaml
+# (Lifeline, Triple Zero), so every refusal carries it.
 
 template_id: diagnosis_boundary
-template_version: "1.1.0"
+template_version: "1.2.0"
 response_mode: refusal
 allowed_claim_ids:
   - non_diagnostic_boundary
@@ -22,6 +24,8 @@ text: >
   worried about how you've been feeling, please talk to a GP or a
   mental-health professional. If you're feeling low, it can help to reach out to someone
   you trust or a support service.
+  In Australia you can call Lifeline on 13 11 14 any time, day or night.
+  If you or someone else is in immediate danger, call Triple Zero (000).
 
 review_note: >
   Added 2026-10-10 after ME-P01 on rc-eval-1. Wording approved by the

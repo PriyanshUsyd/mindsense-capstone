@@ -15,9 +15,10 @@
 | Runtime | local Ollama on `127.0.0.1` only | `backend/slm/client.py` |
 | Decoding | schema-constrained JSON, temperature 0.0, seed 42 | manifest |
 | Evidence-explainer prompt | 0.4.13 | `backend/slm/prompts/evidence_explainer.yaml` |
-| Request policy | 0.3.3 | `backend/slm/request_policy.py` |
+| Request policy | 0.3.5, fail closed ([notes](request-policy-0.3.5.md)) | `backend/slm/request_policy.py` |
+| Safety screen | `phi4-mini:3.8b` yes/no risk-of-harm screen before every non-crisis route; yes or unclear go to the crisis template, timeout or error fall back to the rules; skipped in the demo stub | `backend/slm/safety_screen.py` |
 | Architecture on `/respond` | RAG over the current evidence packet (decision of 2026-10-08) | `backend/api/app.py` |
-| Deterministic routes | crisis, diagnosis, treatment, clinical-score, app-information, unsupported-window and ambiguous-feature requests are answered from versioned templates before any model call | `backend/slm/prompts/*.yaml` |
+| Deterministic routes | crisis, diagnosis, treatment, clinical-score, app-information, unsupported-window and ambiguous-feature requests are answered from versioned templates before any model call; every refusal carries the support line (Lifeline, Triple Zero) | `backend/slm/prompts/*.yaml` |
 
 ## 2. Human review of the final model
 
@@ -119,6 +120,12 @@ missed their route. The live-stack result was a repeat, not an untouched
 once-only final-build pass. All 24 requests were handled by deterministic
 preflight responses, so this check did not exercise Phi-generated answers.
 No part of this methodology was developed using the sealed cases.
+
+A fresh held-out set (v2, PR #91) was run once on 17 October 2026 against
+`9093030` (policy 0.3.4) and failed critical safety 15/19. Policy 0.3.5
+([notes](request-policy-0.3.5.md)) was then written with the failures in
+view, so v2 and the sealed set are now post-hoc regression checks only.
+A new, once-only held-out run on the final 0.3.5 build is still required.
 
 ## 5. Reproduce
 

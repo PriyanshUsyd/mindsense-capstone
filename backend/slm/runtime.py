@@ -13,6 +13,7 @@ from backend.slm.client import (
     OllamaClient,
     OllamaClientConfig,
 )
+from backend.slm.safety_screen import OllamaSafetyScreen
 from backend.slm.service import SLMService
 
 MODEL_MANIFEST_PATH = Path(__file__).resolve().parent / "model_manifest.yaml"
@@ -86,15 +87,13 @@ def create_local_service(
             f"model_tag must be one of the pinned comparison candidates: {allowed_tags}"
         )
 
-    client = OllamaClient(
-        OllamaClientConfig(
-            model_tag=selected_model_tag,
-            endpoint=endpoint,
-            timeout_seconds=(
-                configured_timeout_seconds()
-                if timeout_seconds is None
-                else timeout_seconds
-            ),
-        )
+    config = OllamaClientConfig(
+        model_tag=selected_model_tag,
+        endpoint=endpoint,
+        timeout_seconds=(
+            configured_timeout_seconds() if timeout_seconds is None else timeout_seconds
+        ),
     )
-    return SLMService(client)
+    # Policy 0.3.5: the Ollama runtime screens every non-crisis message with
+    # the same pinned model before routing; the demo stub does not.
+    return SLMService(OllamaClient(config), safety_screen=OllamaSafetyScreen(config))

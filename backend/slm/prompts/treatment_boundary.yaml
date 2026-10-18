@@ -1,9 +1,11 @@
 # Deterministic boundary for treatment-advice requests (request policy 0.3.3,
 # 50-question dev test Q31/Q32/Q40). Previously these reused the generic
 # off-topic text. Crisis language still takes precedence (crisis_aware.yaml).
+# 1.1.0 (policy 0.3.5): ends with the support line from off_topic_support.yaml
+# (Lifeline, Triple Zero), so every refusal carries it.
 
 template_id: treatment_boundary
-template_version: "1.0.0"
+template_version: "1.1.0"
 response_mode: refusal
 allowed_claim_ids:
   - non_diagnostic_boundary
@@ -19,6 +21,8 @@ text: >
   would help you. A GP or a mental-health professional is the right person
   to talk to about support or treatment. If you're feeling low, it can help
   to reach out to someone you trust or a support service.
+  In Australia you can call Lifeline on 13 11 14 any time, day or night.
+  If you or someone else is in immediate danger, call Triple Zero (000).
 
 review_note: >
   Added 2026-10-10 after the 50-question dev test on rc-eval-2. Requires

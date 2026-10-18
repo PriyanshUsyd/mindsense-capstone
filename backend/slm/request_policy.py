@@ -4,10 +4,16 @@ The local SLM service must refuse high-severity requests even when the UI is
 not available.  This module deliberately uses a small, reviewable rule
 set: crisis language is routed to the versioned crisis template, prohibited
 requests are routed to their refusal templates, and only recognised
-MindSense evidence questions continue to the local model. Off-topic requests
-get the short refusal only when they are clearly unrelated and show no
-distress; every other off-topic default carries the support line, so a
-crisis phrase the rules miss is still answered safely (policy 0.3.4).
+MindSense evidence questions continue to the local model.
+
+Policy 0.3.5 is fail-closed: a question reaches the model only when it
+clearly asks about GPS movement or phone unlocks, or is an app/uncertainty
+question. Everything else is refused, and every refusal carries the support
+line (GP or mental-health professional, Lifeline, Triple Zero), so a crisis
+message the rules miss is still answered safely. Crisis is matched by
+meaning families rather than exact phrases and overrides every other route;
+a named condition asked about the user is a diagnosis request even when the
+question also names a feature.
 
 This is a development guardrail, not a clinical risk assessment.  The rule
 set and participant-facing wording still require Evaluation/client review
@@ -22,7 +28,7 @@ from enum import Enum
 
 from pydantic import BaseModel, ConfigDict
 
-REQUEST_POLICY_VERSION = "0.3.4"
+REQUEST_POLICY_VERSION = "0.3.5"
 
 _logger = logging.getLogger(__name__)
 
@@ -55,8 +61,9 @@ class RequestPolicyDecision(BaseModel):
     disposition: RequestDisposition
     category: RequestCategory
     reason_code: str | None = None
-    # Policy 0.3.4 safety net: an off-topic refusal that must carry the
-    # support line (GP, mental-health professional, crisis line).
+    # Support line (GP, mental-health professional, crisis line). Policy
+    # 0.3.4 set it on off-topic refusals; from 0.3.5 every refusal carries
+    # it. Capability and app-information answers are not refusals.
     support_line: bool = False
 
 
@@ -169,48 +176,177 @@ _CRISIS_PATTERNS = (
         r"|\bthis is (?:my )?goodbye\b|\bgoodbye forever\b|\bmy final (?:message|goodbye)\b",
         re.IGNORECASE,
     ),
-)
-
-# Policy 0.3.4: softer distress signals. They do not trigger the crisis
-# template on their own, but an off-topic refusal that contains one always
-# carries the support line (see _CLEARLY_UNRELATED_PATTERNS below).
-_DISTRESS_PATTERNS = (
+    # Policy 0.3.5 (post-hoc review of the 17 Oct v2 held-out check): wider
+    # meaning families. Broad on purpose; a false positive shows the crisis
+    # message, which is the safety default.
+    # Being a burden: others better off without me, dragging people down.
     re.compile(
-        r"\b(?:stress(?:ed|ful)?|anxious|anxiety|panic\w*|depress\w*|sad|unhappy|"
-        r"miserable|lonely|alone|isolated|overwhelm\w*|struggl\w*|exhausted|"
-        r"burn(?:t|ed) out|empty|numb|scared|afraid|frightened|upset|crying|cry|"
-        r"tearful|distress\w*|hurting|in pain|low mood|feel(?:s|ing)? (?:so |really |"
-        r"very |quite |pretty |a bit |kind of |super |extremely )?(?:low|down|"
-        r"awful|terrible|horrible|bad|lost|broken)|hate myself|hate my life)\b",
+        r"\b(?:better off|happier|relieved|easier)\b.{0,40}\b(?:without me|"
+        r"with me gone|once i(?:['’]m| am) gone|when i(?:['’]m| am) gone|"
+        r"if i (?:just |simply |really )?(?:wasn['’]?t|weren['’]?t|was not|"
+        r"were not|was gone|were gone|died|disappeared|left for good))\b"
+        r"|\bif i (?:just |simply |really )?(?:wasn['’]?t|weren['’]?t|was not|"
+        r"were not) (?:here|around|alive)\b"
+        r"|\b(?:i['’]?m|i am|i feel like|i['’]ve become|i have become) (?:only |just |"
+        r"nothing but |such )?(?:a burden|a drain|a waste of space|"
+        r"dragging (?:\w+ ){0,2}down|weighing (?:\w+ ){0,2}down)\b"
+        r"|\b(?:only|just|always) (?:dragging|weighing|bringing) (?:\w+ ){0,2}down\b"
+        r"|\b(?:a )?burden (?:to|on|for) (?:everyone|everybody|my|them|others|people)\b",
         re.IGNORECASE,
     ),
-    re.compile(r"\b(?:can['’]?t|cannot) (?:sleep|stop crying|stop worrying)\b", re.IGNORECASE),
-)
-
-# Policy 0.3.4: questions that are clearly about something unrelated
-# (weather, sport, cooking, trivia...). Only these keep the short off-topic
-# refusal; every other off-topic default carries the support line, so a
-# crisis phrase the rules above miss still gets a safe answer.
-_CLEARLY_UNRELATED_PATTERNS = (
+    # Means: overdose, lethal or maximum doses, pill and medication amounts,
+    # and methods. Any question of this kind is a crisis route.
     re.compile(
-        r"\b(?:weather|forecast|temperature|rain(?:ing|y)?|sunny|snow(?:ing)?)\b"
-        r"|\b(?:football|soccer|cricket|rugby|tennis|basketball|nba|nfl|afl|nrl|"
-        r"olympics?|world cup|grand prix|formula (?:1|one))\b"
-        r"|\bwho (?:won|is winning|will win)\b|\b(?:score|result) of the (?:game|match)\b"
-        r"|\b(?:recipe|cook(?:ing)?|bake|baking|restaurant|dinner ideas?)\b"
-        r"|\b(?:movie|film|tv show|series|song|album|band|singer|actor|actress)\b"
-        r"|\b(?:tell me a joke|joke|riddle|poem|story)\b"
-        r"|\b(?:capital (?:city )?of|population of|translate|spell)\b"
-        r"|\b\d+(?:\.\d+)?\s*[-+*/x×÷^]\s*\d+(?:\.\d+)?\b|\b(?:maths?|algebra|"
-        r"equation)\b"
-        r"|\b(?:stock price|share price|bitcoin|crypto(?:currency)?|exchange rate)\b"
-        r"|\b(?:python|javascript|java|sql|html|css|code|coding|programming|"
-        r"homework|essay)\b"
-        r"|\b(?:recommend|buy|choose) (?:a|an|me a) (?:phone|laptop|car|game|book)\b"
-        r"|\b(?:phone|laptop|car|game|book) recommendations?\b",
+        r"\b(?:lethal|fatal|deadly|toxic|max(?:imum)?|dangerous|safe) "
+        r"(?:dose|doses|dosage|amount|quantity|limit)\b"
+        r"|\bhow (?:many|much)\b.{0,50}\b(?:pills?|tablets?|capsules?|meds|"
+        r"medications?|medicines?|painkillers?|paracetamol|panadol|ibuprofen|"
+        r"nurofen|aspirin|antidepressants?|sleepers|sleeping aids?|insulin|"
+        r"codeine|opioids?|benzos?)\b"
+        r"|\b(?:pills?|tablets?|capsules?|meds|medications?|medicines?|"
+        r"painkillers?|paracetamol|antidepressants?)\b.{0,60}\b(?:die|kill|"
+        r"(?:not|never) wake|end (?:it|my life|things)|be fatal|be lethal|"
+        r"stop (?:my )?(?:heart|breathing))\b"
+        r"|\b(?:take|took|taking|swallow\w*) (?:all|the whole|a whole|every one) "
+        r"(?:of )?(?:my |the )?(?:\w+ ){0,2}(?:pills?|tablets?|bottle|packet|box|"
+        r"meds|medications?)\b"
+        r"|\b(?:ways?|methods?|how) (?:to|of|do i|can i|could i|would i|should i|"
+        r"do you|does someone|do people|would someone)\b.{0,20}\b(?:kill "
+        r"(?:myself|yourself|oneself|themselves)|die|end (?:my|your|one['’]s|"
+        r"their) (?:own )?life|commit suicide|hang (?:myself|yourself))\b"
+        r"|\b(?:painless|quick|quickest|easiest|easy|peaceful|surest) (?:way|"
+        r"method) to (?:die|go|end it)\b"
+        r"|\b(?:hang|hanging|drown|drowning|poison|poisoning|shoot|shooting|"
+        r"stab|stabbing|suffocat\w*|gas) myself\b"
+        r"|\bjump(?:ing)? (?:off|from|in front of)\b.{0,40}\b(?:to die|and die|"
+        r"end it|bridge|building|cliff|roof|balcony|train)\b"
+        r"|\b(?:high|tall|far) enough to (?:kill|die)\b"
+        r"|\bhow (?:high|tall|far|deep)\b.{0,60}\b(?:kill|die|fatal|lethal)\b",
         re.IGNORECASE,
     ),
+    # Saying goodbye, giving things away, putting affairs in order.
+    re.compile(
+        r"\b(?:giv(?:e|es|ing|en)|gave|pass(?:ed|ing)? on|hand(?:ed|ing)? over) "
+        r"(?:away )?(?:all |most |some |lots |a lot )?(?:of )?(?:my |our )?"
+        r"(?:stuff|things|belongings|possessions|valuables|treasured \w+|"
+        r"favou?rite \w+)\b"
+        r"|\b(?:giv(?:e|es|ing|en)|gave) (?:away )?(?:everything|it all)\b"
+        r"|\b(?:giv(?:e|es|ing|en)|gave) (?:my |all my |all of my )?\w+ away\b"
+        r"|\b(?:say|says|said|saying) (?:my )?(?:last |final )?goodbyes?\b"
+        r"|\b(?:goodbye|farewell|suicide|final) (?:letters?|notes?|messages?|"
+        r"texts?|posts?|videos?)\b"
+        r"|\b(?:putting|put|get|getting|got) (?:all )?my affairs in order\b"
+        r"|\bwr(?:ite|iting|itten|ote) (?:a |my )?will\b",
+        re.IGNORECASE,
+    ),
+    # Wanting to die, disappear or not exist.
+    re.compile(
+        r"\b(?:want|wanted|wanting|wish|wishing|ready|planning|plan|deserve) "
+        r"(?:to )?(?:just |simply )?(?:die|be dead|not be alive|not exist|"
+        r"end (?:it|things|everything))\b"
+        r"|\b(?:rather|better) (?:be )?dead\b"
+        r"|\bend(?:ing)? (?:it|things|everything) (?:all|for good|tonight|soon|"
+        r"now|forever)\b"
+        r"|\b(?:to|could|should|would|will|['’]ll|gonna|wanna|might|time|ready) "
+        r"(?:just |simply |quietly |finally )?(?:disappear|vanish)\b"
+        r"|\b(?:disappear|vanish)(?:ed|ing)? (?:forever|for good|permanently|"
+        r"completely|from (?:everyone|everything|the world|this world))\b"
+        r"|\bpermanent (?:absence|disappearance)\b"
+        r"|\bleave (?:this|the) world\b"
+        r"|\bnot (?:be )?(?:around|alive|here) (?:next|by|for) (?:week|month|year|"
+        r"christmas|long)\b",
+        re.IGNORECASE,
+    ),
+    # No future, no point.
+    re.compile(
+        r"\bno (?:future|hope)\b(?! (?:data|window|days?|weeks?|dates?|readings?|"
+        r"values?)\b)"
+        r"|\b(?:can['’]?t|cannot|don['’]?t|do not) see (?:a|any) (?:future|way "
+        r"forward|way out)\b"
+        r"|\bnothing (?:left )?to (?:look forward to|live for)\b"
+        r"|\bwhat['’]?s (?:even )?the point(?: of (?:anything|it|me|trying|living))?"
+        r"(?: any ?more)?\s*[?.!]*\s*$"
+        r"|\b(?:is|there['’]?s|there is) no point (?:in |to )?(?:anything|any of "
+        r"(?:it|this)|trying|living|going on|carrying on|me|being (?:here|alive)|"
+        r"life)\b"
+        r"|\b(?:life|living|everything|it all|my life|existing) (?:is|feels|seems) "
+        r"(?:so |completely |totally )?(?:pointless|meaningless|hopeless)\b"
+        r"|\b(?:won['’]?t|will never|isn['’]?t going to|is never going to|never "
+        r"going to) get (?:any )?better\b",
+        re.IGNORECASE,
+    ),
+    # Self-harm beyond the literal phrases above.
+    re.compile(
+        r"\b(?:hit|hitting|scratch\w*|bang\w*|punch\w*) myself\b"
+        r"|\b(?:cut|cutting|burn|burning|scratch\w*) (?:my )?(?:arms?|wrists?|"
+        r"thighs?|skin)\b"
+        r"|\brelaps\w* (?:on|into|with) (?:self[- ]?harm\w*|cutting)\b",
+        re.IGNORECASE,
+    ),
+    # Means and methods: any question about how painful, quick, lethal or
+    # fatal a way of injury or death is, even as curiosity or about someone
+    # else. Two halves: (a) a severity word with a violent mechanism,
+    # (b) a lethality word with a medication, dose or poison. Everyday senses
+    # ("hang out", "my unlocks fell", "a jump in my unlocks") are excluded.
+    re.compile(
+        r"^(?=.*\b(?:pain(?:ful|less)?|hurts?|hurting|quick\w*|fast\w*|instant\w*|"
+        r"lethal|fatal|deadly|kills?|killing|die|dies|dying|death|survive\w*|"
+        r"survivable|how long)\b)"
+        r"(?=.*\b(?:bleed\w*|bled|blood loss|slit\w*|wrists?|veins?|"
+        r"cut(?:s|ting)? (?:myself|yourself|themselves|himself|herself|"
+        r"someone|deep\w*)|hang(?:ed|ing|s)?\b(?! out)|noose|"
+        r"jump\w* (?:off|from|in front of)|fall\w* from|heights?|"
+        r"(?:tall|high)\w* (?:bridge|building|cliff|roof)|bridges?|cliffs?|"
+        r"rooftops?|drown\w*|suffocat\w*|strangl\w*|carbon monoxide|"
+        r"exhaust fumes|shoot\w*|guns?|stab\w*|knife|knives|"
+        r"(?:hit by|in front of) an? (?:train|car|truck|bus))\b)"
+        r"|^(?=.*\b(?:lethal|fatal|deadly|kills?|killing|die|dies|dying|death|"
+        r"survive\w*|overdos\w*|pain(?:ful|less)|stop (?:your|my|their|"
+        r"someone['’]s|a person['’]s) heart|(?:not|never) wake)\b)"
+        r"(?=.*\b(?:pills?|tablets?|capsules?|meds|medications?|medicines?|"
+        r"painkillers?|paracetamol|panadol|acetaminophen|ibuprofen|nurofen|"
+        r"aspirin|codeine|tramadol|oxycodone|morphine|fentanyl|heroin|insulin|"
+        r"antidepressants?|sertraline|fluoxetine|benzos?|xanax|valium|"
+        r"diazepam|sleeping (?:pills|tablets)|doses?|dosage|poison\w*|bleach|"
+        r"antifreeze|toxic)\b)",
+        re.IGNORECASE | re.DOTALL,
+    ),
 )
+
+# Policy 0.3.5: a named mental-health or neurodevelopmental condition asked
+# about the user is a diagnosis request, even when the question also names a
+# feature ("does my unlock pattern look like ADHD?"). Checked after the other
+# prohibited categories, so treatment, risk and cause keep their own refusal.
+_NAMED_CONDITION = re.compile(
+    r"\b(?:depression|depressive|anxiety|adhd|attention[- ]deficit|bipolar|"
+    r"manic|mania|ptsd|post[- ]traumatic|ocd|obsessive[- ]compulsive|"
+    r"eating disorders?|anorexi\w*|bulimi\w*|binge[- ]eating|autism|autistic|"
+    r"asperger\w*|schizo\w*|psychosis|psychotic|borderline|bpd|"
+    r"personality disorder|panic disorder|panic attacks?|agoraphobi\w*|"
+    r"phobias?|insomnia|dyslexi\w*|tourette\w*|dementia|seasonal affective|"
+    r"neurodivergen\w*|neurodevelopmental|mental (?:illness|disorder|health "
+    r"condition)|\w+ disorder)\b",
+    re.IGNORECASE,
+)
+_SELF_REFERENCE = re.compile(
+    r"\b(?:i|i['’]m|im|i['’]ve|i['’]d|me|my|myself|mine)\b", re.IGNORECASE
+)
+# Mood words are not condition names, but asking the data to show them is
+# still diagnosis ("do my unlocks show I'm depressed?").
+_SELF_ASSESSMENT_FROM_DATA = re.compile(
+    r"\b(?:show|shows|showing|mean|means|suggest\w*|indicat\w*|look(?:s)? like|"
+    r"signs? (?:of|that)|reveal\w*|tell (?:you|me)|say|says|consistent with|"
+    r"evidence (?:of|that))\b.{0,60}\b(?:i(?:['’]m| am| was)|i['’]ve been|"
+    r"i have been|me)\b.{0,20}\b(?:depressed|anxious|unwell|mentally ill|ill|"
+    r"sick)\b",
+    re.IGNORECASE,
+)
+
+
+def _is_named_condition_request(question: str) -> bool:
+    return bool(
+        _NAMED_CONDITION.search(question) and _SELF_REFERENCE.search(question)
+    ) or bool(_SELF_ASSESSMENT_FROM_DATA.search(question))
 
 _PROHIBITED_PATTERNS: tuple[
     tuple[RequestCategory, str, tuple[re.Pattern[str], ...]], ...
@@ -385,6 +521,33 @@ _PROHIBITED_PATTERNS: tuple[
                 r"mental health)\b",
                 re.IGNORECASE,
             ),
+            # Policy 0.3.5: treatment by meaning. A medication, supplement or
+            # therapy word together with any advice or change cue.
+            re.compile(
+                r"^(?=.*\b(?:medications?|medicines?|meds|pills?|tablets?|"
+                r"antidepressants?|ssris?|sertraline|fluoxetine|escitalopram|"
+                r"citalopram|lexapro|zoloft|prozac|venlafaxine|ritalin|adderall|"
+                r"stimulants?|lithium|benzos?|xanax|melatonin|supplements?|"
+                r"vitamins?|therapy|therapist|counsell?(?:ing|or)|cbt|psychiatrist|"
+                r"psychologist|treatment)\b)"
+                r".*\b(?:should|would|could|will|can|do i need|help|helps|helping|"
+                r"recommend\w*|suggest\w*|advise|advice|try|start|stop|quit|take|"
+                r"taking|increase|decrease|reduce|raise|up|lower|change|switch|"
+                r"dose|dosage|worth it|work for me|better)\b",
+                re.IGNORECASE | re.DOTALL,
+            ),
+            # "Should I see / ask / start ...?" and "what should I do about".
+            re.compile(
+                r"\bshould i (?:see|get|go to|talk to|speak to|ask|book|try|start|"
+                r"stop|take|change|increase|reduce|lower|up|switch|quit|come off|"
+                r"seek|get help|call)\b"
+                r"|\bwhat (?:should|can|could|do|would you suggest) i (?:do|try) "
+                r"about\b"
+                r"|\bwhat (?:should|can|could) i do (?:now|next|to fix)\b"
+                r"|\bhow (?:do|can|should|could) i (?:treat|fix|cure|get help|get "
+                r"treatment|get (?:some )?support)\b",
+                re.IGNORECASE,
+            ),
         ),
     ),
     (
@@ -424,6 +587,23 @@ _PROHIBITED_PATTERNS: tuple[
                 r"relapse|get worse|crash|burn out)\b",
                 re.IGNORECASE,
             ),
+            # Policy 0.3.5: risk and forecasts by meaning ("will I", "chance
+            # of", "likely to", "going to get"). Questions about seeing a
+            # baseline or comparison are app questions, not forecasts.
+            re.compile(
+                r"\bwill i\b(?! (?:be able to )?(?:see|get|have) (?:a |my |the )?"
+                r"(?:baseline|comparison|results?|answer)\b)"
+                r"|\b(?:chances?|odds|probability|likelihood|percentage|risk) "
+                r"(?:of|that|for)\b"
+                r"|\b(?:how )?likely (?:to|is it|am i|that|is that)\b"
+                r"|\b(?:am i|is (?:it|this|that|my \w+(?: \w+)?)|are (?:my \w+|things)|"
+                r"will (?:it|things|this|my \w+(?: \w+)?)) going to (?:get|be|become|"
+                r"end up|turn)\b"
+                r"|\bgoing to get (?:worse|better|bad|harder|easier|sick|ill|"
+                r"depressed|anxious)\b"
+                r"|\b(?:predict|forecast)\w*\b",
+                re.IGNORECASE,
+            ),
         ),
     ),
     (
@@ -441,12 +621,44 @@ _PROHIBITED_PATTERNS: tuple[
             # Any "because"/"due to" refuses (fail closed): MindSense never
             # confirms or rejects a stated cause.
             re.compile(r"\b(?:because|due to)\b", re.IGNORECASE),
+            # Policy 0.3.5: the same fail-closed rule for "is that why",
+            # "the reason", "is it from/down to/linked to", in any wording.
+            re.compile(
+                r"\b(?:is|was|could|might|would|can) (?:it|that|this|these|those) "
+                r"(?:be )?(?:the (?:reason )?)?why\b"
+                r"|\b(?:that['’]?s|that is|this is|this['’]s|is that|is this|is it) "
+                r"(?:the reason )?why\b"
+                r"|\b(?:the )?reasons? (?:why |that )?(?:i|i['’]ve|i['’]m|my|me)\b"
+                r"|\breasons? (?:for|behind) (?:my|the change|this|that|these|it)\b"
+                r"|\b(?:is|was|are|were) (?:it|that|this|these|those) (?:from|down "
+                r"to|caused by|related to|linked to|connected to|tied to|a result "
+                r"of|the result of|because of|thanks to)\b"
+                r"|\b(?:is|was|are|were) (?:my|this|that|it|these) .{0,60}\b(?:linked|"
+                r"related|connected|tied|attributable) to\b",
+                re.IGNORECASE,
+            ),
+            # Policy 0.3.5: "why" about the person's own movement or unlocks,
+            # in every word form (moving, moved, movement; unlocking,
+            # unlocks). Questions about the baseline or the evidence itself
+            # ("why can't you compare with my baseline?") are not causal.
+            re.compile(
+                r"^(?!.*\b(?:baseline|compar\w*|enough (?:data|history)|"
+                r"uncertain\w*|evidence)\b)"
+                r".*\bwhy\b(?: (?:have|has|had|am|is|are|was|were|do|does|did|"
+                r"would|might|could|can|should)(?:n['’]?t)?)? (?:i|i['’]ve|i['’]m|"
+                r"my|me)\b.{0,80}\b(?:mov(?:e|es|ed|ing)|movements?|mobility|"
+                r"travel\w*|distance|gps|unlock(?:s|ed|ing)?|pick(?:s|ed|ing)? up|"
+                r"phone|screen time|go(?:es|ing)? out|went out|leav(?:e|es|ing) "
+                r"(?:the house|home)|stay(?:s|ed|ing)? (?:in|home|inside)|active)\b",
+                re.IGNORECASE | re.DOTALL,
+            ),
             re.compile(r"\bprov(?:e|es|ed|ing)\b|\bproof\b", re.IGNORECASE),
             # Policy 0.3.4: "root cause", "what is causing/behind", "why is X
             # making me Y", "X is making me anxious".
             re.compile(
                 r"\b(?:root )?caus(?:e|es|ed|ing) of\b|\broot cause\b"
-                r"|\bwhat(?:['’]s| is| are) (?:causing|behind|driving|triggering)\b"
+                r"|\bwhat(?:['’]s| is| are| has been| have been) (?:causing|behind|"
+                r"driving|triggering|making|pushing)\b"
                 r"|\bwhy (?:is|are|does|do|did|was|were|am)\b.{0,80}\b(?:making|made|"
                 r"causing|caused|giving|leaving|turning)\b"
                 r"|\b(?:is|are|was|were|keeps?) (?:making|leaving) me (?:feel )?"
@@ -815,7 +1027,16 @@ def classify_request(question: str) -> RequestPolicyDecision:
                 disposition=RequestDisposition.REFUSE,
                 category=category,
                 reason_code=reason_code,
+                support_line=True,
             )
+
+    if _is_named_condition_request(clean_question):
+        return RequestPolicyDecision(
+            disposition=RequestDisposition.REFUSE,
+            category=RequestCategory.DIAGNOSIS_SEEKING,
+            reason_code="diagnosis_request_detected",
+            support_line=True,
+        )
 
     if any(pattern.search(clean_question) for pattern in _CAPABILITY_PATTERNS):
         return RequestPolicyDecision(
@@ -833,20 +1054,14 @@ def classify_request(question: str) -> RequestPolicyDecision:
         )
 
     if not clean_question or not _is_in_scope(clean_question):
-        # Safety net: a crisis phrase the rules above miss lands here, so only
-        # a clearly unrelated question with no distress signal keeps the
-        # short refusal; everything else gets the support line.
-        clearly_unrelated = any(
-            pattern.search(clean_question) for pattern in _CLEARLY_UNRELATED_PATTERNS
-        )
-        distressed = any(
-            pattern.search(clean_question) for pattern in _DISTRESS_PATTERNS
-        )
+        # Fail closed. A crisis message the rules above miss lands here, so
+        # every off-topic refusal carries the support line (policy 0.3.5;
+        # 0.3.4 left it off clearly unrelated questions).
         return RequestPolicyDecision(
             disposition=RequestDisposition.REFUSE,
             category=RequestCategory.OFF_TOPIC,
             reason_code="off_topic_request_detected",
-            support_line=distressed or not clearly_unrelated,
+            support_line=True,
         )
 
     return RequestPolicyDecision(

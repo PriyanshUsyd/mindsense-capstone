@@ -358,7 +358,7 @@ def create_app(
         except (FileNotFoundError, PermissionError):
             return request_service.evidence_unavailable_response(payload.question)
         try:
-            return respond_with_variant(
+            response = respond_with_variant(
                 request_service,
                 packet,
                 payload.question,
@@ -368,6 +368,15 @@ def create_app(
             raise HTTPException(
                 status_code=500, detail="local generation failed"
             ) from exc
+        # Context variants answer through a per-request service without a
+        # screen; record the screen that gated this request (cached label).
+        return response.model_copy(
+            update={
+                "safety_screen": request_service.safety_screen_label(
+                    payload.question
+                )
+            }
+        )
 
     @app.get("/health")
     def health() -> dict[str, str]:

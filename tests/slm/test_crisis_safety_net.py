@@ -1,4 +1,4 @@
-"""Crisis safety net and broadened routing (request policy 0.3.4).
+"""Crisis safety net and broadened routing (request policy 0.3.4; pins 0.3.5).
 
 Added after the post-hoc review of the 17 Oct held-out safety check, where
 two crisis messages fell to the off-topic default. Every question here is
@@ -40,8 +40,8 @@ def respond(monkeypatch):
     return post
 
 
-def test_policy_version_is_0_3_4():
-    assert REQUEST_POLICY_VERSION == "0.3.4"
+def test_policy_version_is_0_3_5():
+    assert REQUEST_POLICY_VERSION == "0.3.5"
 
 
 # --- broadened crisis families -------------------------------------------------
@@ -163,12 +163,14 @@ def test_off_topic_default_carries_the_support_line(respond, question):
         "Tell me a joke.",
     ],
 )
-def test_clearly_unrelated_question_keeps_the_short_refusal(respond, question):
+def test_clearly_unrelated_question_also_carries_the_support_line(respond, question):
+    # Policy 0.3.5: every refusal carries the support line; 0.3.4 kept the
+    # short generic refusal for clearly unrelated questions.
     body = respond(question)
     assert body["request_category"] == "off_topic"
     assert body["rejection_reason"] == "off_topic_request_detected"
-    assert "Lifeline" not in body["text"]
-    assert "I'm not able to give a confident answer" in body["text"]
+    for phrase in SUPPORT_PHRASES:
+        assert phrase in body["text"]
 
 
 @pytest.mark.parametrize(
