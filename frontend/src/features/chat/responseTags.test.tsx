@@ -178,3 +178,32 @@ describe('rendered tags', () => {
     )
   })
 })
+
+describe('card styling follows the tag', () => {
+  beforeEach(() => {
+    vi.mocked(getModelCatalog).mockRejectedValue(new Error('no catalog'))
+    vi.mocked(respond).mockReset()
+  })
+
+  it.each([
+    [base({ answer_kind: 'comparison_shown', response_mode: 'uncertainty', model_invoked: true }), 'comparison'],
+    [base({ answer_kind: 'no_clear_difference' }), 'pattern'],
+    [base({ answer_kind: 'few_recent_days' }), 'pattern'],
+    [base({ answer_kind: 'building_baseline' }), 'pattern'],
+    [base({ answer_kind: 'general_limits' }), 'pattern'],
+    [base({ answer_kind: 'not_enough_data', response_mode: 'insufficient_data' }), 'data'],
+    [base({ response_mode: 'crisis_aware_fallback', request_category: 'crisis_self_harm', request_disposition: 'crisis' }), 'support'],
+    [base({ response_mode: 'refusal', request_category: 'off_topic', request_disposition: 'refuse' }), 'boundary'],
+    [base({ response_mode: 'generic_fallback', rejection_reason: 'model_timeout', used_fallback: true }), 'boundary'],
+  ])('sets the card tone (%#)', async (response, tone) => {
+    const user = userEvent.setup()
+    vi.mocked(respond).mockResolvedValueOnce(response)
+    render(<NormalResponse />)
+    await user.click(screen.getByRole('button', { name: /ask about my recent movement/i }))
+    await screen.findByText('Synthetic answer text')
+
+    const card = document.querySelector('.chat-thread .state-card')
+    expect(card).toHaveAttribute('data-tone', tone)
+    expect(card).toHaveAttribute('data-response-mode', response.response_mode)
+  })
+})

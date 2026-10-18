@@ -71,7 +71,7 @@ class AnswerKind(str, Enum):
     request_category and rejection_reason.
     """
 
-    COMPARISON_SHOWN = "comparison_shown"  # normal answer, ELIGIBLE packet
+    COMPARISON_SHOWN = "comparison_shown"  # any generated answer, ELIGIBLE packet
     NO_CLEAR_DIFFERENCE = "no_clear_difference"  # State C, evidence not reportable
     FEW_RECENT_DAYS = "few_recent_days"  # State C, too few recorded days
     BUILDING_BASELINE = "building_baseline"  # PARTIAL packet, State B
@@ -85,12 +85,11 @@ _PARTIAL_ANSWER_KINDS = {
 }
 
 
-def _generated_answer_kind(
-    packet: EvidencePacket, response_mode: ResponseMode
-) -> AnswerKind | None:
+def _generated_answer_kind(packet: EvidencePacket) -> AnswerKind | None:
     status = packet.baseline.eligibility_status
     if status == EligibilityStatus.ELIGIBLE:
-        return AnswerKind.COMPARISON_SHOWN if response_mode == ResponseMode.NORMAL else None
+        # Any generated answer on an ELIGIBLE packet, whatever its mode.
+        return AnswerKind.COMPARISON_SHOWN
     if status == EligibilityStatus.PARTIAL_DESCRIPTIVE_ONLY:
         return _PARTIAL_ANSWER_KINDS.get(
             packet.baseline.ineligible_reason, AnswerKind.BUILDING_BASELINE
@@ -281,7 +280,7 @@ class SLMService:
             request_category=request_decision.category,
             request_policy_version=request_decision.policy_version,
             model_invoked=True,
-            answer_kind=_generated_answer_kind(packet, draft.response_mode),
+            answer_kind=_generated_answer_kind(packet),
         )
 
     def check_response_health(self, packet: EvidencePacket) -> ResponseHealthReport:

@@ -215,7 +215,12 @@ function StateCard({
   return (
     <section className="chat-thread" aria-live={role === 'alert' ? 'assertive' : 'polite'}>
       <QuestionBubble question={question} />
-      <article className={`state-card state-card--${mode}`} data-response-mode={mode} role={role}>
+      <article
+        className={`state-card state-card--${mode}`}
+        data-response-mode={mode}
+        data-tone={tag.tone}
+        role={role}
+      >
         <span className="state-card-icon" aria-hidden="true" />
         <div>
           <TagBadge tag={tag} />

@@ -73,11 +73,12 @@ def test_comparison_shown_for_a_normal_answer_on_an_eligible_packet(eligible):
     assert response.answer_kind == AnswerKind.COMPARISON_SHOWN
 
 
-def test_eligible_uncertainty_answer_has_no_answer_kind(eligible):
+def test_any_generated_answer_on_an_eligible_packet_is_comparison_shown(eligible):
+    # Whatever its mode, so it never falls back to the default tag.
     response = respond(_only_mode(eligible, ResponseMode.UNCERTAINTY))
     assert response.response_mode == ResponseMode.UNCERTAINTY
     assert response.used_fallback is False
-    assert response.answer_kind is None
+    assert response.answer_kind == AnswerKind.COMPARISON_SHOWN
 
 
 @pytest.mark.parametrize(

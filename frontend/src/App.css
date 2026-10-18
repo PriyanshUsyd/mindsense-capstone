@@ -1387,6 +1387,64 @@
   border-color: #eee7f4;
 }
 
+/*
+ * Card styling follows the reason-based tag (data-tone), overriding the
+ * response-mode colours above. Crisis ("support") keeps its existing style.
+ */
+.state-card[data-tone="pattern"] {
+  border-left-color: #9fb4a8;
+}
+
+.state-card[data-tone="pattern"] .state-card-icon {
+  background: #eef2ef;
+}
+
+.state-card[data-tone="pattern"] .state-card-icon::after {
+  color: var(--forest-900);
+  content: "ℹ";
+  font-size: 16px;
+}
+
+.state-card[data-tone="comparison"] {
+  border-left-color: #6fa585;
+}
+
+.state-card[data-tone="comparison"] .state-card-icon {
+  background: var(--mint-100);
+}
+
+.state-card[data-tone="comparison"] .state-card-icon::after {
+  color: var(--sage-700);
+  content: "◇";
+  font-size: 16px;
+}
+
+.state-card[data-tone="data"] {
+  border-left-color: #e0c384;
+}
+
+.state-card[data-tone="data"] .state-card-icon {
+  background: #fdf8ec;
+}
+
+.state-card[data-tone="data"] .state-card-icon::after {
+  color: #a17f2e;
+  content: "○";
+  font-size: 17px;
+}
+
+.state-card[data-tone="boundary"] {
+  border-left-color: #b9bdb8;
+}
+
+.state-card[data-tone="boundary"] .state-card-icon {
+  background: #f1f2ef;
+}
+
+.state-card[data-tone="boundary"] .state-card-icon::after {
+  color: #5f6662;
+}
+
 .state-boundary {
   padding-top: 10px;
   color: var(--muted) !important;
