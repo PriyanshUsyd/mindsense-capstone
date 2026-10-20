@@ -32,6 +32,10 @@ and UI setup do not require Ollama. Set `MINDSENSE_SLM_RUNTIME=ollama` when
 starting Uvicorn to enable Richard's manifest-bounded local model selector.
 The optional `model_tag` request field can select only a pinned comparison
 candidate; `/models` exposes the bounded catalog for frontend integration.
+
+`MINDSENSE_DATASET_DIR` (`backend.dataset_config`) selects the dataset the
+evidence builder reads; `/health` and `/models` report it as `dataset: real |
+synthetic` so the UI can show its "Demo mode: synthetic data" banner.
 """
 
 from __future__ import annotations
@@ -45,6 +49,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from backend import dataset_config
 from backend.contracts.evidence import (
     ApprovedClaimId,
     AssistantDraft,
@@ -203,6 +208,7 @@ class ModelCatalogResponse(BaseModel):
     selection_enabled: bool
     default_model_tag: str
     available_model_tags: tuple[str, ...]
+    dataset: str  # dataset_config.dataset_kind(): "real" or "synthetic"
 
 
 def _selected_runtime_name(runtime_name: str | None = None) -> str:
@@ -380,7 +386,7 @@ def create_app(
 
     @app.get("/health")
     def health() -> dict[str, str]:
-        return {"status": "ok"}
+        return {"status": "ok", "dataset": dataset_config.dataset_kind()}
 
     @app.get("/models", response_model=ModelCatalogResponse)
     def models() -> ModelCatalogResponse:
@@ -389,6 +395,7 @@ def create_app(
             selection_enabled=selected_runtime == "ollama",
             default_model_tag=default_model_tag(),
             available_model_tags=listed_model_tags(),
+            dataset=dataset_config.dataset_kind(),
         )
 
     return app

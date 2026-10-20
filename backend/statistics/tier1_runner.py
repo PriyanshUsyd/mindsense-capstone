@@ -66,12 +66,12 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from backend import dataset_config
 from backend.statistics import bootstrap_cache, evidence
 from backend.statistics.feature_specs import TIER1_FEATURE_SPECS, FeatureSpec
 from backend.statistics.mixed_effects_model import build_model_frame, fit_ar1_effect, fit_mixed_effects_model
 from backend.statistics.private_files import PermissionRestrictionError, private_dir, write_private_text
 
-DATASET_DIR = Path(__file__).resolve().parents[2] / "dataset"
 OUTPUT_ROOT = Path(__file__).resolve().parents[2] / "outputs" / "tier1"
 
 # Every raw column any Tier-1 FeatureSpec's clean_fn might need, loaded
@@ -83,12 +83,15 @@ _SENSING_COLUMNS = ["uid", "day", "quality_loc", "loc_dist_ep_0", "unlock_num_ep
 
 
 def load_sensing_and_ema() -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Reads the dataset `MINDSENSE_DATASET_DIR` selects (`backend.dataset_config`;
+    the real `dataset/` by default)."""
+    dataset_dir = dataset_config.dataset_dir()
     sensing = (
-        pd.read_csv(DATASET_DIR / "Sensing" / "sensing.csv", usecols=_SENSING_COLUMNS)
+        pd.read_csv(dataset_dir / "Sensing" / "sensing.csv", usecols=_SENSING_COLUMNS)
         .sort_values(["uid", "day"])
         .reset_index(drop=True)
     )
-    ema = pd.read_csv(DATASET_DIR / "EMA" / "general_ema.csv", usecols=["uid", "day", "phq4_score"])
+    ema = pd.read_csv(dataset_dir / "EMA" / "general_ema.csv", usecols=["uid", "day", "phq4_score"])
     return sensing, ema
 
 

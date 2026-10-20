@@ -46,6 +46,11 @@ the Python-built cache (`bootstrap.ENGINE_PYTHON`, same model, method, B and
 seed) is read when R is not usable, or when no R-built cache exists. Its
 fingerprint does not depend on R, so it works on machines without R.
 
+Dataset: every read goes through `backend.dataset_config.dataset_dir()`
+(`MINDSENSE_DATASET_DIR`, default the real `dataset/`), and the cache is read
+from `dataset_config.bootstrap_cache_root()`, so a synthetic dataset never
+reads the real cache or the other way round.
+
 Fail closed: a missing, stale, unreadable, malformed or not owner-only
 cache, or a participant without a row all leave the packet at `no_claim`
 (no comparison value). Nothing is guessed and nothing raises to
@@ -73,6 +78,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from backend import dataset_config
 from backend.contracts.comparison_reasons import (
     STATE_C_EVIDENCE_NOT_REPORTABLE,
     STATE_C_TOO_FEW_RECORDED_DAYS,
@@ -107,12 +113,12 @@ from backend.statistics.feature_specs import (
 )
 from backend.statistics.mixed_effects_model import build_model_frame
 
-DATASET_DIR = Path(__file__).resolve().parents[2] / "dataset"
 logger = logging.getLogger(__name__)
 
-# Where the B=500 aggregated cache lives (git-ignored, owner-only). A module
-# attribute so tests can point it at a temporary directory.
-BOOTSTRAP_CACHE_ROOT = bootstrap_cache.CACHE_ROOT
+# Where the B=500 aggregated cache lives (git-ignored, owner-only). `None`
+# means the selected dataset's own root (`dataset_config.bootstrap_cache_root`);
+# a module attribute so tests can point it at a temporary directory.
+BOOTSTRAP_CACHE_ROOT: Path | None = None
 # Engine names the cached runs record (part of each cache's fingerprint).
 BOOTSTRAP_ENGINE = bootstrap.ENGINE_R
 BOOTSTRAP_ENGINE_PYTHON = bootstrap.ENGINE_PYTHON
@@ -249,7 +255,9 @@ def _to_date(day_value: int) -> date:
 
 def _load_cleaned_sensing(feature_id: str) -> pd.DataFrame:
     meta = _FEATURES[feature_id]
-    df = pd.read_csv(DATASET_DIR / "Sensing" / "sensing.csv", usecols=list(meta.load_cols))
+    df = pd.read_csv(
+        dataset_config.dataset_dir() / "Sensing" / "sensing.csv", usecols=list(meta.load_cols)
+    )
     df = df.sort_values(["uid", "day"]).reset_index(drop=True)
     return meta.spec.clean_fn(df)
 
@@ -271,7 +279,8 @@ def _ema() -> pd.DataFrame:
     global _EMA_CACHE
     if _EMA_CACHE is None:
         _EMA_CACHE = pd.read_csv(
-            DATASET_DIR / "EMA" / "general_ema.csv", usecols=["uid", "day", "phq4_score"]
+            dataset_config.dataset_dir() / "EMA" / "general_ema.csv",
+            usecols=["uid", "day", "phq4_score"],
         ).dropna(subset=["phq4_score"])
     return _EMA_CACHE
 
@@ -346,7 +355,10 @@ def _load_evidence_table(feature_id: str) -> _EvidenceTable:
         cached = None
         for engine in _cache_engines():
             cached = bootstrap_cache.load_aggregated_cache(
-                meta.spec, frame, engine=engine, cache_root=BOOTSTRAP_CACHE_ROOT
+                meta.spec,
+                frame,
+                engine=engine,
+                cache_root=BOOTSTRAP_CACHE_ROOT or dataset_config.bootstrap_cache_root(),
             )
             if cached is not None:
                 break

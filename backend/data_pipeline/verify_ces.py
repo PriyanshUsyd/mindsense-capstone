@@ -35,11 +35,15 @@ Run: python backend/data_pipeline/verify_ces.py
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 import pandas as pd
 
-DATASET_DIR = Path(__file__).resolve().parents[2] / "dataset"
+# MINDSENSE_DATASET_DIR (see backend/dataset_config.py), inlined because this
+# script runs bare, without package imports. Unset: the real dataset/.
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+DATASET_DIR = _REPO_ROOT / (os.environ.get("MINDSENSE_DATASET_DIR", "").strip() or "dataset")
 
 # Locked Tier 1 feature columns, per skills/data-pipeline-ces.md.
 GPS_COL = "loc_dist_ep_0"
