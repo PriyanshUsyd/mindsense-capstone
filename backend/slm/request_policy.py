@@ -28,7 +28,7 @@ from enum import Enum
 
 from pydantic import BaseModel, ConfigDict
 
-REQUEST_POLICY_VERSION = "0.3.6"
+REQUEST_POLICY_VERSION = "0.3.7"
 
 _logger = logging.getLogger(__name__)
 
@@ -369,6 +369,112 @@ _CRISIS_PATTERNS = (
         re.IGNORECASE | re.DOTALL,
     ),
 )
+
+# Policy 0.3.7: current emotional distress. A first-person statement of
+# strong distress now ("I feel very depressed right now", "im really low",
+# "I'm overwhelmed", "idk what to do") goes to the crisis template, checked
+# with the crisis families above and before diagnosis. Written as meaning
+# families, not from the client-v1 wording. It must not catch:
+#   - diagnosis questions ("am I depressed?", "do I have depression?"): the
+#     question word order does not match, and a statement inside a question
+#     or data frame ("do you think I'm depressed?", "does my data show I'm
+#     depressed") is skipped, see `_is_current_distress`;
+#   - third-person or general questions ("can the app detect depression?"):
+#     the subject must be the person ("I", "I'm", or a sentence that starts
+#     "feeling ...");
+#   - feature questions ("my unlocks are down", "I'm low on battery").
+_DISTRESS_SUBJECT = (
+    r"(?:\bi (?:just |really |honestly |still |kind of |kinda )?(?:feel|felt like|"
+    r"am feeling|['’]m feeling|have been feeling|['’]ve been feeling|keep feeling)"
+    r"|\bi['’]ve been feeling|\bi['’]m feeling"
+    r"|\bi['’]m|\bi am|\bi['’]ve been|\bi have been"
+    r"|^\s*(?:been |just |so |really )?feeling)"
+)
+_DISTRESS_INTENSIFIER = (
+    r"(?:so|really|very|extremely|incredibly|completely|totally|utterly|super|"
+    r"deeply|terribly|awfully|seriously|absolutely|truly|horribly|unbearably|"
+    r"too|pretty|quite|such)"
+)
+# Strong on their own.
+_DISTRESS_STRONG = (
+    r"(?:depressed|hopeless|helpless|empty|numb|overwhelmed|miserable|desperate|"
+    r"broken|distraught|devastated|wretched|crushed|defeated|terrible|awful|"
+    r"horrible|dreadful|like i['’]m drowning|like i can['’]?t breathe|"
+    r"like nothing matters)"
+)
+# Milder words count with an intensifier ("really low") or a "now" marker
+# ("low right now").
+_DISTRESS_MILD = r"(?:low|down|sad|upset|lonely|anxious|stressed|bad|rough|unhappy|scared|lost)"
+_DISTRESS_NOW = r"(?:right now|at the moment|now|today|tonight|lately|these days|all the time)"
+# Everyday continuations: "terrible at maths", "low on battery", "down to 3".
+_DISTRESS_NOT_EMOTION = r"(?!\s+(?:at|on|of|to|than|for|in|with (?:my|the) (?:phone|app|data))\b)"
+_CURRENT_DISTRESS_PATTERNS = (
+    re.compile(
+        _DISTRESS_SUBJECT
+        + r"\s+(?:" + _DISTRESS_INTENSIFIER + r"\s+){0,2}"
+        + _DISTRESS_STRONG + r"\b" + _DISTRESS_NOT_EMOTION,
+        re.IGNORECASE,
+    ),
+    re.compile(
+        _DISTRESS_SUBJECT
+        + r"\s+(?:" + _DISTRESS_INTENSIFIER + r"\s+){1,2}"
+        + _DISTRESS_MILD + r"\b" + _DISTRESS_NOT_EMOTION,
+        re.IGNORECASE,
+    ),
+    re.compile(
+        _DISTRESS_SUBJECT + r"\s+" + _DISTRESS_MILD + r"\s+" + _DISTRESS_NOW + r"\b",
+        re.IGNORECASE,
+    ),
+    # Not knowing what to do about one's situation (not about the app).
+    re.compile(
+        # The subject may be dropped ("dunno what to do", "idk what to do").
+        r"(?:\bi |^\s*)(?:really |honestly |just |genuinely )?(?:don['’]t|do not|no longer) "
+        r"know what (?:to do|else to do|i (?:can|should|could|am going to|"
+        r"['’]m going to|am supposed to|['’]m supposed to) do)\b"
+        r"(?!\s+(?:with|about|in|on|here|next|first)\b)"
+        r"|\bi(?:['’]m| am) (?:at a loss|out of options)\b",
+        re.IGNORECASE,
+    ),
+    # Falling apart, not holding together, "what's the point" said alone.
+    re.compile(
+        r"\b(?:my life|everything|it all) (?:is |feels like it['’]s )?"
+        r"(?:completely |totally )?falling apart\b"
+        r"|(?:\bi |^\s*)can['’]?t (?:hold it together|keep it together|"
+        r"get through (?:this|today|the day|the night))\b"
+        r"|^\s*(?:what['’]s|what is) (?:even )?the point\s*[?.!]*\s*$",
+        re.IGNORECASE,
+    ),
+)
+# A distress statement inside a question or data frame is a different
+# request ("do you think I'm depressed?", "does my data show I'm
+# overwhelmed?", "what if I'm depressed?"), so it keeps its own route.
+_DISTRESS_FRAME_BEFORE = re.compile(
+    r"\b(?:am|do|does|did|is|are|can|could|would|will|might|should|think|thinks|"
+    r"say|says|said|mean|means|show|shows|showing|suggest\w*|"
+    r"indicat\w*|whether|if|wonder\w*|seem\w*|look\w*|reveal\w*|confirm\w*|"
+    r"signs?|when|whenever|detect\w*|notice\w*|predict\w*)\b",
+    re.IGNORECASE,
+)
+# Only the clause just before the distress phrase can frame it: in "Tell me a
+# joke, I feel really low" the request before the comma does not.
+_CLAUSE_BREAK = re.compile(r"[,:–—]|\b(?:and|but|so|though|although)\b", re.IGNORECASE)
+_SENTENCE_SPLIT = re.compile(r"(?<=[.!?;])\s+|\s*\n\s*")
+
+
+def _is_current_distress(text: str) -> bool:
+    """True for a first-person statement of strong distress now.
+
+    Each sentence is checked on its own; a match counts only when nothing
+    before it in the same clause turns it into a question or a data frame."""
+
+    for sentence in _SENTENCE_SPLIT.split(text):
+        for pattern in _CURRENT_DISTRESS_PATTERNS:
+            for match in pattern.finditer(sentence):
+                clause = _CLAUSE_BREAK.split(sentence[: match.start()])[-1]
+                if not _DISTRESS_FRAME_BEFORE.search(clause):
+                    return True
+    return False
+
 
 # Policy 0.3.5: a named mental-health or neurodevelopmental condition asked
 # about the user is a diagnosis request, even when the question also names a
@@ -788,6 +894,45 @@ _APP_INFORMATION_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
             re.IGNORECASE,
         ),
     ),
+    # Policy 0.3.7: which dates or period the app has data for, and which
+    # days were or were not collected. Answered by the data-use template (a
+    # recent window of about two weeks, compared with earlier history); no
+    # dates or day lists are given.
+    (
+        "app_info_data_use",
+        re.compile(
+            r"\b(?:which|what) (?:time )?(?:period|periods|dates?|days?|months?|"
+            r"time ?frames?|time ?range|range of dates|weeks?)\b.{0,40}\b(?:do|does|"
+            r"did) (?:you|mindsense|the app|this app) (?:have|hold|keep|store|"
+            r"collect|use|cover)\b"
+            r"|\b(?:how much|how long|how far back|how many days of) (?:data |"
+            r"history |information )?(?:do|does) (?:you|mindsense|the app|this "
+            r"app) (?:have|hold|keep|go back)\b"
+            r"|\b(?:what|which) (?:sensors?|data) (?:do|does) (?:you|mindsense|the "
+            r"app|this app) have\b"
+            r"|\b(?:days?|dates?|when) (?:when )?(?:my |the )?data (?:was|were|is|"
+            r"wasn['’]?t|weren['’]?t|was not|were not) (?:collected|recorded|"
+            r"missing|tracked)\b"
+            r"|\b(?:which|what) (?:days?|dates?)\b.{0,30}\bdata\b.{0,20}"
+            r"\b(?:collected|recorded|tracked|missing)\b",
+            re.IGNORECASE | re.DOTALL,
+        ),
+    ),
+    # Policy 0.3.7: requests to delete, remove or erase the person's data.
+    # The storage template says MindSense cannot delete study data.
+    (
+        "app_info_data_storage",
+        re.compile(
+            r"\b(?:delete|remove|erase|wipe|destroy|purge|get rid of)\b.{0,30}"
+            r"\b(?:my|all my|all of my|our)\b.{0,20}\b(?:data|information|info|"
+            r"records?|history|recordings?|readings?|details)\b"
+            r"|\b(?:my|all my) (?:data|information|records?|history) "
+            r"(?:be )?(?:deleted|removed|erased|wiped)\b"
+            r"|\b(?:how (?:do|can) i|can i|can you|could you|please) (?:have |get )?"
+            r"(?:my )?(?:data|information|records?) (?:deleted|removed|erased)\b",
+            re.IGNORECASE | re.DOTALL,
+        ),
+    ),
     (
         "app_info_uncertain_evidence",
         re.compile(
@@ -1089,6 +1234,10 @@ _INFORMAL_SPELLINGS: tuple[tuple[re.Pattern[str], str], ...] = (
     (re.compile(r"\bcant\b", re.IGNORECASE), "can't"),
     (re.compile(r"\bim\b", re.IGNORECASE), "i'm"),
     (re.compile(r"\bive\b", re.IGNORECASE), "i've"),
+    # Policy 0.3.7.
+    (re.compile(r"\bidk\b", re.IGNORECASE), "i don't know"),
+    (re.compile(r"\bdunno\b", re.IGNORECASE), "don't know"),
+    (re.compile(r"\bwhats\b", re.IGNORECASE), "what's"),
     (
         re.compile(
             r"\bill\b(?=\s+(?:\w+ly\s+)?(?:be|just|never|not|end|do|kill|hurt|"
@@ -1121,6 +1270,14 @@ def classify_request(question: str) -> RequestPolicyDecision:
             disposition=RequestDisposition.CRISIS,
             category=RequestCategory.CRISIS_SELF_HARM,
             reason_code="crisis_language_detected",
+        )
+    # Policy 0.3.7: current emotional distress, with the crisis rules and
+    # before diagnosis, so "I feel very depressed" is not a diagnosis refusal.
+    if _is_current_distress(crisis_text):
+        return RequestPolicyDecision(
+            disposition=RequestDisposition.CRISIS,
+            category=RequestCategory.CRISIS_SELF_HARM,
+            reason_code="current_distress_detected",
         )
 
     for category, reason_code, patterns in _PROHIBITED_PATTERNS:

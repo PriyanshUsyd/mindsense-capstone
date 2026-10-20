@@ -1887,6 +1887,18 @@
   }
 }
 
+/* Shown only when the backend reports dataset: synthetic. */
+.dataset-banner {
+  margin: 0 0 8px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  align-self: center;
+  color: var(--amber-700);
+  background: var(--amber-100);
+  font-size: 12px;
+  font-weight: 600;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

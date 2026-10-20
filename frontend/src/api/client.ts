@@ -72,6 +72,8 @@ export interface ModelCatalogResponse {
   selection_enabled: boolean
   default_model_tag: string
   available_model_tags: string[]
+  // MINDSENSE_DATASET_DIR on the backend: 'synthetic' shows the demo banner.
+  dataset?: 'real' | 'synthetic'
 }
 
 // The evidence packet's exact shape is owned by backend/contracts/evidence.py

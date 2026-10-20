@@ -37,6 +37,13 @@ hash of `evidence.py` + the evidence-classification thresholds, so a change
 that only affects classification invalidates the cheap aggregated layer
 without discarding the 2+ hour raw checkpoint's validity.
 
+**Dataset separation.** The real dataset (`MINDSENSE_DATASET_DIR` unset)
+keeps `outputs/bootstrap_cache/` and an unchanged fingerprint. Any other
+dataset (`backend.dataset_config`) defaults to its own root,
+`outputs/bootstrap_cache_datasets/<dataset folder>/`, and adds a
+`config.dataset` key to the fingerprint, so a cache built from one dataset is
+stale (never silently valid) for the other even if pointed at the same root.
+
 **Missing vs. stale (decision c).** No aggregated cache -> `None` (caller
 continues with `insufficient`; a bootstrap is never started implicitly).
 Fingerprint mismatch -> `BootstrapCacheStale`, naming the changed keys.
@@ -63,7 +70,8 @@ not owner-only one restriction attempt is made, and a failure raises. That
 error is deliberately *not* a `BootstrapCacheError` (it is not a cache
 mismatch and must not be handled as one).
 
-Run (after committing; real dataset required):
+Run (after committing; reads the dataset `MINDSENSE_DATASET_DIR` selects,
+the real one by default):
   python -m backend.statistics.bootstrap_cache --all              # R if usable, else Python
   python -m backend.statistics.bootstrap_cache loc_dist_ep_0 --engine python
 """
@@ -83,6 +91,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from backend import dataset_config
 from backend.statistics import bootstrap, evidence, r_bridge
 from backend.statistics.private_files import (
     PermissionRestrictionError,  # noqa: F401 - re-exported for callers
@@ -96,7 +105,14 @@ from backend.statistics.feature_specs import FeatureSpec
 from backend.statistics.mixed_effects_model import classify_evidence_strength
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+# The real dataset's cache root. A non-default dataset uses its own
+# (`dataset_config.bootstrap_cache_root()`); `cache_root=None` below means
+# "the selected dataset's root".
 CACHE_ROOT = REPO_ROOT / "outputs" / "bootstrap_cache"
+
+
+def _root(cache_root: Path | None) -> Path:
+    return dataset_config.bootstrap_cache_root() if cache_root is None else cache_root
 
 RAW_CHECKPOINT_NAME = "raw_checkpoint.jsonl"
 RAW_FINGERPRINT_NAME = "raw_fingerprint.json"
@@ -235,6 +251,11 @@ def raw_key_dict(
             "config.extra_fixed_effects": ",".join(extra_fixed_effects),
         }
     )
+    # Only for a non-default dataset, so the real cache's fingerprint (and
+    # validity) is unchanged.
+    label = dataset_config.fingerprint_label()
+    if label is not None:
+        keys["config.dataset"] = label
     return keys
 
 
@@ -355,9 +376,10 @@ def _verify_existing_cache(d: Path, cache_root: Path, files: Sequence[str]) -> N
             ensure_private_file(f)
 
 
-def cache_dir(feature: str, cache_root: Path = CACHE_ROOT, engine: str = bootstrap.ENGINE_R) -> Path:
+def cache_dir(feature: str, cache_root: Path | None = None, engine: str = bootstrap.ENGINE_R) -> Path:
     """R engine: `<root>/<feature>` (the original layout); Python engine:
     `<root>/python/<feature>`, so the two caches never overwrite each other."""
+    cache_root = _root(cache_root)
     if engine == bootstrap.ENGINE_PYTHON:
         return cache_root / "python" / feature
     return cache_root / feature
@@ -379,7 +401,7 @@ def prepare_raw_checkpoint(
     feature: str,
     raw_keys: dict[str, object],
     *,
-    cache_root: Path = CACHE_ROOT,
+    cache_root: Path | None = None,
     repo_root: Path = REPO_ROOT,
     git_status: Callable[[Path, Sequence[str]], list[str]] = _git_porcelain,
 ) -> Path:
@@ -389,6 +411,7 @@ def prepare_raw_checkpoint(
     `BootstrapCacheStale` (never mix legs of different code states).
     Checkpoint without a sidecar: refused (unknown provenance). Nothing
     there yet: requires a clean tree, then writes the sidecar first."""
+    cache_root = _root(cache_root)
     d = cache_dir(feature, cache_root, str(raw_keys["config.engine"]))
     checkpoint = d / RAW_CHECKPOINT_NAME
     sidecar = d / RAW_FINGERPRINT_NAME
@@ -476,10 +499,11 @@ def write_aggregated_cache(
     raw_keys: dict[str, object],
     *,
     n_iterations: int,
-    cache_root: Path = CACHE_ROOT,
+    cache_root: Path | None = None,
     repo_root: Path = REPO_ROOT,
     git_status: Callable[[Path, Sequence[str]], list[str]] = _git_porcelain,
 ) -> Path:
+    cache_root = _root(cache_root)
     assert_clean_for_write((*ESTIMATION_CODE_FILES, *AGGREGATION_CODE_FILES), repo_root, git_status)
     se, intersection, summaries = aggregate_checkpoint(feature, real_fit, records, n_iterations)
     d = cache_dir(feature, cache_root, str(raw_keys["config.engine"]))
@@ -505,7 +529,7 @@ def load_aggregated_cache(
     engine: str,
     master_seed: int = CANONICAL_MASTER_SEED,
     n_iterations: int = CANONICAL_N_ITERATIONS,
-    cache_root: Path = CACHE_ROOT,
+    cache_root: Path | None = None,
     repo_root: Path = REPO_ROOT,
     environment: dict[str, str] | None = None,
 ) -> AggregatedCache | None:
@@ -514,6 +538,7 @@ def load_aggregated_cache(
     and `BootstrapCacheError` if the file is unreadable; an existing cache
     that is not owner-only is restricted, or `PermissionRestrictionError`.
     Compares hashes only — no git involved."""
+    cache_root = _root(cache_root)
     path = cache_dir(spec.name, cache_root, engine) / AGGREGATED_NAME
     if not path.exists():
         return None
@@ -559,12 +584,13 @@ def run_and_cache(
     n_iterations: int = CANONICAL_N_ITERATIONS,
     n_workers: int = 6,
     maxtasksperchild: int | None = 20,
-    cache_root: Path = CACHE_ROOT,
+    cache_root: Path | None = None,
     engine: str = "auto",
 ) -> Path:
     """Fit the real model, (resume and) run both bootstrap methods into the
     fingerprinted raw checkpoint, then write the aggregated cache.
     `engine`: `"auto"` (R if usable, else Python), `"r"` or `"python"`."""
+    cache_root = _root(cache_root)
     real_fit = bootstrap.fit_real_model(prepared_source_frame, engine=engine)
     raw_keys = raw_key_dict(
         real_fit.model_frame,
@@ -607,6 +633,7 @@ def main(argv: list[str] | None = None) -> None:
 
     engine = bootstrap.resolve_engine(args.engine)
     print(f"engine: {engine}")
+    print(f"dataset: {dataset_config.dataset_kind()}")
     sensing, ema = tier1_runner.load_sensing_and_ema()
     for feature in features:
         spec = TIER1_FEATURE_SPECS[feature]

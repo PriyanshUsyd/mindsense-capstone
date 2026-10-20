@@ -750,6 +750,24 @@ different class of error from a stale cache and aborts the whole Tier-1 run
 rather than only the affected feature. This changes where and how files are
 stored, not what is estimated or any threshold in this document.
 
+**Dataset selection and cache separation `[POST-HOC, 2026-10-20]`.**
+One setting, `MINDSENSE_DATASET_DIR` (`backend/dataset_config.py`), selects the
+dataset the app reads: unset means the real `dataset/`; any other folder is
+reported as `synthetic` (today only the client-approved generated
+`dataset_synthetic/`, `scripts/make_synthetic_dataset.py`). The evidence
+builder and local-demo selection (`participant_evidence.py`) and
+`tier1_runner.load_sensing_and_ema` (used by the cache CLI) read it at call
+time. For the real dataset the cache root (`outputs/bootstrap_cache/`) and the
+fingerprint are unchanged, so the existing real caches stay valid (GPS still
+23/214 `evidence_available`). A non-default dataset uses its own root,
+`outputs/bootstrap_cache_datasets/<folder>/`, and adds a `config.dataset` key to
+layer C, so a cache built from one dataset is stale for the other even under the
+same root. The standalone summary loaders in
+`backend/data_pipeline/{gps_distance,unlock_frequency}_feature.py` are not
+switched: they are fingerprinted estimation files, and editing them would
+invalidate the real cache. No model, window, transform, family rule or
+threshold in this document changes.
+
 **Used on the live `/respond` path `[POST-HOC, 2026-10-16]`.**
 `backend/statistics/participant_evidence.py` now reads `label_intersection`
 from the aggregated cache with `bootstrap_cache.load_aggregated_cache` (the

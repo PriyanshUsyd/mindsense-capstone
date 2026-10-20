@@ -21,3 +21,6 @@ analysis/output/reconciliation/mine_keys_*.csv
 
 # Dataset (not distributed with the repo)
 dataset/
+
+# Client-approved synthetic demo dataset (scripts/make_synthetic_dataset.py)
+dataset_synthetic/
