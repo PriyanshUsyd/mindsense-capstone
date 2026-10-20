@@ -56,10 +56,14 @@ and unknown feature requests remain explicit 404 and 422 responses.
 startup instead of silently choosing another runtime.
 
 `MINDSENSE_DATASET_DIR` selects the dataset (default: the real `dataset/`).
-For the client-approved synthetic demo, generate it with
-`python scripts/make_synthetic_dataset.py`, build its cache with
-`MINDSENSE_DATASET_DIR=dataset_synthetic python -m backend.statistics.bootstrap_cache --all --engine python`,
-and start the API with the same variable. `/health` and `/models` report
+The client-approved synthetic demo dataset is committed at `data/synthetic/`
+(see its README; regenerate with `python scripts/make_synthetic_dataset.py`).
+Build its cache once per machine with
+`MINDSENSE_DATASET_DIR=data/synthetic .venv/Scripts/python -m backend.statistics.bootstrap_cache --all --engine python`
+(the cache is not committed: its fingerprint records the exact Python, numpy,
+pandas and scipy versions), and start the API with the same variable and the
+same `.venv` interpreter. A `bootstrap_cache_unusable` warning in the server
+log means the cache does not match and every answer will fall back to no claim. `/health` and `/models` report
 `dataset: real | synthetic`; the UI shows "Demo mode: synthetic data" for
 `synthetic`. The synthetic cache has its own folder and fingerprint, so it is
 never read for the real dataset or the other way round.

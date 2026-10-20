@@ -8,3 +8,6 @@ tests/evaluation/held_out_v4/held_out_v4_prompts.json text eol=lf
 
 # Reports are reviewed as rendered artifacts, not line-oriented source.
 *.pdf binary
+
+# Synthetic demo dataset: stored with LF so it is byte-stable across systems.
+data/synthetic/**/*.csv text eol=lf

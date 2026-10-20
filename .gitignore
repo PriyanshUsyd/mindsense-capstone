@@ -22,5 +22,8 @@ analysis/output/reconciliation/mine_keys_*.csv
 # Dataset (not distributed with the repo)
 dataset/
 
-# Client-approved synthetic demo dataset (scripts/make_synthetic_dataset.py)
+# Old local location of the synthetic demo dataset. The dataset itself is now
+# committed at data/synthetic/ (generated only; see its README). Only that folder
+# is shared: dataset/ above stays ignored, and
+# tests/privacy/test_synthetic_dataset_privacy.py checks both.
 dataset_synthetic/
