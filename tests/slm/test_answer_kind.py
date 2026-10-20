@@ -63,7 +63,7 @@ def respond(packet):
 
 
 def test_policy_version_is_unchanged():
-    assert REQUEST_POLICY_VERSION == "0.3.7"
+    assert REQUEST_POLICY_VERSION == "0.3.8"
 
 
 def test_comparison_shown_for_a_normal_answer_on_an_eligible_packet(eligible):
