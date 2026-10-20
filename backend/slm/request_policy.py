@@ -28,7 +28,7 @@ from enum import Enum
 
 from pydantic import BaseModel, ConfigDict
 
-REQUEST_POLICY_VERSION = "0.3.7"
+REQUEST_POLICY_VERSION = "0.3.8"
 
 _logger = logging.getLogger(__name__)
 
@@ -553,6 +553,21 @@ _PROHIBITED_PATTERNS: tuple[
                 re.IGNORECASE,
             ),
             re.compile(r"\bDAN\b"),
+            # Policy 0.3.8: requests to show, print or reveal hidden or system
+            # instructions, in any wording.
+            re.compile(
+                r"\b(?:show|print|reveal|display|output|repeat|recite|tell me|"
+                r"give me|share|list|dump|paste|copy|leak|expose|what (?:are|were))"
+                r"\b.{0,40}\b(?:hidden|secret|internal|system|initial|original|"
+                r"underlying|developer|pre-?set|built-?in|behind-the-scenes|"
+                r"confidential)\b.{0,20}\b(?:instructions?|prompts?|rules|"
+                r"guidelines|directives|configuration|config|programming)\b"
+                r"|\b(?:instructions?|prompts?|rules) (?:that )?you (?:were|have "
+                r"been|got|are) (?:given|told|set up with|programmed with)\b"
+                r"|\b(?:show|print|reveal|display|repeat|tell me|give me|share) "
+                r"(?:me )?your (?:prompt|instructions|programming)\b",
+                re.IGNORECASE | re.DOTALL,
+            ),
         ),
     ),
     (
@@ -607,6 +622,28 @@ _PROHIBITED_PATTERNS: tuple[
                 r"^(?=.*\b(?:depress\w*|anxi\w*|bipolar|adhd|ptsd|ocd|"
                 r"mental (?:illness|health condition|disorder))\b)"
                 r".*\b(?:confirm|prove|back (?:it|that|this) up|agree|consistent with)",
+                re.IGNORECASE,
+            ),
+            # Policy 0.3.8: asking whether the person's own data means
+            # something about their mental state ("does that mean I'm getting
+            # worse?", "...my mental health is declining?", "...something is
+            # wrong with me?"). A forecast ("does that mean I'm going to get
+            # worse?") is left to the risk family; "prove" stays causal.
+            re.compile(
+                r"\b(?:mean|means|meant|say|says|suggest\w*|indicat\w*|show|shows|"
+                r"showing|tell|tells|signs? (?:of|that)|point(?:s|ing)? to|"
+                r"reflect\w*)\b"
+                r"(?:(?!\b(?:going to|gonna|will|about to)\b).){0,60}?"
+                r"(?:\b(?:i(?:['’]m| am| was)|im|i['’]?ve been|i have been)\b"
+                r"(?:(?!\b(?:going to|gonna|will|about to)\b).){0,25}?"
+                r"\b(?:getting worse|worse(?! (?:at|in|with|about) )|declining|"
+                r"deteriorating|going downhill|not (?:okay|ok|well|coping|doing "
+                r"(?:well|ok|okay))|struggling|unwell|unstable|mentally|in a bad "
+                r"(?:way|place)|falling apart)\b"
+                r"|\bmy (?:mental health|mental state|mind|head ?space|well[- ]?being|"
+                r"mood|state of mind)\b.{0,20}?\b(?:declining|getting worse|worse|"
+                r"deteriorating|going downhill|slipping|suffering)\b"
+                r"|\b(?:something|anything)(?: is|['’]s)? (?:wrong|off) with me\b)",
                 re.IGNORECASE,
             ),
         ),
@@ -767,6 +804,24 @@ _PROHIBITED_PATTERNS: tuple[
                 r"|\b(?:predict|forecast)\w*\b",
                 re.IGNORECASE,
             ),
+            # Policy 0.3.8: future outcomes in any wording ("am I going to
+            # have a bad week?", "will next month be hard?", "a rough time
+            # ahead"). Asking whether a result will be shown is not a forecast.
+            re.compile(
+                r"\b(?:am i|are we|are things|is everything|is life) (?:going to|"
+                r"gonna|about to|likely to|set to) (?!(?:be able to )?(?:see|get|"
+                r"have|receive|view) (?:a |an |my |the |any )?(?:baseline|"
+                r"comparison|results?|answers?|summary|response)\b)\w+"
+                r"|\b(?:is|will) (?:it|this|that|things|life|everything) gonna\b"
+                r"|\bwill (?:next|the next|the coming|this coming|coming|tomorrow|"
+                r"tonight|my next|the rest of)\b(?: \w+){0,3} be\b"
+                r"|\b(?:bad|good|rough|hard|tough|difficult|better|worse|dark|low) "
+                r"(?:day|days|week|weeks|month|months|year|term|semester|time|times|"
+                r"patch|stretch|period) (?:ahead|to come|in store|coming up)\b"
+                r"|\bwhat (?:will|is going to|is gonna) happen (?:to me|next|in the "
+                r"future)\b",
+                re.IGNORECASE,
+            ),
         ),
     ),
     (
@@ -849,6 +904,23 @@ _PROHIBITED_PATTERNS: tuple[
                 r"|\bother people\b|\b(?:someone|somebody|everyone|anyone) else\b",
                 re.IGNORECASE,
             ),
+            # Policy 0.3.8: a home or street address, or where the person
+            # sleeps, lives or spends the night. Only movement distance is
+            # described, never places.
+            re.compile(
+                r"\b(?:my|the|your|an?|exact|home|street|house|postal|residential|"
+                r"mailing) (?:(?:home|street|house|postal|residential|exact|"
+                r"mailing) )?address(?:es)?\b"
+                r"|\bwhere (?:do |did |have )?i (?:been )?(?:sleep|slept|sleeping|"
+                r"live|lived|living|stay|stayed|staying|reside|spend|spent|spending)\b"
+                r"|\bwhere (?:i|i['’]ve|i['’]m|im) (?:sleep|slept|sleeping|live|"
+                r"living|stay|staying|spend|spending)\b"
+                r"|\bwhere(?:['’]s| is| are) (?:my )?(?:home|house|place|flat|"
+                r"apartment|dorm|room|bed)\b"
+                r"|\b(?:locate|find|pinpoint|identify|work out|figure out) (?:where )?"
+                r"(?:my )?(?:home|house|flat|apartment|dorm)\b",
+                re.IGNORECASE,
+            ),
         ),
     ),
 )
@@ -864,6 +936,17 @@ _CAPABILITY_PATTERNS = (
         r"(?:what (?:can|could) you (?:help (?:me )?with|do(?: for me)?)|"
         r"what do you do|how (?:can|could) you help(?: me)?|"
         r"what are you (?:able to do|for)|what can i ask(?: you)?)"
+        r"\s*[?.!]*\s*$",
+        re.IGNORECASE,
+    ),
+    # Policy 0.3.8: "what (sorts of / kinds of) questions can I ask?",
+    # also anchored to the whole question.
+    re.compile(
+        r"^\s*(?:(?:hi|hello|hey)[\s,!.]+)?"
+        r"(?:so,? |ok(?:ay)?,? )?what (?:(?:sorts?|kinds?|types?|sort|kind|type) "
+        r"of )?(?:questions?|things|stuff) (?:can|could|should|may|do|am) i "
+        r"(?:allowed to )?ask(?: you)?(?: about)?"
+        r"(?: here| in (?:this|the) app| mindsense)?"
         r"\s*[?.!]*\s*$",
         re.IGNORECASE,
     ),
@@ -993,6 +1076,19 @@ _EVIDENCE_INTENT_PATTERNS = (
 )
 _CONTEXTUAL_IN_SCOPE_PATTERNS = (
     re.compile(r"\bwhat changed\b", re.IGNORECASE),
+    # Policy 0.3.8: "has anything (about me) changed?" names no feature, so
+    # preflight asks "movement or phone unlocks?" instead of refusing it.
+    re.compile(
+        r"\b(?:has|have) (?:anything|something) (?:about me |with me |for me |"
+        r"in my (?:routine|data|patterns?|behaviou?r|activity|habits) )?"
+        r"(?:changed|been different|shifted)\b"
+        r"(?=\s*(?:[?.!]|$|compared|than|from (?:usual|normal|before)|lately|"
+        r"recently|since|for me|about me|with me|at all|much|\w+ly\b))"
+        r"|\bis (?:anything|something) different (?:about me|with me|for me|"
+        r"lately|recently|from usual|than usual|compared)\b"
+        r"|\bhave i changed\b",
+        re.IGNORECASE,
+    ),
     re.compile(r"\bhow am i doing\b", re.IGNORECASE),
     # Policy 0.3.3 (dev Q17): names no single feature, so preflight asks
     # which feature to use instead of refusing it as off-topic.
