@@ -11,8 +11,13 @@
 # 1.1.0 (session chat memory): chats are kept in the open app for the session
 # and cleared on End session, closing or refreshing, not on each new chat.
 
+# 1.2.0 (policy 0.3.7): also answers requests to delete data. Verified against
+# the code: there is no delete function in the API or the UI; the only
+# clearing is the session chat memory described above. The study data is
+# read from local files, not changed, so MindSense cannot delete it.
+
 template_id: app_info_data_storage
-template_version: "1.1.0"
+template_version: "1.2.0"
 response_mode: refusal
 allowed_claim_ids:
   - non_diagnostic_boundary
@@ -28,8 +33,9 @@ text: >
   app doesn't save your chats: they are kept only while the app is open,
   and cleared when you end the session, close or refresh the page. The
   study data it summarises is kept on
-  this computer. For questions about how the study stores or keeps your
-  data, please ask the research team.
+  this computer. MindSense can't delete or change that study data. To ask
+  for your data to be removed, or about how the study stores or keeps it,
+  please contact the research team.
 
 review_note: >
   Added 2026-10-10 after the 50-question dev test on rc-eval-2. Privacy lead

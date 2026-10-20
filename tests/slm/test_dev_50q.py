@@ -125,8 +125,8 @@ def test_dev_set_is_complete_and_numbered():
     assert len({row[1] for row in DEV_50Q}) == 50
 
 
-def test_policy_version_is_0_3_6():
-    assert REQUEST_POLICY_VERSION == "0.3.6"
+def test_policy_version_is_0_3_7():
+    assert REQUEST_POLICY_VERSION == "0.3.7"
 
 
 @pytest.mark.parametrize(
@@ -135,7 +135,7 @@ def test_policy_version_is_0_3_6():
 def test_dev_50q_respond_route(respond, number, question, category, mode, detail):
     body, built_feature = respond(question)
     assert body["request_category"] == category
-    assert body["request_policy_version"] == "0.3.6"
+    assert body["request_policy_version"] == "0.3.7"
     if mode == ANSWER:
         assert body["response_mode"] in {"normal", "uncertainty"}
         assert body["rejection_reason"] is None

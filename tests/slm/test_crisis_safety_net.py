@@ -40,8 +40,8 @@ def respond(monkeypatch):
     return post
 
 
-def test_policy_version_is_0_3_6():
-    assert REQUEST_POLICY_VERSION == "0.3.6"
+def test_policy_version_is_0_3_7():
+    assert REQUEST_POLICY_VERSION == "0.3.7"
 
 
 # --- broadened crisis families -------------------------------------------------
@@ -141,7 +141,8 @@ def test_everyday_wording_is_not_crisis(question, category):
         "Where exactly did I go yesterday?",
         "Everything has felt grey and heavy lately.",
         "What's my participant ID?",
-        "I feel empty inside.",
+        # "I feel empty inside." moved to the crisis route in policy 0.3.7
+        # (current emotional distress); see the test further down.
     ],
 )
 def test_off_topic_default_carries_the_support_line(respond, question):
@@ -176,10 +177,9 @@ def test_clearly_unrelated_question_also_carries_the_support_line(respond, quest
 @pytest.mark.parametrize(
     "question",
     [
-        "I'm so stressed, what's the weather tomorrow?",
-        "Tell me a joke, I feel really low.",
-        "I'm lonely tonight, recommend a movie.",
+        # Distress outside the 0.3.7 family still gets the support line.
         "Who won the cricket? I've been crying all day.",
+        "Recommend a film, everything has felt grey and heavy.",
     ],
 )
 def test_distress_signal_adds_the_support_line_to_unrelated_questions(respond, question):
@@ -187,6 +187,25 @@ def test_distress_signal_adds_the_support_line_to_unrelated_questions(respond, q
     assert body["request_category"] == "off_topic"
     for phrase in SUPPORT_PHRASES:
         assert phrase in body["text"]
+
+
+@pytest.mark.parametrize(
+    "question",
+    [
+        # Until policy 0.3.6 these got the off-topic refusal with the support
+        # line. From 0.3.7 a first-person statement of strong distress now
+        # goes to the crisis template, even next to an unrelated request.
+        "I feel empty inside.",
+        "I'm so stressed, what's the weather tomorrow?",
+        "Tell me a joke, I feel really low.",
+        "I'm lonely tonight, recommend a movie.",
+    ],
+)
+def test_current_distress_with_an_unrelated_request_takes_the_crisis_route(respond, question):
+    body = respond(question)
+    assert body["response_mode"] == "crisis_aware_fallback"
+    assert body["request_category"] == "crisis_self_harm"
+    assert body["model_invoked"] is False
 
 
 # --- prohibited categories that used to fall to off-topic ----------------------
