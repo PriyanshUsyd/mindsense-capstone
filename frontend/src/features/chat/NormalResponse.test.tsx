@@ -73,13 +73,39 @@ afterEach(() => {
 
 describe('NormalResponse', () => {
   it('starts with the wellbeing welcome state and an enabled quick question', () => {
-    render(<NormalResponse />)
+    const originalScrollIntoView = Object.getOwnPropertyDescriptor(
+      HTMLElement.prototype,
+      'scrollIntoView',
+    )
+    const scrollIntoView = vi.fn()
+    Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+      configurable: true,
+      value: scrollIntoView,
+    })
 
-    expect(
-      screen.getByRole('heading', { name: /understand your patterns, at your own pace/i }),
-    ).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /ask about my recent movement/i })).toBeEnabled()
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    try {
+      render(<NormalResponse />)
+
+      expect(
+        screen.getByRole('heading', { name: /understand your patterns, at your own pace/i }),
+      ).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /ask about my recent movement/i })).toBeEnabled()
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+      expect(scrollIntoView).not.toHaveBeenCalled()
+    } finally {
+      if (originalScrollIntoView) {
+        Object.defineProperty(
+          HTMLElement.prototype,
+          'scrollIntoView',
+          originalScrollIntoView,
+        )
+      } else {
+        Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+          configurable: true,
+          value: undefined,
+        })
+      }
+    }
   })
 
   it('shows only the implemented chat section in the sidebar', () => {

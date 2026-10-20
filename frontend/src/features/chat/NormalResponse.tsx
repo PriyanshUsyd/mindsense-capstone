@@ -100,6 +100,7 @@ export function NormalResponse() {
   const [refreshingModels, setRefreshingModels] = useState(false)
   const requestInFlight = useRef(false)
   const nextTurnId = useRef(1)
+  const conversationScroll = useRef<HTMLDivElement>(null)
   const conversationEnd = useRef<HTMLDivElement>(null)
 
   const applyModelCatalog = useCallback((catalog: ModelCatalogResponse) => {
@@ -142,6 +143,10 @@ export function NormalResponse() {
   }, [applyModelCatalog])
 
   useEffect(() => {
+    if (turns.length === 0 && !pendingQuestion && !requestFailure) {
+      conversationScroll.current?.scrollTo?.({ top: 0, behavior: 'auto' })
+      return
+    }
     conversationEnd.current?.scrollIntoView?.({ behavior: 'smooth', block: 'end' })
   }, [pendingQuestion, requestFailure, turns])
 
@@ -304,7 +309,7 @@ export function NormalResponse() {
       statusLabel={status.label}
       statusTone={status.tone}
     >
-      <div className="conversation-scroll">
+      <div className="conversation-scroll" ref={conversationScroll}>
         {showWelcome && <WelcomeState disabled={false} onAsk={handleAsk} />}
 
         {turns.map((turn) => (

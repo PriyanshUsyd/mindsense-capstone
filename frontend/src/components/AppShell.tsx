@@ -30,7 +30,9 @@ export function AppShell({
         <div className="nav-list" aria-label="Current MindSense section">
           <div className="nav-item nav-item--active" aria-current="page">
             <span className="nav-symbol" aria-hidden="true">
-              ◌
+              <svg viewBox="0 0 24 24" focusable="false">
+                <path d="M5 5.5h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-8l-5 3v-3H5a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2Z" />
+              </svg>
             </span>
             <span>Chat</span>
           </div>
