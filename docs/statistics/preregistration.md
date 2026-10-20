@@ -754,7 +754,7 @@ stored, not what is estimated or any threshold in this document.
 One setting, `MINDSENSE_DATASET_DIR` (`backend/dataset_config.py`), selects the
 dataset the app reads: unset means the real `dataset/`; any other folder is
 reported as `synthetic` (today only the client-approved generated
-`dataset_synthetic/`, `scripts/make_synthetic_dataset.py`). The evidence
+`data/synthetic/`, committed since 2026-10-21; `scripts/make_synthetic_dataset.py`). The evidence
 builder and local-demo selection (`participant_evidence.py`) and
 `tier1_runner.load_sensing_and_ema` (used by the cache CLI) read it at call
 time. For the real dataset the cache root (`outputs/bootstrap_cache/`) and the

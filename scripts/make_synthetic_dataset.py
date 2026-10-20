@@ -1,6 +1,6 @@
 """Client-approved synthetic dataset for demo mode.
 
-Writes a separate, git-ignored `dataset_synthetic/` with the same files,
+Writes `data/synthetic/` (committed; see its README) with the same files,
 columns and formats the app's CES readers use (learned from the loaders and
 tests, never from the real data):
 
@@ -37,7 +37,7 @@ long-history participant is given the longest complete record (no missing or
 low-quality days), so the selection picks them for both features without
 any change to the selection code. The script checks this before writing.
 
-    python scripts/make_synthetic_dataset.py            # -> dataset_synthetic/
+    python scripts/make_synthetic_dataset.py            # -> data/synthetic/
     python scripts/make_synthetic_dataset.py --out DIR
 """
 
@@ -52,7 +52,7 @@ import numpy as np
 import pandas as pd
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_OUT = REPO_ROOT / "dataset_synthetic"
+DEFAULT_OUT = REPO_ROOT / "data" / "synthetic"
 SEED = 20261020
 END_DATE = date(2026, 10, 19)
 N_PARTICIPANTS = 200

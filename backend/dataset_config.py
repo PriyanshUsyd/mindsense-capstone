@@ -4,7 +4,8 @@ The one dataset setting: `MINDSENSE_DATASET_DIR`.
 Default (unset or empty): the real CES copy at `dataset/` (gitignored, never
 distributed). Any other directory is reported as `synthetic` — today the only
 non-default dataset is the client-approved synthetic one written by
-`scripts/make_synthetic_dataset.py` to `dataset_synthetic/` (also gitignored).
+`scripts/make_synthetic_dataset.py` to `data/synthetic/` (committed; generated
+values only, no real CES rows).
 A relative value is resolved against the repository root, not the current
 working directory, so the backend reads the same files wherever it is started.
 
