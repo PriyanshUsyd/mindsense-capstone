@@ -355,7 +355,9 @@ describe('NormalResponse', () => {
     await user.click(screen.getByRole('button', { name: /ask about my recent movement/i }))
 
     expect(await screen.findByText(exactBackendText)).toBeInTheDocument()
-    expect(document.querySelector(`[data-response-mode="${mode}"]`)).toBeInTheDocument()
+    const responseCard = document.querySelector(`[data-response-mode="${mode}"]`)
+    expect(responseCard).toBeInTheDocument()
+    expect(responseCard?.closest('.assistant-row')?.querySelector('.brand-mark img')).not.toBeNull()
   })
 
   // ME-P01 F1/F4: refusal badge follows request_category.

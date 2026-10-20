@@ -759,10 +759,15 @@
   gap: 20px;
 }
 
+.assistant-row > .brand-mark {
+  flex: 0 0 auto;
+}
+
 .assistant-row > .brand-mark img {
   width: 56px;
   height: 56px;
   border: 2px solid rgba(255, 254, 250, 0.95);
+  border-radius: 50%;
   box-shadow: 0 7px 18px rgba(35, 70, 57, 0.12);
 }
 
@@ -1022,12 +1027,11 @@
   grid-template-columns: 42px minmax(0, 1fr);
   gap: 14px;
   width: min(680px, calc(100% - 76px));
-  margin-left: 76px;
   padding: 24px;
   background: rgba(255, 254, 250, 0.97);
   border: 1px solid var(--line);
   border-left: 4px solid var(--sage-500);
-  border-radius: 19px;
+  border-radius: 7px 19px 19px;
   box-shadow: 0 12px 34px rgba(32, 66, 54, 0.08);
 }
 
@@ -1399,7 +1403,6 @@
 
   .state-card {
     width: calc(100% - 44px);
-    margin-left: 44px;
     grid-template-columns: 34px minmax(0, 1fr);
     gap: 10px;
     padding: 16px;

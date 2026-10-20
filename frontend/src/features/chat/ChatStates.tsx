@@ -199,14 +199,17 @@ function StateCard({
   return (
     <section className="chat-thread" aria-live={role === 'alert' ? 'assertive' : 'polite'}>
       <QuestionBubble question={question} />
-      <article className={`state-card state-card--${mode}`} data-response-mode={mode} role={role}>
-        <span className="state-card-icon" aria-hidden="true" />
-        <div>
-          <span className="response-mode-badge">{label}</span>
-          <p>{message}</p>
-          {children}
-        </div>
-      </article>
+      <div className="assistant-row">
+        <BrandMark compact />
+        <article className={`state-card state-card--${mode}`} data-response-mode={mode} role={role}>
+          <span className="state-card-icon" aria-hidden="true" />
+          <div>
+            <span className="response-mode-badge">{label}</span>
+            <p>{message}</p>
+            {children}
+          </div>
+        </article>
+      </div>
     </section>
   )
 }
