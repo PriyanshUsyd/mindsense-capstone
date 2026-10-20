@@ -374,6 +374,11 @@ export function NormalResponse() {
       statusLabel={status.label}
       statusTone={status.tone}
     >
+      {modelCatalog?.dataset === 'synthetic' && (
+        <p className="dataset-banner" data-testid="dataset-banner" role="status">
+          Demo mode: synthetic data
+        </p>
+      )}
       <div className="conversation-scroll">
         {showWelcome && <WelcomeState disabled={false} onAsk={handleAsk} />}
 

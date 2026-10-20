@@ -1068,6 +1068,16 @@ value to `StatisticalEvidence`, `C + no_claim` still gets no comparison value,
 which is narrower than §3.7.1 permits. Details: preregistration §4.1 ("Used on
 the live `/respond` path") and §7 item 13.
 
+**Dataset switch (2026-10-20).** `MINDSENSE_DATASET_DIR`
+(`backend/dataset_config.py`; default the real `dataset/`) now selects the
+dataset `participant_evidence.py` and `tier1_runner.load_sensing_and_ema`
+read, for the client-approved synthetic demo dataset
+(`scripts/make_synthetic_dataset.py`). The real dataset keeps its cache root and
+fingerprint (GPS still 23/214 `evidence_available`); a non-default dataset has
+its own cache root and a `config.dataset` fingerprint key, so the caches cannot
+mix. No estimate, rule or threshold changes. Details: preregistration §4.1
+("Dataset selection and cache separation").
+
 ---
 
 ## 6. Handover to other workstreams

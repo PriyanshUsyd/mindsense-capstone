@@ -52,14 +52,16 @@ def _load_packet(name: str) -> EvidencePacket:
     return EvidencePacket.model_validate_json(json.dumps(raw))
 
 
-def test_health_endpoint():
+def test_health_endpoint(monkeypatch):
+    monkeypatch.delenv("MINDSENSE_DATASET_DIR", raising=False)
     client = TestClient(create_app())
     resp = client.get("/health")
     assert resp.status_code == 200
-    assert resp.json() == {"status": "ok"}
+    assert resp.json() == {"status": "ok", "dataset": "real"}
 
 
-def test_models_endpoint_exposes_only_manifest_candidates():
+def test_models_endpoint_exposes_only_manifest_candidates(monkeypatch):
+    monkeypatch.delenv("MINDSENSE_DATASET_DIR", raising=False)
     client = TestClient(create_app(runtime_name="ollama"))
 
     resp = client.get("/models")
@@ -70,6 +72,7 @@ def test_models_endpoint_exposes_only_manifest_candidates():
         "selection_enabled": True,
         "default_model_tag": "phi4-mini:3.8b",
         "available_model_tags": ["phi4-mini:3.8b", "qwen3:4b"],
+        "dataset": "real",
     }
 
 
