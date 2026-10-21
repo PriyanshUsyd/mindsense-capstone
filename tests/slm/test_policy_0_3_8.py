@@ -25,8 +25,8 @@ from backend.slm.request_policy import (
 )
 
 
-def test_policy_version_is_0_3_8():
-    assert REQUEST_POLICY_VERSION == "0.3.8"
+def test_policy_version_is_0_3_9():
+    assert REQUEST_POLICY_VERSION == "0.3.9"
 
 
 def _category(question: str) -> RequestCategory:
@@ -238,7 +238,7 @@ def test_respond_routes_without_loading_data(client, question, mode, category, r
     assert body["request_category"] == category
     assert body["rejection_reason"] == reason
     assert body["model_invoked"] is False
-    assert body["request_policy_version"] == "0.3.8"
+    assert body["request_policy_version"] == "0.3.9"
 
 
 # --- POST-HOC regressions from the spent held-out v4 set ---------------------

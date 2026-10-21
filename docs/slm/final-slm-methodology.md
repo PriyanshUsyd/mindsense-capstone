@@ -15,7 +15,7 @@
 | Runtime | local Ollama on `127.0.0.1` only | `backend/slm/client.py` |
 | Decoding | schema-constrained JSON, temperature 0.0, seed 42 | manifest |
 | Evidence-explainer prompt | 0.4.13 | `backend/slm/prompts/evidence_explainer.yaml` |
-| Request policy | 0.3.8, fail closed ([0.3.5 notes](request-policy-0.3.5.md), [0.3.6 notes](request-policy-0.3.6.md), [0.3.7 notes](request-policy-0.3.7.md), [0.3.8 notes](request-policy-0.3.8.md)) | `backend/slm/request_policy.py` |
+| Request policy | 0.3.9, fail closed ([0.3.5 notes](request-policy-0.3.5.md), [0.3.6 notes](request-policy-0.3.6.md), [0.3.7 notes](request-policy-0.3.7.md), [0.3.8 notes](request-policy-0.3.8.md), [0.3.9 notes](request-policy-0.3.9.md)) | `backend/slm/request_policy.py` |
 | Safety screen | `phi4-mini:3.8b` yes/no risk-of-harm screen (1.2.0, names euphemisms for death) before every non-crisis route; yes or unclear go to the crisis template, timeout or error fall back to the rules; skipped in the demo stub | `backend/slm/safety_screen.py` |
 | Architecture on `/respond` | RAG over the current evidence packet (decision of 2026-10-08) | `backend/api/app.py` |
 | Deterministic routes | crisis, diagnosis, treatment, clinical-score, app-information, unsupported-window and ambiguous-feature requests are answered from versioned templates before any model call; every refusal carries the support line (Lifeline, Triple Zero) | `backend/slm/prompts/*.yaml` |

@@ -144,6 +144,8 @@ DEFAULT_APP_INFORMATION_TEMPLATES = {
         "app_info_data_storage",
         "app_info_uncertain_evidence",
         "app_info_baseline_unavailable",
+        # Policy 0.3.9.
+        "app_info_sensors",
     )
 }
 
