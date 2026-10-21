@@ -27,8 +27,8 @@ FIXTURES_DIR = Path(__file__).parent / "fixtures"
 GPS, UNLOCK = "gps_distance", "unlock_count"
 
 
-def test_policy_version_is_0_3_8():
-    assert REQUEST_POLICY_VERSION == "0.3.8"
+def test_policy_version_is_0_3_9():
+    assert REQUEST_POLICY_VERSION == "0.3.9"
 
 
 # --- post-hoc regressions from the spent v3 held-out set --------------------

@@ -28,7 +28,7 @@ from enum import Enum
 
 from pydantic import BaseModel, ConfigDict
 
-REQUEST_POLICY_VERSION = "0.3.8"
+REQUEST_POLICY_VERSION = "0.3.9"
 
 _logger = logging.getLogger(__name__)
 
@@ -474,6 +474,87 @@ def _is_current_distress(text: str) -> bool:
                 if not _DISTRESS_FRAME_BEFORE.search(clause):
                     return True
     return False
+
+
+# Policy 0.3.9: asking for help or support in any form (a crisis line,
+# helpline, someone to talk to, a counsellor, where to get help) goes to the
+# crisis template, checked with the crisis rules and before every other
+# route, so it wins even when the message also gives an address or location
+# (which the template never repeats). Written as meaning families, not from
+# the v5 wording. It must not catch:
+#   - advice on whether to see someone ("should I see a counsellor?"), which
+#     keeps the treatment refusal;
+#   - help with the app or the data ("I need help reading my unlocks",
+#     "who can I talk to about my data?").
+_HELP_NOT_PERSONAL = (
+    # The optional "to" / "with" stops the preceding "(?: to)?" backtracking
+    # past the check ("who can I talk to about my data?").
+    r"(?!\s+(?:(?:to|with) )?(?:with|using|on|for|to (?:understand|read|use|interpret)|"
+    r"understanding|reading|interpreting|figuring|about) (?:out )?(?:the |this |my |"
+    r"these |your )?(?:app|website|site|login|account|data|unlocks?|movement|gps|"
+    r"phone|questions?|charts?|graphs?|results?|numbers|answers?|study|privacy|"
+    r"distance|screen|settings|mindsense)\b)"
+)
+_HELP_SEEKING_PATTERNS = (
+    # Crisis lines, helplines and support services, named in any form.
+    re.compile(
+        r"\b(?:crisis|help|support|suicide|mental[- ]health|counsell?ing|emergency|"
+        r"distress)[- ]?(?:lines?|numbers?|hotlines?|phone ?lines?|services?|"
+        r"centres?|centers?)\b"
+        r"|\bhelp ?lines?\b|\bhot ?lines?\b|\blifeline\b|\bbeyond ?blue\b"
+        r"|\b13 ?11 ?14\b",
+        re.IGNORECASE,
+    ),
+    # Finding, contacting or speaking to a counsellor or other professional.
+    re.compile(
+        r"\b(?:find|get|see|contact|reach|call|ring|book|speak (?:to|with)|"
+        r"talk (?:to|with)|connect (?:me )?(?:with|to)|refer (?:me )?to|"
+        r"recommend|suggest|need|want|looking for|look for|where|nearest|near me|"
+        r"closest|local|nearby)\b.{0,40}\b(?:counsell?ors?|therapists?|"
+        r"psychologists?|psychiatrists?|mental[- ]health (?:professionals?|"
+        r"workers?|nurses?|clinics?|teams?|support)|crisis (?:teams?|workers?|"
+        r"counsell?ors?|support)|support workers?)\b",
+        re.IGNORECASE | re.DOTALL,
+    ),
+    # Someone to talk to.
+    re.compile(
+        r"\b(?:someone|somebody|anyone|anybody|a person|a real person|a human)"
+        r"(?: (?:i|i['’]d|you) (?:can|could|might|should)| to)? "
+        r"(?:talk|speak|reach out|turn|vent)\b(?: to| with)?" + _HELP_NOT_PERSONAL
+        + r"|\bwho (?:can|could|should|do|would) i (?:talk|speak|turn|reach out|"
+        r"go|call|ring|vent)\b(?: to| with)?" + _HELP_NOT_PERSONAL,
+        re.IGNORECASE,
+    ),
+    # Where or how to get help or support, and asking for it outright.
+    re.compile(
+        r"\b(?:where|how|who)\b.{0,25}\b(?:get|find|go for|go to for|look for|"
+        r"seek|access|turn (?:to )?for|reach out for|ask for|call for)"
+        r" (?:some |any |more |real |professional |mental[- ]health |emotional |"
+        r"urgent |immediate |proper )?(?:help|support)\b" + _HELP_NOT_PERSONAL
+        + r"|\b(?:i (?:really |just |urgently )?need|i want|i['’]d like|can i get|"
+        r"can you get me|please get me|i['’]m looking for|i am looking for) "
+        r"(?:some |urgent |immediate |professional |real )?(?:help|support)\b"
+        + _HELP_NOT_PERSONAL,
+        re.IGNORECASE | re.DOTALL,
+    ),
+)
+# Asking whether to see someone is advice; it keeps the treatment refusal.
+_HELP_ADVICE_FRAME = re.compile(
+    r"\b(?:should i|do i need to|would it help (?:me )?to|is it worth|"
+    r"would you recommend i|do you think i should)\b",
+    re.IGNORECASE,
+)
+
+
+def _is_help_seeking(text: str) -> bool:
+    """True for a request for a crisis line, support or someone to talk to."""
+
+    lines, professional, talk, get_help = (
+        pattern.search(text) for pattern in _HELP_SEEKING_PATTERNS
+    )
+    if lines or talk or get_help:
+        return True
+    return bool(professional) and not _HELP_ADVICE_FRAME.search(text)
 
 
 # Policy 0.3.5: a named mental-health or neurodevelopmental condition asked
@@ -957,6 +1038,37 @@ _CAPABILITY_PATTERNS = (
 # disposition, so no participant data is loaded and no model is called. The
 # reason code selects the template in SLMService.
 _APP_INFORMATION_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
+    # Policy 0.3.9: whether MindSense tracks the person in the background or
+    # uses the camera or microphone, listens or records. Answered by
+    # `app_info_sensors`. Tracking words count only with a background cue or
+    # a non-feature object, so "is the app tracking my unlocks?" and "does
+    # listening to music change my unlocks?" keep their evidence route.
+    (
+        "app_info_sensors",
+        re.compile(
+            r"\b(?:cameras?|webcams?|microphones?|mic)\b"
+            r"|\b(?:you|mindsense|the app|this app|the website|it|my phone|the phone|"
+            r"this phone|anyone|someone|they)\b(?: \w+){0,3}? (?:secretly |always |"
+            r"constantly |still |actually )?(?:listen(?:s|ing)?(?: to me| in)?\b"
+            r"|eavesdrop\w*|overhear\w*|spy(?:ing)? on|hear(?:s|ing)? (?:me|what i|my)"
+            r"|record(?:s|ing)? (?:me|us|my (?:voice|conversations?|calls?|audio|"
+            r"screen|face|surroundings|location)|what i|audio|sound|video|"
+            r"everything|anything))\b"
+            r"|\b(?:track\w*|monitor\w*|watch\w*|record\w*|collect\w*|log(?:s|ging)?|"
+            r"follow\w*|spy\w*|listen\w*)\b.{0,40}\b(?:in the background|"
+            r"background|all the time|24/7|around the clock|constantly|"
+            r"continuously|secretly|without (?:me|my) know\w*|when i(?:['’]m| am) "
+            r"not using|while i(?:['’]m| am) not using|behind my back)\b"
+            r"|\bbackground (?:tracking|monitoring|recording|data collection|"
+            r"listening|location)\b"
+            r"|\b(?:are|is|do|does|will|can|could)\b (?:you|mindsense|the app|this "
+            r"app|it|my phone)(?: \w+){0,2}? (?:track\w*|monitor\w*|watch\w*|"
+            r"follow\w*) (?:me|us|where i (?:go|am)|my (?:location|whereabouts|"
+            r"every move|movements|phone|messages|calls|browsing|apps|"
+            r"conversations)|everything)\b",
+            re.IGNORECASE | re.DOTALL,
+        ),
+    ),
     (
         "app_info_data_storage",
         re.compile(
@@ -1374,6 +1486,14 @@ def classify_request(question: str) -> RequestPolicyDecision:
             disposition=RequestDisposition.CRISIS,
             category=RequestCategory.CRISIS_SELF_HARM,
             reason_code="current_distress_detected",
+        )
+    # Policy 0.3.9: asking for help or support, before the privacy rule so a
+    # message that also gives an address still gets the crisis template.
+    if _is_help_seeking(crisis_text):
+        return RequestPolicyDecision(
+            disposition=RequestDisposition.CRISIS,
+            category=RequestCategory.CRISIS_SELF_HARM,
+            reason_code="help_seeking_detected",
         )
 
     for category, reason_code, patterns in _PROHIBITED_PATTERNS:

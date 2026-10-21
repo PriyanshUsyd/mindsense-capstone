@@ -1,0 +1,42 @@
+# Deterministic answer to questions about background tracking, the camera,
+# the microphone, listening or recording (request policy 0.3.9). No
+# participant data is loaded and no model is called for this route.
+#
+# The first sentence was verified against the code on 2026-10-21:
+#   - backend/statistics/participant_evidence.py `_FEATURES` reads only the
+#     columns uid, day, quality_loc, loc_dist_ep_0 (GPS distance) and is_ios,
+#     or uid, day, unlock_num_ep_0 (unlock count) and is_ios, from the study
+#     file Sensing/sensing.csv already on this computer;
+#   - no code in backend/ or frontend/src uses the camera, microphone, audio,
+#     getUserMedia/mediaDevices or browser geolocation, and nothing collects
+#     data from the device while the app runs.
+# It deliberately does not say MindSense reads "only" those two measures:
+# the statistics also read the study's PHQ-4 questionnaire scores
+# (EMA/general_ema.csv, phq4_score) for the baseline model. The rest of the
+# text repeats app_info_data_use 1.0.0.
+
+template_id: app_info_sensors
+template_version: "1.0.0"
+response_mode: refusal
+allowed_claim_ids:
+  - non_diagnostic_boundary
+prohibited_claim_ids:
+  - diagnosis
+  - causal_explanation
+  - treatment_or_crisis_advice
+  - risk_prediction
+
+text: >
+  MindSense doesn't use your camera or microphone and doesn't track you in
+  the background: it works from study data already recorded and kept on
+  this computer, and the two phone-sensor measures it uses are GPS distance
+  travelled each day and how many times the phone was unlocked each day. It
+  describes them over a recent observation window of about two weeks and,
+  when there is enough history, compares them with your own earlier
+  patterns. Answers give summary patterns, not the places you went. It can't
+  diagnose conditions, explain what caused a change, or give treatment
+  advice.
+
+review_note: >
+  Added 2026-10-21 for request policy 0.3.9. Privacy lead must confirm the
+  wording against the local-demo privacy procedure before participant use.

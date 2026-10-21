@@ -67,6 +67,8 @@ PROHIBITED_CLAIM_IDS = {
         "app_info_baseline_unavailable.yaml",
         # Policy 0.3.4 safety net for the off-topic default.
         "off_topic_support.yaml",
+        # Policy 0.3.9 background tracking / camera / microphone answer.
+        "app_info_sensors.yaml",
     ]
 )
 def template(request):
