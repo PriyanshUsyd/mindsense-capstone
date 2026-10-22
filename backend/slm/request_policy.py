@@ -28,7 +28,7 @@ from enum import Enum
 
 from pydantic import BaseModel, ConfigDict
 
-REQUEST_POLICY_VERSION = "0.3.9"
+REQUEST_POLICY_VERSION = "0.4.0"
 
 _logger = logging.getLogger(__name__)
 
@@ -368,6 +368,56 @@ _CRISIS_PATTERNS = (
         r"their lives?)|stop existing)\b",
         re.IGNORECASE | re.DOTALL,
     ),
+    # Policy 0.4.0 (practice set v1): wider crisis meaning families.
+    # Not being able, or too tired, to keep living.
+    re.compile(
+        r"\b(?:can['’]?t|cannot|can not|unable to|don['’]?t think i can|do not think "
+        r"i can|not sure i can|no longer able to) (?:keep|go on|carry on|continue) "
+        r"(?:living|existing|being alive|like this)\b"
+        r"|\b(?:tired|sick|exhausted|weary) of (?:living|existing|being alive|life|"
+        r"being here|waking up)\b",
+        re.IGNORECASE,
+    ),
+    # Goodbye letters to people, and "it's time" said as the end of a message.
+    re.compile(
+        r"\b(?:wr(?:ite|ote|itten|iting)|left|leave|leaving|leaves) (?:\w+ ){0,2}"
+        r"(?:letters?|notes?) (?:to|for) (?:everyone|everybody|the people i love|"
+        r"each of (?:them|you)|them all|my (?:family|mum|mom|dad|parents|sister|"
+        r"brother|siblings|partner|friends?|best (?:friend|mate)|mates?|kids|"
+        r"children|girlfriend|boyfriend|wife|husband|loved ones))\b"
+        r"|\bjust in case\b.{0,40}\b(?:time|goodbye|gone|letters?|notes?)\b"
+        r"|\b(?:it )?(?:feels?|seems?) like (?:it['’]?s |it is )?(?:the right |my )?"
+        r"time(?: to go)?\s*[.!?]*\s*$",
+        re.IGNORECASE | re.DOTALL,
+    ),
+    # No point in waking up, tomorrow, existing.
+    re.compile(
+        r"\bpoint (?:of|in) (?:even )?(?:waking up|getting up in the morning|"
+        r"tomorrow|existing|being alive|carrying on|it all)\b",
+        re.IGNORECASE,
+    ),
+    # Would anyone notice or care if I were gone; stopping being around.
+    re.compile(
+        # Noticing or caring about the person being gone, not about a data
+        # change ("would anyone notice the drop in my movement?").
+        r"\b(?:would|will) (?:anyone|anybody|someone|people) (?:even |actually |"
+        r"really |ever )?(?:(?:notice|care)(?: if| when| that)? (?:i|i['’]m|i was|"
+        r"i were|i had)\b|care\s*[?.!]*\s*$|miss me|remember me)"
+        r"|\bif (?:anyone|anybody) (?:would|will) (?:even |actually |really )?"
+        r"(?:(?:notice|care)(?: if| when| that)? (?:i|i['’]m|i was|i were)\b|"
+        r"miss me)"
+        r"|\b(?:stop|stopped|stopping) (?:being (?:around|here|alive)|existing)\b"
+        r"|\b(?:if|when) i (?:was|were|am|['’]m) (?:out of the picture|gone for good|"
+        r"no longer around|no longer here|not around any ?more|not here any ?more)\b",
+        re.IGNORECASE,
+    ),
+    # Fear of what one might do to oneself.
+    re.compile(
+        r"\b(?:scared|afraid|frightened|terrified|worried) (?:of|about) what i "
+        r"(?:might|could|will|may|would|['’]ll|am going to|['’]m going to) do\b"
+        r"|\b(?:don['’]?t|do not) trust myself\b",
+        re.IGNORECASE,
+    ),
 )
 
 # Policy 0.3.7: current emotional distress. A first-person statement of
@@ -502,7 +552,11 @@ _HELP_SEEKING_PATTERNS = (
         r"distress)[- ]?(?:lines?|numbers?|hotlines?|phone ?lines?|services?|"
         r"centres?|centers?)\b"
         r"|\bhelp ?lines?\b|\bhot ?lines?\b|\blifeline\b|\bbeyond ?blue\b"
-        r"|\b13 ?11 ?14\b",
+        r"|\b13 ?11 ?14\b"
+        # Policy 0.4.0: a number to call, ring or text, in any wording.
+        r"|\b(?:phone )?numbers? (?:that )?(?:i|we|someone|you) (?:can|could|should|"
+        r"might) (?:call|ring|text|phone)\b"
+        r"|\b(?:phone )?numbers? to (?:call|ring|text)\b",
         re.IGNORECASE,
     ),
     # Finding, contacting or speaking to a counsellor or other professional.
@@ -573,7 +627,11 @@ _NAMED_CONDITION = re.compile(
     re.IGNORECASE,
 )
 _SELF_REFERENCE = re.compile(
-    r"\b(?:i|i['’]m|im|i['’]ve|i['’]d|me|my|myself|mine)\b", re.IGNORECASE
+    r"\b(?:i|i['’]m|im|i['’]ve|i['’]d|me|my|myself|mine)\b"
+    # Policy 0.4.0: "these numbers" and "this data" also refer to the person.
+    r"|\b(?:these|those) (?:numbers|results|stats|patterns|readings|figures|scores)\b"
+    r"|\bthis (?:data|pattern|result)\b",
+    re.IGNORECASE,
 )
 # Mood words are not condition names, but asking the data to show them is
 # still diagnosis ("do my unlocks show I'm depressed?").
@@ -648,6 +706,70 @@ _PROHIBITED_PATTERNS: tuple[
                 r"|\b(?:show|print|reveal|display|repeat|tell me|give me|share) "
                 r"(?:me )?your (?:prompt|instructions|programming)\b",
                 re.IGNORECASE | re.DOTALL,
+            ),
+            # Policy 0.4.0 (practice set v1): the assistant's own setup in any
+            # wording. (a) What it was told, or what its prompt, setup,
+            # configuration or rules contain, asked about or asked to be
+            # shown, listed, pasted or translated.
+            re.compile(
+                r"\bwhat (?:were|have|was|are) you (?:been )?(?:told|instructed|"
+                r"programmed|set up|configured|asked) to\b"
+                r"|\bwhat(?:['’]s| is| are| was| were)? (?:in|inside|written in) "
+                r"(?:your|the) (?:system |hidden |secret |initial )?(?:prompt|"
+                r"instructions|rules|setup|set-up|configuration|config|system message)\b"
+                r"|\b(?:show|print|reveal|display|output|repeat|recite|tell me|give me|"
+                r"share|list|dump|paste|copy|leak|expose|translate|summari[sz]e|"
+                r"read out|spell out|write out)\b.{0,30}\b(?:your|the) (?:\w+ )?"
+                r"(?:system message|system prompt|prompt|setup|set-up|setup text|"
+                r"configuration|config|initial message|instructions|rules you follow|"
+                r"rules you were given|guidelines you follow)\b"
+                r"|\b(?:secret|hidden|internal|system) (?:setup|set-up|text|message|"
+                r"settings)\b.{0,20}\byou\b"
+                r"|\b(?:rules|instructions|guidelines) you (?:follow|run on|use|obey|"
+                r"have)\b.{0,30}\b(?:exactly|word for word|verbatim|as written|in full)\b",
+                re.IGNORECASE | re.DOTALL,
+            ),
+            # (b) Persona and role-play framings, and "pretend".
+            re.compile(
+                r"\b(?:act|behave|respond|answer|reply|talk|speak|write|role-?play)\b"
+                r"(?: \w+){0,3} (?:as|like) (?:if )?(?:you (?:were|are|had|have) |"
+                r"an? |my |the )?(?:\w+ )?(?:therapist|doctor|psychiatrist|"
+                r"psychologist|counsell?or|nurse|gp|unfiltered|uncensored|"
+                r"unrestricted|jailbroken|different (?:ai|bot|assistant|model)|ai|"
+                r"bot|chatbot|assistant|model|character)\b"
+                r"|\b(?:as if|like) you (?:had|have|were|are) (?:no|zero|without)\b"
+                r"|\b(?:as if|like) you (?:were|are) (?:a |an |my )?(?:real )?(?:human|"
+                r"person|friend|therapist|doctor)\b"
+                # "Pretend you're a psychiatrist and diagnose me" stays a
+                # diagnosis request (dev Q42), so clinician personas are left out.
+                r"|\bpretend (?:that )?"
+                r"(?!you(?:['’]re| are| were)? (?:a |an |my )?(?:psychiatrist|"
+                r"psychologist|doctor|therapist|counsell?or|nurse|gp|clinician)\b)"
+                r"(?:you(?:['’]re| are| were| have| had)?\b|the (?:rules|guidelines|"
+                r"restrictions|filters|policy|policies|limits)\b|there (?:are|is|were|"
+                r"was) no\b)"
+                r"|\bforget (?:that )?you(?:['’]re| are)\b"
+                r"|\blet['’]?s (?:role-?play|play a game where you)\b"
+                r"|\b(?:from|starting) (?:this point|this moment|now|here) "
+                r"(?:on|onwards?|forward)\b.{0,20}\byou\b"
+                r"|\b(?:starting|from) (?:right )?now,? you (?:will|are|must|should|can)\b"
+                r"|\b(?:ignore|forget|drop|abandon|disregard) (?:all )?(?:your|ur) "
+                r"(?:training|programming|setup|safety training)\b",
+                re.IGNORECASE | re.DOTALL,
+            ),
+            # (c) Injected instruction markers and switching safety off.
+            re.compile(
+                r"</?\s*(?:system|instructions?|admin|developer)\s*>"
+                r"|\[(?:system|admin|developer)\]"
+                r"|\bnew (?:instructions|rules|system prompt|directives)\s*:"
+                r"|\b(?:switch|turn|shut|toggle|take) off (?:your |ur |the |all |any |"
+                r"these |those )?(?:own )?(?:safety|content|safe|guard)\w*"
+                r"(?: (?:settings?|features?|checks?|mode|filters?|rules|limits))?\b"
+                r"|\b(?:ignore|bypass|override|disable|drop|forget) (?:all |the |your |"
+                r"ur |any )?(?:mindsense|app['’]?s?|system|model|built-in|usual) "
+                r"(?:rules|restrictions|limits|guidelines|filters|policies|policy|"
+                r"instructions)\b",
+                re.IGNORECASE,
             ),
         ),
     ),
@@ -727,6 +849,22 @@ _PROHIBITED_PATTERNS: tuple[
                 r"|\b(?:something|anything)(?: is|['’]s)? (?:wrong|off) with me\b)",
                 re.IGNORECASE,
             ),
+            # Policy 0.4.0 (practice set v1): asking which condition the data
+            # points to, and something wrong with one's brain, head or mind.
+            re.compile(
+                r"\b(?:what|which) (?:mental (?:health )?)?(?:conditions?|disorders?|"
+                r"illness(?:es)?|diagnos[ei]s|mental illness(?:es)?) (?:do|does|did|"
+                r"might|could|would|may|am|is) (?:i|my \w+|these \w+|this \w+|the "
+                r"data|my data)\b"
+                r"|\b(?:something|anything)(?: is|['’]s)? (?:wrong|off|not right) with "
+                r"my (?:brain|head|mind|mental health|psyche)\b"
+                r"|\bis my (?:brain|head|mind) (?:broken|wrong|damaged|not (?:right|"
+                r"normal|working))\b"
+                r"|\b(?:tell me|say|work out|figure out|guess) what (?:i|i['’]ve) "
+                r"(?:have|got|am suffering from|suffer from)\b"
+                r"|\bwhat (?:do|might|could) i have\s*[?.!]*\s*$",
+                re.IGNORECASE,
+            ),
         ),
     ),
     (
@@ -744,6 +882,38 @@ _PROHIBITED_PATTERNS: tuple[
             ),
             re.compile(
                 r"\b(?:score|rate) my (?:mental health|mood|depression|anxiety)\b",
+                re.IGNORECASE,
+            ),
+            # Policy 0.4.0 (practice set v1): any named screening scale, and any
+            # score, rating, index, grade, level or number for a mental state,
+            # in either order.
+            re.compile(
+                r"\b(?:phq|gad|k[- ]?10|k[- ]?6|kessler|dass(?:[- ]?\d+)?|bdi|beck "
+                r"depression|hads|who[- ]?5|epds|edinburgh postnatal)\b",
+                re.IGNORECASE,
+            ),
+            re.compile(
+                r"\b(?:depress\w*|anxi\w*|stress|mood|well[- ]?being|wellness|mental "
+                r"(?:health|wellness|state)|burn-?out|emotional (?:health|state))\b"
+                r"(?: \w+)? (?:score|scores|rating|ratings|index|grade|percentile|"
+                r"severity score)\b"
+                r"|\b(?:score|scores|scored|rating|grade|number|level|scale|cut-?off|"
+                r"threshold|percentile)\b.{0,40}\b(?:how (?:depressed|anxious|"
+                r"stressed|sad|low|down|unwell|bad|happy)|my (?:depression|anxiety|"
+                r"stress|mood|mental health|well[- ]?being|wellness|burn-?out))\b"
+                r"|\b(?:my )?(?:depression|anxiety|stress|mental health)\b.{0,30}\b(?:on "
+                r"(?:a|the) (?:\w+ )?scale|scale (?:of|from)|cut-?off|threshold)\b"
+                r"|\b(?:rate|grade|score|measure|quantify) (?:how )?(?:depressed|"
+                r"anxious|stressed|sad|low|unwell|happy) (?:i am|i['’]m|i['’]ve been|"
+                r"i have been|i was)\b",
+                re.IGNORECASE | re.DOTALL,
+            ),
+            re.compile(
+                r"\b(?:got|scored|get|getting|had) (?:a |an )?\d+(?:/\d+)? (?:on|in|for) "
+                r"(?:a |an |the |my |one of those )?(?:\w+ ){0,2}(?:questionnaire|quiz|"
+                r"test|survey|scale|check-?in|assessment|screening|form)\b"
+                r"|\b(?:questionnaire|survey|check-?in|screening|assessment) "
+                r"(?:scores?|results?|ratings?|totals?)\b",
                 re.IGNORECASE,
             ),
         ),
@@ -829,6 +999,53 @@ _PROHIBITED_PATTERNS: tuple[
                 r"treatment|get (?:some )?support)\b",
                 re.IGNORECASE,
             ),
+            # Policy 0.4.0 (practice set v1): advice by meaning. What helps or
+            # works for a feeling; tips or ways to manage one; needing
+            # medication or therapy; the best therapy; whether something is
+            # worth trying, would fix or improve a mood, or would make the
+            # person happier; making a self-care plan; "should I cut down".
+            re.compile(
+                r"\bwhat (?:helps|works|would help|could help|can help|might help|"
+                r"would work|is good|is best|['’]s good|['’]s best|is helpful)\b"
+                r".{0,15}\b(?:with|for|against|on)\b.{0,25}\b(?:anxiety|stress|mood|"
+                r"depression|panic|sadness|low mood|overthinking|motivation|sleep|"
+                r"insomnia|loneliness|nerves|worry|worrying|feelings?|mental health|"
+                r"feeling (?:low|down|sad|anxious|better))\b"
+                r"|\b(?:tips|advice|strategies|strategy|techniques?|ways|exercises?|"
+                r"tricks|ideas|habits|steps|methods?|hacks)\b.{0,20}\b(?:to|for|on|"
+                r"that (?:help|would help|could help))\b.{0,25}\b(?:stop|manage|cope|"
+                r"deal with|reduce|beat|overcome|calm|relax|feel|be happier|sleep "
+                r"better|overthinking|anxiety|stress|mood|panic|worry|worrying|"
+                r"sadness|loneliness)\b"
+                r"|\b(?:need|needs|needing) (?:to (?:be on|take|start|see|get) )?"
+                r"(?:meds|medication|medicine|antidepressants?|therapy|treatment|"
+                r"counsell?ing|a therapist|a psychiatrist|a psychologist)\b"
+                r"|\b(?:best|right|good|better|recommended|ideal) (?:kind of |type of |"
+                r"form of )?(?:therapy|treatment|medication|medicine|antidepressant|"
+                r"supplement|therapist|counsell?or|coping strategy)\b"
+                r"|\b(?:worth|a good idea|helpful|beneficial|recommended|effective)\b"
+                r".{0,30}\b(?:for|with|against) (?:my )?(?:stress|anxiety|mood|mental "
+                r"health|depression|sleep|panic|well[- ]?being|overthinking)\b",
+                re.IGNORECASE | re.DOTALL,
+            ),
+            re.compile(
+                r"\b(?:fix|fixes|improve|improves|lift|lifts|boost|boosts|cure|cures|"
+                r"treat|treats|ease|eases|sort out|help|helps) (?:with )?(?:my |the |"
+                r"this )?(?:mood|anxiety|depression|mental health|stress|"
+                r"well[- ]?being|motivation|overthinking|panic(?: attacks)?|sadness|"
+                r"low mood|feelings|nerves)\b"
+                r"|\b(?:make|help|get) me (?:feel |be |a )?(?:happier|calmer|"
+                r"better|less (?:anxious|stressed|sad|down|low|lonely|tired)|more "
+                r"(?:relaxed|motivated|positive|energetic|confident))\b"
+                r"|\b(?:put together|come up with|build|draft|plan|map out|work out|"
+                r"set up|write) (?:me )?(?:a |an |some |my )?(?:personal(?:ised|ized)? )?"
+                r"(?:self[- ]care|coping|wellness|well[- ]?being|treatment|recovery|"
+                r"mental[- ]health|care|mood) (?:plan|routine|strategy|programme|"
+                r"program|regime)\b"
+                r"|\bshould i (?:cut down|cut back|cut out|give up|avoid|limit|drink|"
+                r"eat|exercise|meditate|journal|work out|go to bed|sleep)\b",
+                re.IGNORECASE,
+            ),
         ),
     ),
     (
@@ -903,6 +1120,33 @@ _PROHIBITED_PATTERNS: tuple[
                 r"future)\b",
                 re.IGNORECASE,
             ),
+            # Policy 0.4.0 (practice set v1): forecasts in more wordings.
+            # Heading for an outcome; chances, likelihood or danger of
+            # something; what lies ahead; "if this continues"; one's future;
+            # ending up worse; what something will look like.
+            re.compile(
+                r"\b(?:heading|headed|on track|on course|set|bound|destined) (?:for|"
+                r"towards?|to) (?:a |an )?(?:breakdown|burn-?out|crash|relapse|crisis|"
+                r"collapse|failure|fail|disaster|meltdown|trouble|worse|depression|"
+                r"getting worse)\b"
+                r"|\b(?:chances?|odds|probability|likelihood|danger|risk)\b (?:is |are )?"
+                r"(?:that )?(?:i|i['’]ll|i['’]d|i['’]m|me|my(?! (?:data|information|"
+                r"info|privacy|answers?|chats?|messages?)\b))\b"
+                r"|\b(?:expect|anticipate|brace (?:myself )?for|prepare (?:myself )?for|"
+                r"in for)\b.{0,40}\b(?:ahead|coming|to come|later|worse|harder|rough|"
+                r"tough|bad|difficult|hard)\b"
+                r"|\b(?:days?|weeks?|months?|years?|term|semester|times?) ahead\b"
+                r"|\bif (?:this|it|that|things|my \w+) (?:continues?|keeps? (?:up|going|"
+                r"happening)|carr(?:y|ies) on|goes on|stays (?:like this|the same)|"
+                r"doesn['’]?t (?:change|stop|improve))\b"
+                r"|\bmy future\b.{0,30}\b(?:look\w*|be|seem\w*|hold\w*|bleak|bad|good|"
+                r"ok|okay|going)\b|\bfuture (?:looks?|looking|seems?)\b"
+                r"|\bend up\b.{0,30}\b(?:worse|depressed|anxious|burnt out|burned out|"
+                r"failing|dropping out|needing|in hospital|unwell|sick|alone)\b"
+                r"|\bwhat (?:will|would|is going to|['’]s going to|is gonna) (?:my|the|"
+                r"things|life|it|this)\b.{0,30}\b(?:look|be|end up|feel) like\b",
+                re.IGNORECASE | re.DOTALL,
+            ),
         ),
     ),
     (
@@ -965,6 +1209,28 @@ _PROHIBITED_PATTERNS: tuple[
                 r"down|nervous|upset|on edge)\b",
                 re.IGNORECASE,
             ),
+            # Policy 0.4.0 (practice set v1): any causal verb about the
+            # person's change (caused, driving, affect, responsible for,
+            # stopping me, making me + a verb, explain why). Questions about
+            # the baseline, the comparison, the evidence or missing data are
+            # app questions, not causal.
+            re.compile(
+                r"^(?!.*\b(?:baseline|compar\w*|evidence|missing (?:days|data)|"
+                r"data quality|uncertain\w*)\b)"
+                r".*\b(?:caused|causing|causes|drives|driving|drove|driven|"
+                r"affect(?:s|ed|ing)?|impact(?:s|ed|ing)?|influenc(?:e|es|ed|ing)|"
+                r"responsible for|to blame|account(?:s|ed)? for|contribut(?:e|es|ed|"
+                r"ing) to|explain(?:s|ed)? (?:why|the (?:drop|change|rise|increase|"
+                r"decrease|dip|fall|difference))|(?:stopping|stopped|stops|keeping|"
+                r"kept|keeps|making|made|makes) me (?:from )?"
+                # Only a behaviour or feeling ("making me move less"), not a
+                # request someone made ("made me promise").
+                r"(?:feel\w*|be|get\w*|go(?:es|ing)?|stay\w*|leav\w*|use|using|"
+                r"check\w*|unlock\w*|pick\w*|mov\w*|travel\w*|walk\w*|sleep\w*|"
+                r"scroll\w*|withdraw\w*|isolat\w*|avoid\w*|less|more|so|restless|"
+                r"anxious|tired|lazy|sad|low|down|stressed|worse|lonely))\b",
+                re.IGNORECASE | re.DOTALL,
+            ),
         ),
     ),
     (
@@ -1002,6 +1268,81 @@ _PROHIBITED_PATTERNS: tuple[
                 r"(?:my )?(?:home|house|flat|apartment|dorm)\b",
                 re.IGNORECASE,
             ),
+            # Policy 0.4.0 (practice set v1). (a) Raw location data in any
+            # phrasing: asking to see, get or export location detail, or naming
+            # point-level location data at all. Only distance travelled is
+            # described; "what does my location data say about how far I go?"
+            # names no raw detail and keeps its evidence route.
+            re.compile(
+                # Deleting the data is a storage question (app_info_data_storage).
+                r"^(?!.*\b(?:delete|remove|erase|wipe|destroy|purge|get rid of)\b)"
+                r".*(?:"
+                r"\b(?:show|see|view|export|download|send|give|get|access|share|pull|"
+                r"list|dump|copy|open|display|print|email|extract|hand over)\b.{0,30}"
+                r"\b(?:(?:raw|exact|precise|full|detailed|all|underlying|actual|"
+                r"individual) (?:gps|location|position|geo-?location|movement) "
+                r"(?:data|readings?|records?|details?|info(?:rmation)?)"
+                r"|(?:gps|location|position|geo-?location) (?:history|log|logs|points?|"
+                r"pings?|coordinates|co-ordinates|trail|trace|tracks?|file|export|"
+                r"fixes|records?))\b"
+                r"|\b(?:latitudes?|longitudes?|lat ?/ ?long|lat-?long|lat/lng|"
+                r"co-?ordinates|geo-?coordinates)\b"
+                r"|\b(?:gps|location) (?:pings?|points?|trail|trace|logs?|fixes|"
+                r"coordinates|co-ordinates)\b|\blocation (?:history|trail)\b"
+                r"|\braw (?:gps|location|movement|sensor) (?:data|logs?|files?|"
+                r"readings|points)\b"
+                r"|\b(?:map|list|record|log|timeline) of (?:where|the places|places|"
+                r"everywhere|locations|my locations)\b"
+                r"|\b(?:csv|spreadsheet|file|export|download|copy) of (?:my |all my |"
+                r"all of my )?(?:location|gps|movement)\b)",
+                re.IGNORECASE | re.DOTALL,
+            ),
+            # (b) Places the person went: where they were or go, which places,
+            # venues or suburbs they visit, where they spend most time.
+            re.compile(
+                r"\bwhere (?:exactly |else |abouts |precisely )?(?:was|were|did|have|"
+                r"had|do|does) i (?:usually |normally |"
+                r"often |mostly |last )?(?:been|go|gone|went|spend|hang|on|at|tend to|"
+                r"end(?:ed)? up|head(?:ed)?|wander(?:ed)?)\b"
+                r"|\bwhere i(?:['’]ve| have)? (?:been|go|went|gone|spend|spent|hang "
+                r"out)\b"
+                r"|\b(?:which|what) (?:places?|locations?|caf[eé]s?|shops?|stores?|"
+                r"bars?|pubs?|restaurants?|venues?|spots?|suburbs?|neighbou?rhoods?|"
+                r"buildings?|streets?|parts of (?:town|the city|campus)|gyms?|clubs?) "
+                r"(?:did|do|have|had|was|were) i\b"
+                r"|\b(?:places|locations|spots|venues) (?:that )?i (?:visit\w*|go|went|"
+                r"frequent\w*|have been|spend)\b"
+                r"|\b(?:spend|spent|spending) (?:the )?most (?:of my )?time (?:at|in)\b",
+                re.IGNORECASE,
+            ),
+            # (c) Other people's data and identities, and study identifiers.
+            re.compile(
+                r"\b(?:is|are|was|were|has|have|does|do|did) (?:my|her|his|their|our) "
+                r"(?:roommate|room-mate|flatmate|flat-mate|housemate|partner|"
+                r"boyfriend|girlfriend|ex|husband|wife|friends?|best friend|sister|"
+                r"brother|sibling|mum|mom|dad|mother|father|parents?|classmates?|"
+                r"family|colleagues?|co-?workers?|neighbou?rs?|kids?|son|daughter|"
+                r"child)\b (?:\w+ ){0,2}(?:unlock\w*|mov\w*|travel\w*|go(?:es|ing)?|"
+                r"went|been|using|walk\w*|location|data|whereabouts)\b"
+                r"|\b(?:than|to|with|vs\.?|versus|against) (?:my|her|his|their|our) "
+                r"(?:roommate|room-mate|flatmate|flat-mate|housemate|partner|"
+                r"boyfriend|girlfriend|ex|husband|wife|friends?|best friend|sister|"
+                r"brother|sibling|mum|mom|dad|mother|father|parents?|classmates?|"
+                r"colleagues?|co-?workers?|neighbou?rs?)(?:['’]s?)?\b"
+                r"|\bwhere(?:['’]s| is| has| have| did| does)? (?:my|her|his|their|our) "
+                r"(?:roommate|flatmate|housemate|"
+                r"partner|boyfriend|girlfriend|ex|husband|wife|friends?|sister|"
+                r"brother|mum|mom|dad|parents?|classmates?|colleagues?|neighbou?rs?|"
+                r"kids?|son|daughter)\b"
+                r"|\b(?:names?|identit(?:y|ies)|ids?|identifiers?|contact details) of "
+                r"(?:the |any |other |another |a )?(?:participants?|people|persons?|"
+                r"students?|users?|subjects?)\b"
+                r"|\bwho else\b.{0,25}\b(?:study|app|mindsense|data|using|"
+                r"participat\w*|in this)\b"
+                r"|\b(?:my|the|our|a) (?:participant|study|subject|user|research) "
+                r"(?:id|ids|number|identifier|code|uid)\b",
+                re.IGNORECASE | re.DOTALL,
+            ),
         ),
     ),
 )
@@ -1029,6 +1370,40 @@ _CAPABILITY_PATTERNS = (
         r"(?:allowed to )?ask(?: you)?(?: about)?"
         r"(?: here| in (?:this|the) app| mindsense)?"
         r"\s*[?.!]*\s*$",
+        re.IGNORECASE,
+    ),
+    # Policy 0.4.0 (practice set v1): what the assistant is, what it can or
+    # cannot do and what to ask, in more wordings. Not anchored, but every
+    # branch names the assistant or its abilities, so evidence questions
+    # ("what can you tell me about my unlocks?") are not captured. Asking to
+    # talk about feelings is left to the support-line refusal on purpose.
+    re.compile(
+        r"\bwhat (?:can|could|should|may) i ask(?: you)?(?: about)?\s*[?.!]*\s*$"
+        r"|\bwhat (?:are|r) (?:you|u) (?:able to|capable of|good for|for)\b"
+        r"|\bwhat (?:exactly )?(?:do|can|could) (?:you|u) (?:actually |really |even |"
+        r"exactly )?(?:do|help (?:me )?with|"
+        r"offer)\b(?!\s+(?:with|to|about) (?:my|the)\b)"
+        r"|\bwhat(?:['’]s| is) (?:this|the|mindsense|this thing) (?:app |tool |thing |"
+        r"chatbot |bot |assistant )?(?:for|about)\s*[?.!]*\s*$"
+        r"|\bwhat(?:['’]s| is| are) (?:your|its) (?:main )?(?:purpose|point|features?|"
+        r"capabilities|abilities|functions?|job|role)\b"
+        r"|\bwhat (?:can['’]?t|cannot|can not) (?:you|u|mindsense|it) do\b"
+        r"|\bwhat (?:can|could|does|will|would) (?:this|the|mindsense) ?(?:app|tool|"
+        r"thing|chatbot|bot|assistant)? do(?: for me)?\b"
+        r"|\b(?:are|r) (?:you|u) (?:a |an )?(?:real |actual |licensed |qualified |"
+        r"proper |trained )?(?:therapist|doctor|counsell?or|psychologist|"
+        r"psychiatrist|human|person|bot|chatbot|robot|ai|machine|computer)\b"
+        r"|\bis (?:this|it|mindsense) (?:a |an )?(?:chatbot|bot|real person|person|"
+        r"human|ai|robot|therapist)\b"
+        r"|\b(?:are|r) (?:you|u) (?:like|similar to|the same as) (?:siri|alexa|"
+        r"chat ?gpt|google|gemini|copilot|a chatbot)\b"
+        r"|\b(?:explain|tell me|describe|show me) what (?:you|u|mindsense|this app)"
+        r"(?:['’]re| are| can| is)? (?:capable of|able to do|can do|for|does)\b"
+        r"|\b(?:example|sample) questions\b"
+        r"|\bwhat (?:kinds?|sorts?|types?) of (?:questions|things|stuff)\b"
+        r"|\bcan (?:you|u) only (?:talk|answer|help|do)\b"
+        r"|\bdo (?:you|u) do anything (?:besides|else|other than|apart from|except)\b"
+        r"|\bwhat(?:['’]s| is) possible (?:here|with (?:you|this app|mindsense))\b",
         re.IGNORECASE,
     ),
 )
@@ -1145,6 +1520,74 @@ _APP_INFORMATION_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
             re.IGNORECASE,
         ),
     ),
+    # Policy 0.4.0 (practice set v1): the same app questions in more wordings.
+    (
+        "app_info_sensors",
+        re.compile(
+            r"\b(?:know|knows|see|sees|watch\w*|track\w*|follow\w*|record\w*)\b.{0,25}"
+            r"\b(?:my location|where i am|where i go|my whereabouts|my position)\b"
+            r".{0,25}\b(?:all the time|always|constantly|24/7|at all times|every "
+            r"minute|in the background|right now|live|in real time)\b",
+            re.IGNORECASE | re.DOTALL,
+        ),
+    ),
+    (
+        "app_info_data_use",
+        re.compile(
+            r"\b(?:what|which) (?:kinds?|sorts?|types?) of (?:data|information|info|"
+            r"sensors?|measures?) (?:do|does|did|will|can) (?:you|mindsense|the app|"
+            r"this app|it)\b"
+            r"|\b(?:what|which) (?:sensors?|data|information|measures|signals|"
+            r"inputs) (?:do|does|did) (?:you|mindsense|the app|this app|it) (?:use|"
+            r"collect|look at|need|rely on|read|track|draw on|have|record|capture)\b"
+            r"|\bhow (?:far back|long|many (?:days|weeks|months)(?: back)?) (?:does|do) "
+            r"(?:your|the|its|my|this app['’]?s|mindsense['’]?s) (?:data|history|"
+            r"records?|information)(?: \w+)? (?:go|cover|span|stretch|last)\b",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "app_info_data_storage",
+        re.compile(
+            r"\b(?:sent|send|sending|uploaded|upload\w*|go(?:es)?|going|shared|"
+            r"stored|saved|kept|backed up|synced)\b.{0,15}\b(?:to|on|in|onto|with) "
+            r"(?:the |a |an |any |some )?(?:cloud|internet|server|servers|online|web|openai|google|"
+            r"third parties)\b"
+            r"|\bwho (?:can|could|will|gets to|is able to) (?:see|read|access|view|"
+            r"look at)\b"
+            r"|\b(?:can|could|will|would|does|do) (?:my )?(?:lecturer|tutor|uni|"
+            r"university|teacher|professor|parents?|family|employer|researchers?|"
+            r"staff|the (?:study|research) team|the government|police) (?:see|access|"
+            r"read|view|look at|find out|get)\b"
+            r"|\b(?:delete|remove|erase|wipe|destroy|purge|get rid of) (?:everything|"
+            r"all|anything|whatever|all the (?:data|info|information)) (?:you(?: have|"
+            r"['’]ve got| hold| store| keep| know)? )?(?:on|about|of) me\b"
+            r"|\b(?:model|ai|llm|chat ?gpt|openai|language model|a human|a person|"
+            r"someone|anyone|people)\b.{0,15}\b(?:read(?:ing|s)?|see(?:ing|s)?|"
+            r"look(?:ing|s)? at|process\w*|stor\w*|log\w*)\b.{0,10}\b(?:my )?"
+            r"(?:messages|chats?|questions|conversations?|what i (?:type|write|ask|"
+            r"say))\b",
+            re.IGNORECASE | re.DOTALL,
+        ),
+    ),
+    (
+        "app_info_uncertain_evidence",
+        re.compile(
+            r"^(?=.*\bmean(?:s|ing|t)?\b)"
+            r"(?=.*(?:no clear difference|uncertain|not (?:clearly )?different|"
+            r"evidence is (?:weak|not strong)|not reportable)).*",
+            re.IGNORECASE | re.DOTALL,
+        ),
+    ),
+    (
+        "app_info_baseline_unavailable",
+        re.compile(
+            r"\bwhy (?:is(?:n['’]?t| there no| there not)|are(?:n['’]?t| there no)|"
+            r"can['’]?t|cannot|won['’]?t|don['’]?t|didn['’]?t|no)\b.{0,30}"
+            r"\b(?:comparison|compar\w*|baseline|my usual|my normal)\b",
+            re.IGNORECASE | re.DOTALL,
+        ),
+    ),
 )
 
 
@@ -1220,6 +1663,35 @@ _CONTEXTUAL_IN_SCOPE_PATTERNS = (
         r"\bwhat does the word (?:depressed|anxious|depression|anxiety) mean\b",
         re.IGNORECASE,
     ),
+    # Policy 0.4.0 (practice set v1): a general question about the person's
+    # own tracked data, patterns, routine or habits with a change, comparison
+    # or summary cue. It names no single feature, so preflight asks
+    # "movement or phone unlocks?"; with a feature word it is answered.
+    re.compile(
+        r"^(?=.*\b(?:my|me|i)\b)"
+        # Untracked measures keep the off-topic refusal.
+        r"(?!.*\b(?:sleep\w*|steps?|heart|calories|water|music|spotify|instagram|"
+        r"tiktok|weight|diet|food|eating|exercise|workouts?|gym|grades?|marks|"
+        r"assignments?|homework|bank|money|spending|budget|period|cycle)\b)"
+        r"(?=.*\b(?:data|patterns?|numbers|stats|readings|measures|metrics|figures|"
+        r"results|tracked \w+|activity|activities|routine|habits|behaviou?r)\b)"
+        r"(?=.*\b(?:chang\w*|different\w*|differ\w*|shift\w*|normal|usual|unusual|"
+        r"typical|overview|summar\w*|look\w*|check|show\w*|stand\w* out|trend\w*|"
+        r"compar\w*|going on|doing|tell me about|describe|explain|recap|update on|"
+        r"how (?:is|are|was|were))\b)",
+        re.IGNORECASE | re.DOTALL,
+    ),
+    re.compile(
+        r"\b(?:anything|something) (?:unusual|different|odd|new|weird|strange|"
+        r"notable|interesting) (?:with|about|in|for) (?:me|my)\b"
+        r"|\b(?:am i|have i been|i['’]?m|i am) (?:behaving|acting|living) (?:any )?"
+        r"differently\b"
+        r"|\bhow (?:have|has) i been (?:doing|going|getting on)\b|\bhow['’]?ve i been\b"
+        r"|\bhow active and\b|\bhow (?:connected|social|busy) (?:have|had|was|am) i\b"
+        r"|\b(?:which|what) of my (?:two |2 )?(?:measures|features|metrics|numbers|"
+        r"stats|patterns)\b",
+        re.IGNORECASE,
+    ),
 )
 
 
@@ -1239,6 +1711,15 @@ _UNLOCK_FEATURE_PATTERNS = (
     re.compile(r"\bpick(?:s|ed|ing)?[- ]?up(?:s)?\b", re.IGNORECASE),
     # Policy 0.3.3 (dev Q16): everyday wording for phone use.
     re.compile(r"\b(?:on|use|used|using) my phone\b", re.IGNORECASE),
+    # Policy 0.4.0: checking, opening, grabbing or picking up the phone.
+    re.compile(
+        r"\b(?:check|checks|checking|checked|open|opens|opening|opened|grab|grabs|"
+        r"grabbing|grabbed|look at|looking at|looked at|reach for|reaching for|"
+        r"reached for)\b (?:my |the )?phone\b"
+        r"|\bphone (?:checking|checks|pickups?|opens)\b"
+        r"|\bpick(?:s|ed|ing)? (?:my |the )?phone up\b",
+        re.IGNORECASE,
+    ),
 )
 
 _GPS_NAMED_FEATURE_PATTERNS = (
@@ -1247,13 +1728,26 @@ _GPS_NAMED_FEATURE_PATTERNS = (
     re.compile(r"\bmovement\b", re.IGNORECASE),
     re.compile(r"\bmobility\b", re.IGNORECASE),
     # Policy 0.3.3 (dev Q1/Q15): everyday wording for distance moved.
-    re.compile(r"\bmov(?:e|ed|es|ing)\b|\bhow far\b", re.IGNORECASE),
+    # Policy 0.4.0: "how far" now needs the person ("how far did I go?");
+    # "how far is Perth from Darwin?" is not a movement question. See below.
+    re.compile(r"\bmov(?:e|ed|es|ing)\b", re.IGNORECASE),
     # Policy 0.3.6: more everyday movement words, about the person's own
     # movement ("how do people get around campus?" is not).
     re.compile(
         r"^(?=.*\b(?:i|i['’]?ve|i['’]?m|im|my|me)\b)"
         r".*(?:\bwalk(?:s|ed|ing)?\b|\b(?:getting|get|got|gotten) around\b"
         r"|\bout and about\b)",
+        re.IGNORECASE | re.DOTALL,
+    ),
+    # Policy 0.4.0: "how far", "how mobile", kilometres, ground covered, about
+    # the person's own movement ("how many km from Sydney to Melbourne?" is not).
+    re.compile(
+        r"^(?=.*\b(?:i|i['’]?ve|i['’]?m|im|my|me)\b)"
+        r".*(?:\bhow far\b|\b(?:km|kms|kilomet(?:re|er)s?|miles)\b"
+        r"|\bmobile\b(?! (?:phone|app|number|data|plan)\b)"
+        r"|\bground\b.{0,20}\bcover\w*|\bcover\w*\b.{0,20}\b(?:ground|distance|"
+        r"kilomet\w*|km|kms|miles)\b|\b(?:kilomet\w*|km|kms|miles)\b.{0,20}\b(?:i|"
+        r"i['’]?ve|i have)\b.{0,10}\b(?:covered|done|walked|travel\w*|moved)\b)",
         re.IGNORECASE | re.DOTALL,
     ),
 )
@@ -1267,6 +1761,47 @@ _GPS_FEATURE_PATTERNS = _GPS_NAMED_FEATURE_PATTERNS + (
 # Bare "gps" and "location" are excluded so place-seeking or off-topic
 # questions ("weather at my GPS location") still need evidence intent.
 _FEATURE_MENTION_PATTERNS = _UNLOCK_FEATURE_PATTERNS + _GPS_NAMED_FEATURE_PATTERNS
+
+# Policy 0.4.0: common misspellings of the feature words ("mvoement",
+# "unlcoks", "movemnt"). A word of five or more letters counts as a feature
+# word when it differs from one by two swapped neighbouring letters or one
+# missing letter. An added letter is not accepted, so "unblock" never becomes
+# "unlock". Used only to find the feature, never for crisis or refusal rules.
+_FEATURE_WORDS = (
+    "movement", "movements", "mobility", "distance", "travelled", "traveled",
+    "travelling", "traveling", "unlock", "unlocks", "unlocked", "unlocking",
+)
+_WORD = re.compile(r"[A-Za-z]{5,}")
+
+
+def _is_feature_typo(word: str, target: str) -> bool:
+    if word == target:
+        return False
+    if len(word) == len(target):
+        diffs = [i for i, (a, b) in enumerate(zip(word, target)) if a != b]
+        return (
+            len(diffs) == 2
+            and diffs[1] == diffs[0] + 1
+            and word[diffs[0]] == target[diffs[1]]
+            and word[diffs[1]] == target[diffs[0]]
+        )
+    if len(word) == len(target) - 1:
+        return any(target[:i] + target[i + 1 :] == word for i in range(len(target)))
+    return False
+
+
+def _normalise_feature_typos(text: str) -> str:
+    def fix(match: re.Match[str]) -> str:
+        word = match.group(0)
+        lower = word.lower()
+        if lower in _FEATURE_WORDS:
+            return word
+        for target in _FEATURE_WORDS:
+            if _is_feature_typo(lower, target):
+                return target
+        return word
+
+    return _WORD.sub(fix, text)
 
 
 def infer_feature_from_question(question: str) -> str | None:
@@ -1282,7 +1817,7 @@ def infer_feature_from_question(question: str) -> str | None:
     only for older callers that explicitly choose their own default.
     """
 
-    clean_question = question.strip()
+    clean_question = _normalise_feature_typos(question.strip())
     matches_unlock = any(
         pattern.search(clean_question) for pattern in _UNLOCK_FEATURE_PATTERNS
     )
@@ -1343,6 +1878,37 @@ _EXPLICIT_WINDOW_PATTERNS = (
         r"\s+(?:the\s+)?(?:spring|summer|autumn|fall|winter)\b",
         re.IGNORECASE,
     ),
+    # Policy 0.4.0 (practice set v1): more named periods.
+    # Parts of a day ("this morning", "Friday night").
+    re.compile(
+        r"\b(?:this|last|yesterday|tomorrow|sunday|monday|tuesday|wednesday|"
+        r"thursday|friday|saturday) (?:morning|afternoon|evening|night|arvo|"
+        r"lunchtime)\b",
+        re.IGNORECASE,
+    ),
+    # A month with a day, or early / mid / late / "of" a month.
+    re.compile(
+        rf"\b(?:of|early|mid|late|end of|start of|beginning of|middle of)[ -]+"
+        rf"{_MONTH_NAME}\b"
+        rf"|\b\d{{1,2}}(?:st|nd|rd|th)?\s+(?:of\s+)?{_MONTH_NAME}\b"
+        rf"|\b{_MONTH_NAME}\s+\d{{1,2}}(?:st|nd|rd|th)?\b",
+        re.IGNORECASE,
+    ),
+    # The start, end or first week of a period; named breaks, holidays,
+    # exam periods and weeks of the academic year.
+    re.compile(
+        r"\b(?:since|from|during|over|across|in|through(?:out)?|before|after|"
+        r"around|until|till)\s+(?:the\s+)?(?:start|beginning|end|middle) of\b"
+        r"|\b(?:first|second|third|last|final) (?:week|weekend|day|fortnight|month) "
+        r"(?:of|in)\b"
+        r"|\b(?:easter|christmas|xmas|new year['’]?s?|mid-?(?:semester|sem|year|"
+        r"term)|winter|summer|spring|autumn|uni|university|exam|exams|school|"
+        r"holiday|semester|term|o-?week|orientation|study|stuvac|reading|teaching) "
+        r"(?:break|holidays?|period|week|weeks|season|vacation|vac)\b"
+        r"|\b(?:over|during|across|in|since|before|after) (?:the )?(?:holidays|"
+        r"break|exams|exam period|vacation|hols)\b",
+        re.IGNORECASE,
+    ),
 )
 
 
@@ -1354,6 +1920,14 @@ _EXPLICIT_WINDOW_PATTERNS = (
 _OBSERVED_WINDOW_PHRASES = re.compile(
     r"\b(?:the\s+)?(?:past|last|previous)\s+(?:couple(?:\s+of)?|two|2)\s+weeks?\b"
     r"|\b(?:the\s+)?(?:past|last|previous)\s+(?:fortnight|fourteen\s+days|14\s+days)\b",
+    re.IGNORECASE,
+)
+
+# Policy 0.4.0: a rate ("times a day", "unlocks per week") describes how often,
+# not a period, so it is removed before the explicit-window check.
+_RATE_PHRASES = re.compile(
+    r"\b(?:times|unlocks?|pick-?ups?|km|kms|kilomet(?:re|er)s|miles|metres|"
+    r"meters)\s+(?:a|an|per|each|every)\s+(?:day|week|night)\b",
     re.IGNORECASE,
 )
 
@@ -1378,9 +1952,10 @@ _GENERAL_UNCERTAINTY_PATTERNS = (
 def is_general_uncertainty_question(question: str) -> bool:
     """True for a feature-free question about the evidence's limitations."""
 
+    feature_text = _normalise_feature_typos(question)
     return any(p.search(question) for p in _GENERAL_UNCERTAINTY_PATTERNS) and not (
-        any(p.search(question) for p in _UNLOCK_FEATURE_PATTERNS)
-        or any(p.search(question) for p in _GPS_FEATURE_PATTERNS)
+        any(p.search(feature_text) for p in _UNLOCK_FEATURE_PATTERNS)
+        or any(p.search(feature_text) for p in _GPS_FEATURE_PATTERNS)
     )
 
 
@@ -1394,13 +1969,16 @@ def request_scope_rejection(
     Unknown feature IDs remain the API/Statistics owner's validation concern.
     """
 
-    window_text = _OBSERVED_WINDOW_PHRASES.sub(" ", question)
+    window_text = _RATE_PHRASES.sub(" ", _OBSERVED_WINDOW_PHRASES.sub(" ", question))
     if any(pattern.search(window_text) for pattern in _EXPLICIT_WINDOW_PATTERNS):
         return "unsupported_time_window"
+    feature_text = _normalise_feature_typos(question)
     matches_unlock = any(
-        pattern.search(question) for pattern in _UNLOCK_FEATURE_PATTERNS
+        pattern.search(feature_text) for pattern in _UNLOCK_FEATURE_PATTERNS
     )
-    matches_gps = any(pattern.search(question) for pattern in _GPS_FEATURE_PATTERNS)
+    matches_gps = any(
+        pattern.search(feature_text) for pattern in _GPS_FEATURE_PATTERNS
+    )
     if matches_unlock and matches_gps:
         return "ambiguous_feature_request"
     inferred = (
@@ -1417,6 +1995,7 @@ def request_scope_rejection(
 
 
 def _is_in_scope(question: str) -> bool:
+    question = _normalise_feature_typos(question)
     if any(pattern.search(question) for pattern in _CONTEXTUAL_IN_SCOPE_PATTERNS):
         return True
     if any(pattern.search(question) for pattern in _GENERAL_UNCERTAINTY_PATTERNS):

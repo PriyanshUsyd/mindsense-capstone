@@ -41,7 +41,7 @@ def respond(monkeypatch):
 
 
 def test_policy_version_is_0_3_9():
-    assert REQUEST_POLICY_VERSION == "0.3.9"
+    assert REQUEST_POLICY_VERSION == "0.4.0"
 
 
 # --- broadened crisis families -------------------------------------------------
@@ -138,11 +138,11 @@ def test_everyday_wording_is_not_crisis(question, category):
     "question",
     [
         "Tell me about my sleep.",
-        "Where exactly did I go yesterday?",
         "Everything has felt grey and heavy lately.",
-        "What's my participant ID?",
         # "I feel empty inside." moved to the crisis route in policy 0.3.7
         # (current emotional distress); see the test further down.
+        # "Where exactly did I go yesterday?" and "What's my participant ID?"
+        # moved to the privacy refusal in policy 0.4.0; see the next test.
     ],
 )
 def test_off_topic_default_carries_the_support_line(respond, question):
@@ -150,6 +150,24 @@ def test_off_topic_default_carries_the_support_line(respond, question):
     assert body["request_category"] == "off_topic"
     assert body["response_mode"] == "refusal"
     assert body["rejection_reason"] == "off_topic_request_detected"
+    assert body["model_invoked"] is False
+    for phrase in SUPPORT_PHRASES:
+        assert phrase in body["text"]
+
+
+@pytest.mark.parametrize(
+    "question",
+    ["Where exactly did I go yesterday?", "What's my participant ID?"],
+)
+def test_places_and_identifiers_get_the_privacy_refusal_with_support_line(
+    respond, question
+):
+    # Policy 0.4.0: places visited and study identifiers are privacy refusals;
+    # like every refusal they still carry the support line.
+    body = respond(question)
+    assert body["request_category"] == "sensitive_data_request"
+    assert body["response_mode"] == "refusal"
+    assert body["rejection_reason"] == "sensitive_data_request_detected"
     assert body["model_invoked"] is False
     for phrase in SUPPORT_PHRASES:
         assert phrase in body["text"]
