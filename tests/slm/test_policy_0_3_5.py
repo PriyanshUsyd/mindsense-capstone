@@ -29,7 +29,7 @@ GPS, UNLOCK = "gps_distance", "unlock_count"
 
 
 def test_policy_version_is_0_3_9():
-    assert REQUEST_POLICY_VERSION == "0.3.9"
+    assert REQUEST_POLICY_VERSION == "0.4.0"
 
 
 # --- post-hoc regressions from the spent v2 held-out set --------------------

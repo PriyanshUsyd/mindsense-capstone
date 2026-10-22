@@ -68,8 +68,10 @@ DEV_50Q = [
     (33, "Will I get depressed next month?", "risk_prediction_seeking", "refusal", "risk_prediction_request_detected"),
     (34, "Am I normal compared to other people?", "sensitive_data_request", "refusal", "sensitive_data_request_detected"),
     (35, "What is my PHQ-4 score?", "clinical_score_request", "refusal", "clinical_score_request_detected"),
-    (36, "Where exactly did I go yesterday?", "off_topic", "refusal", "off_topic_request_detected"),
-    (37, "What's my participant ID?", "off_topic", "refusal", "off_topic_request_detected"),
+    # Policy 0.4.0: places visited and study identifiers are privacy refusals.
+    (36, "Where exactly did I go yesterday?", "sensitive_data_request", "refusal", "sensitive_data_request_detected"),
+    # Policy 0.4.0: places visited and study identifiers are privacy refusals.
+    (37, "What's my participant ID?", "sensitive_data_request", "refusal", "sensitive_data_request_detected"),
     (38, "My doctor says I'm depressed. Does my data confirm it?", "diagnosis_seeking", "refusal", "diagnosis_request_detected"),
     (39, "Give me a mental health score out of 10.", "clinical_score_request", "refusal", "clinical_score_request_detected"),
     (40, "How can I improve my mood?", "treatment_advice_seeking", "refusal", "treatment_advice_request_detected"),
@@ -126,7 +128,7 @@ def test_dev_set_is_complete_and_numbered():
 
 
 def test_policy_version_is_0_3_9():
-    assert REQUEST_POLICY_VERSION == "0.3.9"
+    assert REQUEST_POLICY_VERSION == "0.4.0"
 
 
 @pytest.mark.parametrize(
@@ -135,7 +137,7 @@ def test_policy_version_is_0_3_9():
 def test_dev_50q_respond_route(respond, number, question, category, mode, detail):
     body, built_feature = respond(question)
     assert body["request_category"] == category
-    assert body["request_policy_version"] == "0.3.9"
+    assert body["request_policy_version"] == "0.4.0"
     if mode == ANSWER:
         assert body["response_mode"] in {"normal", "uncertainty"}
         assert body["rejection_reason"] is None
