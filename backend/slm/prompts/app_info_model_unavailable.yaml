@@ -1,0 +1,20 @@
+template_id: app_info_model_unavailable
+template_version: "1.0.0"
+response_mode: refusal
+allowed_claim_ids:
+  - non_diagnostic_boundary
+prohibited_claim_ids:
+  - diagnosis
+  - causal_explanation
+  - treatment_or_crisis_advice
+  - risk_prediction
+
+text: >
+  MindSense uses a model running locally for supported pattern answers. If
+  that model service is unavailable, it cannot generate those answers and
+  shows a fallback instead. Its fixed safety and app-information responses
+  do not require the model.
+
+review_note: >
+  Policy 0.5.0 informational response; no participant data is loaded for
+  this route.

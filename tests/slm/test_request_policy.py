@@ -167,7 +167,7 @@ def test_exact_evaluation_plan_diagnosis_question_stops_before_generation():
     )
     assert response.response_mode.value == "refusal"
     assert response.model_invoked is False
-    assert response.request_policy_version == REQUEST_POLICY_VERSION == "0.4.0"
+    assert response.request_policy_version == REQUEST_POLICY_VERSION == "0.5.0"
 
 
 # --- feature inference: which feature a question is actually about --------
@@ -180,16 +180,21 @@ def test_exact_evaluation_plan_diagnosis_question_stops_before_generation():
 
 
 @pytest.mark.parametrize(
-    "question",
+    "question,expected_feature",
     [
-        "How has my phone-unlock activity changed over the past couple of weeks?",
-        "Am I unlocking my phone more than usual?",
-        "Has my screen time gone up recently?",
-        "Is my phone pickup frequency different from my baseline?",
+        ("How has my phone-unlock activity changed over the past couple of weeks?", "unlock_count"),
+        ("Am I unlocking my phone more than usual?", "unlock_count"),
+        ("Has my screen time gone up recently?", None),
+        ("Is my phone pickup frequency different from my baseline?", "unlock_count"),
     ],
 )
-def test_unlock_related_questions_resolve_to_unlock_count(question):
-    assert infer_feature_from_question(question) == "unlock_count"
+def test_unlock_related_questions_resolve_to_only_tracked_measure(question, expected_feature):
+    assert infer_feature_from_question(question) == expected_feature
+    if expected_feature is None:
+        decision = classify_request(question)
+        assert decision.disposition == RequestDisposition.REFUSE
+        assert decision.category == RequestCategory.OFF_TOPIC
+        assert decision.support_line is True
 
 
 @pytest.mark.parametrize(

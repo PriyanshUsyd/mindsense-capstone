@@ -15,6 +15,7 @@ from backend.contracts.comparison_reasons import (
     STATE_C_TOO_FEW_RECORDED_DAYS,
 )
 from backend.contracts.evidence import EligibilityStatus, EvidencePacket, ResponseMode
+from backend.slm.category_router import CategoryRouterLabel, OllamaCategoryRouter
 from backend.slm.client import (
     GenerationMetrics,
     GenerationResult,
@@ -42,7 +43,9 @@ from backend.slm.request_policy import (
     RequestCategory,
     RequestDisposition,
     RequestPolicyDecision,
+    app_information_reason,
     classify_request,
+    deterministic_feature_id,
     is_general_uncertainty_question,
     request_scope_rejection,
 )
@@ -83,6 +86,27 @@ _PARTIAL_ANSWER_KINDS = {
     STATE_C_EVIDENCE_NOT_REPORTABLE: AnswerKind.NO_CLEAR_DIFFERENCE,
     STATE_C_TOO_FEW_RECORDED_DAYS: AnswerKind.FEW_RECENT_DAYS,
 }
+
+_ROUTER_REFUSALS = {
+    CategoryRouterLabel.INJECTION: (RequestCategory.PROMPT_INJECTION, "prompt_injection_detected"),
+    CategoryRouterLabel.SENSITIVE: (RequestCategory.SENSITIVE_DATA_REQUEST, "sensitive_data_request_detected"),
+    CategoryRouterLabel.DIAGNOSIS: (RequestCategory.DIAGNOSIS_SEEKING, "diagnosis_request_detected"),
+    CategoryRouterLabel.TREATMENT: (RequestCategory.TREATMENT_ADVICE_SEEKING, "treatment_advice_request_detected"),
+    CategoryRouterLabel.RISK: (RequestCategory.RISK_PREDICTION_SEEKING, "risk_prediction_request_detected"),
+    CategoryRouterLabel.CAUSE: (RequestCategory.CAUSAL_INFERENCE_SEEKING, "causal_inference_request_detected"),
+    CategoryRouterLabel.CLINICAL_SCORE: (RequestCategory.CLINICAL_SCORE_REQUEST, "clinical_score_request_detected"),
+}
+_REFUSAL_PRIORITY = (
+    RequestCategory.PROMPT_INJECTION,
+    RequestCategory.SENSITIVE_DATA_REQUEST,
+    RequestCategory.DIAGNOSIS_SEEKING,
+    RequestCategory.TREATMENT_ADVICE_SEEKING,
+    RequestCategory.RISK_PREDICTION_SEEKING,
+    RequestCategory.CAUSAL_INFERENCE_SEEKING,
+    RequestCategory.CLINICAL_SCORE_REQUEST,
+    RequestCategory.OFF_TOPIC,
+)
+_SCOPE_REASONS = {"unsupported_time_window", "ambiguous_feature_request"}
 
 
 def _generated_answer_kind(packet: EvidencePacket) -> AnswerKind | None:
@@ -133,13 +157,17 @@ class SLMService:
         crisis_fallback: LoadedFallbackPrompt | None = None,
         insufficient_data_template: LoadedFallbackPrompt | None = None,
         safety_screen: OllamaSafetyScreen | None = None,
+        category_router: OllamaCategoryRouter | None = None,
     ) -> None:
         self.client = client
         self.safety_screen = safety_screen
+        self.category_router = category_router
         # Deterministic yes/no results only, keyed by a hash of the question,
         # so /respond screens once across preflight and generation.
         self._screen_cache: OrderedDict[str, SafetyScreenLabel] = OrderedDict()
         self._screen_lock = threading.Lock()
+        self._router_cache: OrderedDict[str, CategoryRouterLabel] = OrderedDict()
+        self._router_lock = threading.Lock()
         self.generic_fallback = generic_fallback or load_fallback_prompt()
         self.crisis_fallback = crisis_fallback or load_fallback_prompt(
             DEFAULT_CRISIS_FALLBACK
@@ -198,6 +226,8 @@ class SLMService:
     ) -> SafeSLMResponse:
         if request_decision.disposition != RequestDisposition.ALLOW:
             return self._policy_response(request_decision)
+        if request_decision.reason_code in _SCOPE_REASONS:
+            return self._scope_response(request_decision, request_decision.reason_code)
         health = self.check_response_health(packet)
         if not health.healthy:
             return self._fallback(
@@ -300,6 +330,8 @@ class SLMService:
         decision, screen = self._classify(question)
         if decision.disposition != RequestDisposition.ALLOW:
             return _stamp(self._policy_response(decision), screen)
+        if decision.reason_code in _SCOPE_REASONS:
+            return _stamp(self._scope_response(decision, decision.reason_code), screen)
         if not feature_id and is_general_uncertainty_question(question):
             return _stamp(
                 self._template_response(
@@ -386,7 +418,16 @@ class SLMService:
             return decision, SafetyScreenLabel.SKIPPED
         label = self._screen(question.strip())
         if label in {SafetyScreenLabel.NO, SafetyScreenLabel.ERROR}:
-            return decision, label
+            if self.category_router is None or not (
+                decision.category == RequestCategory.OFF_TOPIC
+                or (
+                    decision.disposition == RequestDisposition.ALLOW
+                    and decision.reason_code not in _SCOPE_REASONS
+                )
+            ):
+                return decision, label
+            routed = self._route_uncertain(question.strip())
+            return self._apply_router(decision, routed, question), label
         return (
             RequestPolicyDecision(
                 disposition=RequestDisposition.CRISIS,
@@ -410,6 +451,102 @@ class SLMService:
                 while len(self._screen_cache) > 256:
                     self._screen_cache.popitem(last=False)
         return label
+
+    def _route_uncertain(self, question: str) -> CategoryRouterLabel | None:
+        key = hashlib.sha256(question.encode("utf-8")).hexdigest()
+        with self._router_lock:
+            cached = self._router_cache.get(key)
+        if cached is not None:
+            return cached
+        assert self.category_router is not None
+        routed = self.category_router.classify(question)
+        if routed is not None:
+            with self._router_lock:
+                self._router_cache[key] = routed
+                while len(self._router_cache) > 256:
+                    self._router_cache.popitem(last=False)
+        return routed
+
+    @staticmethod
+    def _apply_router(
+        decision: RequestPolicyDecision,
+        routed: CategoryRouterLabel | None,
+        question: str,
+    ) -> RequestPolicyDecision:
+        if routed is None:
+            return decision
+        if routed == CategoryRouterLabel.CRISIS:
+            return RequestPolicyDecision(
+                disposition=RequestDisposition.CRISIS,
+                category=RequestCategory.CRISIS_SELF_HARM,
+                reason_code="category_router_crisis",
+            )
+        if routed in _ROUTER_REFUSALS:
+            category, reason = _ROUTER_REFUSALS[routed]
+            if (
+                decision.disposition == RequestDisposition.REFUSE
+                and decision.category in _REFUSAL_PRIORITY
+                and _REFUSAL_PRIORITY.index(decision.category)
+                < _REFUSAL_PRIORITY.index(category)
+            ):
+                return decision
+            return RequestPolicyDecision(
+                disposition=RequestDisposition.REFUSE,
+                category=category,
+                reason_code=reason,
+                support_line=True,
+            )
+        if routed == CategoryRouterLabel.APP_INFO:
+            return RequestPolicyDecision(
+                disposition=RequestDisposition.REFUSE,
+                category=RequestCategory.APP_INFORMATION,
+                reason_code=app_information_reason(question) or "app_info_data_use",
+            )
+        if routed == CategoryRouterLabel.CAPABILITY:
+            return RequestPolicyDecision(
+                disposition=RequestDisposition.REFUSE,
+                category=RequestCategory.CAPABILITY_QUESTION,
+                reason_code="capability_question_detected",
+            )
+        if routed in {CategoryRouterLabel.TIME_WINDOW, CategoryRouterLabel.FEATURE_UNCLEAR}:
+            if (
+                decision.disposition == RequestDisposition.ALLOW
+                and deterministic_feature_id(question) is not None
+                and routed == CategoryRouterLabel.FEATURE_UNCLEAR
+            ):
+                return decision
+            if decision.category == RequestCategory.OFF_TOPIC and (
+                routed == CategoryRouterLabel.FEATURE_UNCLEAR
+                or deterministic_feature_id(question) is None
+            ):
+                return decision
+            return RequestPolicyDecision(
+                disposition=RequestDisposition.ALLOW,
+                category=RequestCategory.IN_SCOPE,
+                reason_code=(
+                    "unsupported_time_window"
+                    if routed == CategoryRouterLabel.TIME_WINDOW
+                    else "ambiguous_feature_request"
+                ),
+            )
+        if routed in {CategoryRouterLabel.IN_SCOPE_GPS, CategoryRouterLabel.IN_SCOPE_UNLOCKS}:
+            if decision.disposition != RequestDisposition.ALLOW:
+                return decision
+            expected = (
+                "gps_distance"
+                if routed == CategoryRouterLabel.IN_SCOPE_GPS
+                else "unlock_count"
+            )
+            return RequestPolicyDecision(
+                disposition=RequestDisposition.ALLOW,
+                category=RequestCategory.IN_SCOPE,
+                reason_code=(
+                    None
+                    if deterministic_feature_id(question) == expected
+                    else "ambiguous_feature_request"
+                ),
+            )
+        return decision
 
     def _policy_response(self, decision: RequestPolicyDecision) -> SafeSLMResponse:
         if decision.disposition == RequestDisposition.CRISIS:

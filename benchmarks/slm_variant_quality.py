@@ -241,7 +241,8 @@ def run_quality_comparison(
     service = service or create_local_service(model_tag=model_tag, timeout_seconds=180)
     original = service.client.transport
     observer = ObservedTransport(original)
-    service.client.transport = observer
+    original_screen = service.safety_screen
+    original_router = service.category_router
     result = {
         "schema_version": "1.0.0",
         "protocol_version": "week9-public-variant-quality-1",
@@ -265,11 +266,19 @@ def run_quality_comparison(
             "warmup": "none; first actual generation recorded separately",
             "timing": "SLM runner only, excluding HTTP, CES construction and human time",
             "duplicate_evidence": "plan_q1 and plan_q7 share unlock_eligible",
+            "classification_runtime": (
+                "not_run_in_injected_transport" if injected else "live_ollama"
+            ),
         },
         "records": [],
     }
     model_calls = 0
     try:
+        service.client.transport = observer
+        if injected:
+            # An injected generator must not silently call a live classifier.
+            service.safety_screen = None
+            service.category_router = None
         for repetition in range(REPETITIONS):
             variants = list(VariantKind)
             order = variants[repetition:] + variants[:repetition]
@@ -315,6 +324,8 @@ def run_quality_comparison(
                     on_checkpoint(result)
     finally:
         service.client.transport = original
+        service.safety_screen = original_screen
+        service.category_router = original_router
     result["summaries"] = {
         v.value: summarize_variant(
             [r for r in result["records"] if r["variant"] == v.value]

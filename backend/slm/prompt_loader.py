@@ -141,6 +141,7 @@ DEFAULT_APP_INFORMATION_TEMPLATES = {
     reason_code: Path(__file__).resolve().parent / "prompts" / f"{reason_code}.yaml"
     for reason_code in (
         "app_info_data_use",
+        "app_info_model_unavailable",
         "app_info_data_storage",
         "app_info_uncertain_evidence",
         "app_info_baseline_unavailable",

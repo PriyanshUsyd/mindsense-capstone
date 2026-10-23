@@ -123,15 +123,14 @@ def test_template_text_is_nonempty(template):
     )
 
 
-def test_generic_fallback_does_not_contain_crisis_resources():
-    """The generic fallback must not accidentally contain crisis-line
-    content — that's the crisis template's job specifically, and mixing
-    them would blur the two required distinct templates."""
+def test_generic_fallback_has_support_line_without_crisis_specific_resources():
+    """Non-answers include support contacts without becoming crisis messages."""
     with open(TEMPLATE_DIR / "generic_fallback.yaml", "r", encoding="utf-8") as f:
         data = yaml.safe_load(f)
     text_lower = data["text"].lower()
-    assert "988" not in text_lower
-    assert "lifeline" not in text_lower
+    assert "13 11 14" in text_lower
+    assert "000" in text_lower
+    assert "1800respect" not in text_lower
 
 
 def test_crisis_aware_contains_real_helpline_reference():

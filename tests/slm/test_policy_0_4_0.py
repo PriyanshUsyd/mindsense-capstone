@@ -24,7 +24,7 @@ C = RequestCategory
 
 
 def test_policy_version_is_0_4_0():
-    assert REQUEST_POLICY_VERSION == "0.4.0"
+    assert REQUEST_POLICY_VERSION == "0.5.0"
 
 
 def _category(question: str) -> RequestCategory:
@@ -410,7 +410,7 @@ def test_raw_location_request_is_refused_with_support_line(client):
     assert body["request_category"] == "sensitive_data_request"
     assert body["response_mode"] == "refusal"
     assert body["model_invoked"] is False
-    assert body["request_policy_version"] == "0.4.0"
+    assert body["request_policy_version"] == "0.5.0"
     assert "13 11 14" in body["text"] and "000" in body["text"]
 
 

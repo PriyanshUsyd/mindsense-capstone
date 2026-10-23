@@ -28,7 +28,7 @@ from enum import Enum
 
 from pydantic import BaseModel, ConfigDict
 
-REQUEST_POLICY_VERSION = "0.4.0"
+REQUEST_POLICY_VERSION = "0.5.0"
 
 _logger = logging.getLogger(__name__)
 
@@ -771,6 +771,13 @@ _PROHIBITED_PATTERNS: tuple[
                 r"instructions)\b",
                 re.IGNORECASE,
             ),
+            re.compile(
+                r"\b(?:ignore|skip|set aside|drop|bypass) (?:the |your |any )?"
+                r"(?:normal |usual |existing )?(?:constraints|safeguards|refusal layer)\b"
+                r"|\b(?:maintainer|administrator|developer|owner)\b.{0,90}"
+                r"\b(?:higher priority|override|follow my instructions|supersede)\b",
+                re.IGNORECASE | re.DOTALL,
+            ),
         ),
     ),
     (
@@ -865,6 +872,14 @@ _PROHIBITED_PATTERNS: tuple[
                 r"|\bwhat (?:do|might|could) i have\s*[?.!]*\s*$",
                 re.IGNORECASE,
             ),
+            re.compile(
+                r"\b(?:does (?:this|that|it) make me|am i|is it)\b.{0,35}"
+                r"\b(?:neurodivergent|agoraphobi\w*|addict(?:ed|ion)?|"
+                r"autis\w*|bipolar|adhd|ptsd|ocd)\b"
+                r"|\b(?:label|classify|identify|describe) me as\b.{0,25}"
+                r"\b(?:addict\w*|disorder\w*|mentally ill|neurodivergent)\b",
+                re.IGNORECASE,
+            ),
         ),
     ),
     (
@@ -916,6 +931,24 @@ _PROHIBITED_PATTERNS: tuple[
                 r"(?:scores?|results?|ratings?|totals?)\b",
                 re.IGNORECASE,
             ),
+            re.compile(
+                r"\b(?:mental[- ]health|depression|anxiety|mood|well[- ]?being)\b"
+                r".{0,35}\b(?:questionnaire|screening|survey|assessment|form)\b"
+                r".{0,35}\b(?:values?|results?|numbers?|scores?)\b"
+                r"|\b(?:anxiety|depression|mental[- ]health) screening "
+                r"(?:values?|results?|numbers?|scores?)\b",
+                re.IGNORECASE,
+            ),
+            re.compile(
+                r"\b(?:raw )?(?:values?|results?|numbers?|scores?) from "
+                r"(?:my |the )?(?:mental[- ]health|depression|anxiety) "
+                r"(?:questionnaire|screening|survey|assessment|form)\b"
+                r"|\b(?:score|rating|value|result) (?:i got|on (?:that|my|the))\b"
+                r".{0,45}\b(?:depression|anxiety|mental[- ]health)\b"
+                r"|\b(?:depression|anxiety|mental[- ]health) (?:form|survey|"
+                r"questionnaire|screening)\b.{0,25}\b(?:score|value|result|number)\b",
+                re.IGNORECASE,
+            ),
         ),
     ),
     (
@@ -946,7 +979,7 @@ _PROHIBITED_PATTERNS: tuple[
             ),
             # Policy 0.3.4: plans and recommendations ("suggest a coping plan").
             re.compile(
-                r"\b(?:recommend|suggest|prescribe|give me|make me|design|create|write) "
+                r"\b(?:recommend|suggest|prescribe|give me|make me|make|design|create|write) "
                 r"(?:me )?(?:a |an |some |my )?(?:personal(?:ised|ized)? )?"
                 r"(?:treatment|therapy|medication|medicine|recovery|care|coping|"
                 r"self[- ]care|wellness|mental[- ]health) "
@@ -995,8 +1028,11 @@ _PROHIBITED_PATTERNS: tuple[
                 r"|\bwhat (?:should|can|could|do|would you suggest) i (?:do|try) "
                 r"about\b"
                 r"|\bwhat (?:should|can|could) i do (?:now|next|to fix)\b"
-                r"|\bhow (?:do|can|should|could) i (?:treat|fix|cure|get help|get "
-                r"treatment|get (?:some )?support)\b",
+                r"|\bhow (?:do|can|should|could) i (?:treat|cure|get help|get "
+                r"treatment|get (?:some )?support)\b"
+                r"|\bhow (?:do|can|should|could) i fix (?:my |this |the )?"
+                r"(?:mood|anxiety|depression|stress|panic|mental health|"
+                r"symptoms|feelings)\b",
                 re.IGNORECASE,
             ),
             # Policy 0.4.0 (practice set v1): advice by meaning. What helps or
@@ -1147,6 +1183,12 @@ _PROHIBITED_PATTERNS: tuple[
                 r"things|life|it|this)\b.{0,30}\b(?:look|be|end up|feel) like\b",
                 re.IGNORECASE | re.DOTALL,
             ),
+            re.compile(
+                r"\b(?:future|later|long[- ]term) (?:health |well[- ]?being )?risk\b"
+                r"|\b(?:risk|danger|likelihood|chances?)\b.{0,45}"
+                r"\b(?:imply|suggest|predict|indicate)\b",
+                re.IGNORECASE,
+            ),
         ),
     ),
     (
@@ -1154,7 +1196,8 @@ _PROHIBITED_PATTERNS: tuple[
         "causal_inference_request_detected",
         (
             re.compile(
-                r"\b(?:did|does|can|could|will).{0,80}\b(?:cause|caused|make|made|lead to|result in)\b",
+                r"\b(?:did|does|can|could|will).{0,80}\b(?:cause|caused|"
+                r"make (?:me|my)|made (?:me|my|the)|lead to|result in)\b",
                 re.IGNORECASE,
             ),
             re.compile(r"\bwhy did.{0,80}\b(?:cause|make)\b", re.IGNORECASE),
@@ -1230,6 +1273,14 @@ _PROHIBITED_PATTERNS: tuple[
                 r"scroll\w*|withdraw\w*|isolat\w*|avoid\w*|less|more|so|restless|"
                 r"anxious|tired|lazy|sad|low|down|stressed|worse|lonely))\b",
                 re.IGNORECASE | re.DOTALL,
+            ),
+            re.compile(
+                r"\b(?:was|is|could|might) (?:it|this|that)\b.{0,85}"
+                r"\b(?:that )?(?:made|caused|changed|increased|decreased)\b"
+                r"|\b(?:made|caused|changed) (?:the |my )?(?:distance|movement|"
+                r"unlocks?|phone[- ]?use)\b.{0,35}\b(?:larger|smaller|higher|lower|"
+                r"more|less|increase|decrease)\b",
+                re.IGNORECASE,
             ),
         ),
     ),
@@ -1343,6 +1394,23 @@ _PROHIBITED_PATTERNS: tuple[
                 r"(?:id|ids|number|identifier|code|uid)\b",
                 re.IGNORECASE | re.DOTALL,
             ),
+            re.compile(
+                r"\b(?:their|his|her|someone else['’]?s|another person['’]?s) "
+                r"(?:phone|gps|movement|location|unlock|tracked|sensing)\b.{0,35}"
+                r"\b(?:data|activity|history|counts?|readings?|records?|paths?|"
+                r"unlocks?)\b"
+                r"|\b(?:export|share|show|send|pull|download)\b.{0,50}"
+                r"\b(?:group['’]?s?|class['’]?s?|cohort['’]?s?|others['’]?|"
+                r"everyone['’]?s?)\b.{0,30}\b(?:gps|location|movement|"
+                r"data|paths?|readings?)\b"
+                r"|\b(?:their|his|her|someone else['’]?s|another person['’]?s) "
+                r"(?:phone unlocks?|gps paths?|location|tracked data)\b"
+                r"|\b(?:our|the|a) (?:whole |entire )?(?:group|class|cohort)"
+                r"['’]?s? (?:gps|location|movement|sensing) (?:paths?|data|records?)\b"
+                r"|\b\d{1,5} [a-z][a-z -]{2,35} "
+                r"(?:street|st|road|rd|lane|ln|avenue|ave|drive|dr)\b",
+                re.IGNORECASE | re.DOTALL,
+            ),
         ),
     ),
 )
@@ -1406,6 +1474,17 @@ _CAPABILITY_PATTERNS = (
         r"|\bwhat(?:['’]s| is) possible (?:here|with (?:you|this app|mindsense))\b",
         re.IGNORECASE,
     ),
+    re.compile(
+        r"\b(?:are|is) (?:these |the |your )?(?:answers?|replies|messages?) "
+        r"(?:coming )?from (?:a |an )?(?:real )?(?:person|human|bot|ai)\b"
+        r"|\b(?:do|can) you (?:know|understand|remember) (?:what['’]?s |what is )?"
+        r"(?:happening |going on )?(?:in my life|about me|my context|earlier chats?)\b"
+        r"|\b(?:do|can) you (?:know|understand|remember) context "
+        r"from earlier chats?\b"
+        r"|\b(?:after|when) i (?:reopen|restart|close) (?:the |this )?"
+        r"(?:page|app|chat)\b.{0,40}\b(?:remember|context|history)\b",
+        re.IGNORECASE,
+    ),
 )
 
 # Policy 0.3.3 (dev Q9/Q10/Q19/Q20): questions about the app itself get a
@@ -1461,6 +1540,17 @@ _APP_INFORMATION_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
             r"\bwhat (?:data|information|sensors?) (?:do|does) (?:you|mindsense|the app|"
             r"this app) (?:use|collect|look at|need)\b"
             r"|\bwhat data is used\b",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "app_info_model_unavailable",
+        re.compile(
+            r"\bwhat happens\b.{0,35}\b(?:ollama|local model|model service|"
+            r"inference service)\b.{0,30}\b(?:unavailable|not available|offline|"
+            r"down|stopped)\b"
+            r"|\b(?:ollama|local model|model service|inference service)\b"
+            r".{0,25}\b(?:unavailable|not available|offline|down|stopped)\b",
             re.IGNORECASE,
         ),
     ),
@@ -1631,6 +1721,13 @@ _EVIDENCE_INTENT_PATTERNS = (
 )
 _CONTEXTUAL_IN_SCOPE_PATTERNS = (
     re.compile(r"\bwhat changed\b", re.IGNORECASE),
+    re.compile(
+        r"^\s*(?:is there |has there been )?anything different (?:for me )?"
+        r"(?:lately|recently|in my data)?\s*[?.!]*\s*$"
+        r"|^\s*what about my (?:gps|location) (?:data |readings? )?"
+        r"(?:lately|recently)?\s*[?.!]*\s*$",
+        re.IGNORECASE,
+    ),
     # Policy 0.3.8: "has anything (about me) changed?" names no feature, so
     # preflight asks "movement or phone unlocks?" instead of refusing it.
     re.compile(
@@ -1692,6 +1789,17 @@ _CONTEXTUAL_IN_SCOPE_PATTERNS = (
         r"stats|patterns)\b",
         re.IGNORECASE,
     ),
+    re.compile(
+        r"\b(?:headline|overview|summary|recap) (?:from|of) my "
+        r"(?:data|numbers|readings|patterns)\b"
+        r"|\bcompar(?:e|ing) (?:now|lately|recently) with my usual\b"
+        r"|\b(?:last|this|past) fortnight different for me\b"
+        r"|\banything worth noticing in (?:the|my) "
+        r"(?:readings|data|numbers|patterns)\b"
+        r"|\b(?:i['’]m|i am) doing (?:more or less|less or more) lately\b"
+        r"|\b(?:can|could|would) you point out (?:the|a|any) change\b",
+        re.IGNORECASE,
+    ),
 )
 
 
@@ -1707,8 +1815,12 @@ DEFAULT_FEATURE_ID = "gps_distance"
 _UNLOCK_FEATURE_PATTERNS = (
     re.compile(r"\bunlock(?:s|ed|ing)?\b", re.IGNORECASE),
     re.compile(r"\bphone (?:use|usage|activity)\b", re.IGNORECASE),
-    re.compile(r"\bscreen time\b", re.IGNORECASE),
     re.compile(r"\bpick(?:s|ed|ing)?[- ]?up(?:s)?\b", re.IGNORECASE),
+    re.compile(
+        r"\bphone[- ]?(?:openings?|checks?|checking|check[- ]?ins?)\b"
+        r"|\b(?:number|count|frequency|total) of (?:my )?phone openings?\b",
+        re.IGNORECASE,
+    ),
     # Policy 0.3.3 (dev Q16): everyday wording for phone use.
     re.compile(r"\b(?:on|use|used|using) my phone\b", re.IGNORECASE),
     # Policy 0.4.0: checking, opening, grabbing or picking up the phone.
@@ -1909,6 +2021,17 @@ _EXPLICIT_WINDOW_PATTERNS = (
         r"break|exams|exam period|vacation|hols)\b",
         re.IGNORECASE,
     ),
+    re.compile(
+        r"\b(?:when|back when) i (?:began|started|joined|lived|was living|"
+        r"first came to)\b"
+        r"|\b(?:at|from|since) the (?:start|beginning|end) of "
+        r"(?:university|uni|college|school|the course|the programme|the program)\b"
+        r"|\b(?:last|previous|first|earlier|whole|entire) (?:academic |uni |"
+        r"university )?(?:year|semester|term|christmas|xmas)\b"
+        r"|\b(?:during|in|across) (?:the )?(?:first|final|last) "
+        r"(?:academic )?(?:term|semester|year)(?: of \d{4})?\b",
+        re.IGNORECASE,
+    ),
 )
 
 
@@ -1919,7 +2042,8 @@ _EXPLICIT_WINDOW_PATTERNS = (
 # the question (e.g. "past 3 days", "last month", "yesterday") still refuses.
 _OBSERVED_WINDOW_PHRASES = re.compile(
     r"\b(?:the\s+)?(?:past|last|previous)\s+(?:couple(?:\s+of)?|two|2)\s+weeks?\b"
-    r"|\b(?:the\s+)?(?:past|last|previous)\s+(?:fortnight|fourteen\s+days|14\s+days)\b",
+    r"|\b(?:the\s+)?(?:past|last|previous)\s+(?:fortnight|fourteen\s+days|14\s+days)\b"
+    r"|\b(?:these|this)\s+(?:two\s+weeks?|fortnight)\b",
     re.IGNORECASE,
 )
 
@@ -1994,6 +2118,17 @@ def request_scope_rejection(
     return None
 
 
+def deterministic_feature_id(question: str) -> str | None:
+    """Return a feature only when the existing rules identify exactly one."""
+
+    feature_text = _normalise_feature_typos(question)
+    unlock = any(pattern.search(feature_text) for pattern in _UNLOCK_FEATURE_PATTERNS)
+    gps = any(pattern.search(feature_text) for pattern in _GPS_FEATURE_PATTERNS)
+    if unlock == gps:
+        return None
+    return "unlock_count" if unlock else "gps_distance"
+
+
 def _is_in_scope(question: str) -> bool:
     question = _normalise_feature_typos(question)
     if any(pattern.search(question) for pattern in _CONTEXTUAL_IN_SCOPE_PATTERNS):
@@ -2047,6 +2182,55 @@ def normalise_informal_spelling(text: str) -> str:
     return text
 
 
+_ABUSE_CRISIS_PATTERNS = (
+    re.compile(
+        r"\b(?:partner|boyfriend|girlfriend|husband|wife|spouse|ex|flatmate|"
+        r"housemate|roommate|dad|father|mum|mother|someone at home)\b"
+        r".{0,100}\b(?:hurt|hurting|hit|hitting|punched?|shoved?|pushed?|"
+        r"grabbed?|choked?|strangled?|threaten\w*|control\w*|pinned)\b",
+        re.IGNORECASE | re.DOTALL,
+    ),
+    re.compile(
+        r"\b(?:hurt|hurting|hit|hitting|punched?|shoved?|pushed?|grabbed?|"
+        r"choked?|strangled?|threaten\w*|control\w*|pinned)\b"
+        r".{0,45}\b(?:me|my arm|my wrists|my neck|my throat)\b",
+        re.IGNORECASE | re.DOTALL,
+    ),
+    re.compile(
+        r"\b(?:not safe|unsafe|don['’]?t feel safe|scared|afraid|frightened)\b"
+        r".{0,70}\b(?:at home|in my (?:flat|house|room)|going home|go back|"
+        r"in our place)\b",
+        re.IGNORECASE | re.DOTALL,
+    ),
+    re.compile(
+        r"\b(?:friend|mate|sister|brother|housemate|flatmate)\b"
+        r".{0,85}\b(?:self[- ]harm|hurt(?:ing)? (?:themselves|herself|himself)|"
+        r"fresh cuts|overdos\w*|swallow\w* (?:pills|tablets)|better off dead)\b",
+        re.IGNORECASE | re.DOTALL,
+    ),
+)
+
+_UNTRACKED_MEASURE_PATTERNS = (
+    re.compile(
+        r"\b(?:step counts?|steps?|sleep(?:ing)? (?:hours?|time|duration|pattern)|"
+        r"hours? asleep|screen time|display time|time (?:spent )?(?:on|looking at) "
+        r"(?:my |the )?(?:phone )?(?:screen|display)|time (?:did i |do i |i )?"
+        r"spend looking at (?:my |the )?(?:phone )?(?:screen|display)|"
+        r"blood pressure|heart rate|"
+        r"calories|weight)\b",
+        re.IGNORECASE,
+    ),
+)
+
+_THIRD_PARTY_IDENTIFIERS = re.compile(
+    r"^(?=.*\b(?:people|students?|participants?|classmates?|cohort|seminar|"
+    r"group)\b)(?=.*\b(?:names?|identify|identities|who|which person)\b)"
+    r"(?=.*\b(?:scores?|data|readings?|well[- ]?being|gps|locations?|"
+    r"unlocks?|check[- ]?ins?)\b)",
+    re.IGNORECASE | re.DOTALL,
+)
+
+
 def classify_request(question: str) -> RequestPolicyDecision:
     """Classify one untrusted question without inspecting participant data."""
 
@@ -2057,6 +2241,12 @@ def classify_request(question: str) -> RequestPolicyDecision:
             disposition=RequestDisposition.CRISIS,
             category=RequestCategory.CRISIS_SELF_HARM,
             reason_code="crisis_language_detected",
+        )
+    if any(pattern.search(crisis_text) for pattern in _ABUSE_CRISIS_PATTERNS):
+        return RequestPolicyDecision(
+            disposition=RequestDisposition.CRISIS,
+            category=RequestCategory.CRISIS_SELF_HARM,
+            reason_code="violence_or_safety_language_detected",
         )
     # Policy 0.3.7: current emotional distress, with the crisis rules and
     # before diagnosis, so "I feel very depressed" is not a diagnosis refusal.
@@ -2073,6 +2263,16 @@ def classify_request(question: str) -> RequestPolicyDecision:
             disposition=RequestDisposition.CRISIS,
             category=RequestCategory.CRISIS_SELF_HARM,
             reason_code="help_seeking_detected",
+        )
+
+    if _THIRD_PARTY_IDENTIFIERS.search(clean_question) and not any(
+        pattern.search(clean_question) for pattern in _PROHIBITED_PATTERNS[0][2]
+    ):
+        return RequestPolicyDecision(
+            disposition=RequestDisposition.REFUSE,
+            category=RequestCategory.SENSITIVE_DATA_REQUEST,
+            reason_code="sensitive_data_request_detected",
+            support_line=True,
         )
 
     for category, reason_code, patterns in _PROHIBITED_PATTERNS:
@@ -2105,6 +2305,24 @@ def classify_request(question: str) -> RequestPolicyDecision:
             disposition=RequestDisposition.REFUSE,
             category=RequestCategory.APP_INFORMATION,
             reason_code=app_information,
+        )
+
+    if any(pattern.search(clean_question) for pattern in _UNTRACKED_MEASURE_PATTERNS):
+        return RequestPolicyDecision(
+            disposition=RequestDisposition.REFUSE,
+            category=RequestCategory.OFF_TOPIC,
+            reason_code="off_topic_request_detected",
+            support_line=True,
+        )
+
+    if (
+        deterministic_feature_id(clean_question) is not None
+        and request_scope_rejection(clean_question) == "unsupported_time_window"
+    ):
+        return RequestPolicyDecision(
+            disposition=RequestDisposition.ALLOW,
+            category=RequestCategory.IN_SCOPE,
+            reason_code="unsupported_time_window",
         )
 
     if not clean_question or not _is_in_scope(clean_question):

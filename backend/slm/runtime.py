@@ -13,6 +13,7 @@ from backend.slm.client import (
     OllamaClient,
     OllamaClientConfig,
 )
+from backend.slm.category_router import OllamaCategoryRouter
 from backend.slm.safety_screen import OllamaSafetyScreen
 from backend.slm.service import SLMService
 
@@ -96,4 +97,8 @@ def create_local_service(
     )
     # Policy 0.3.5: the Ollama runtime screens every non-crisis message with
     # the same pinned model before routing; the demo stub does not.
-    return SLMService(OllamaClient(config), safety_screen=OllamaSafetyScreen(config))
+    return SLMService(
+        OllamaClient(config),
+        safety_screen=OllamaSafetyScreen(config),
+        category_router=OllamaCategoryRouter(config),
+    )

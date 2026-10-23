@@ -40,7 +40,7 @@ def test_crisis_fallback_loads_with_safe_yaml():
     loaded = load_fallback_prompt(DEFAULT_CRISIS_FALLBACK)
 
     assert loaded.manifest.template_id == "crisis_aware_fallback"
-    assert loaded.manifest.template_version == "1.1.0"
+    assert loaded.manifest.template_version == "1.2.0"
     assert loaded.manifest.text.strip()
 
 
