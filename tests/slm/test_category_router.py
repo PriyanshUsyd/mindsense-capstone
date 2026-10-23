@@ -112,7 +112,9 @@ def test_in_scope_without_feature_gets_clarification_without_router(monkeypatch)
     router = StubRouter(RouterLabel.RISK)
     service = SLMService(MustNotGenerate(), category_router=router)
 
-    response = service.preflight_response("Synthetic in-scope feature ambiguity")
+    response = service.preflight_response(
+        "Synthetic in-scope feature ambiguity", require_feature=True
+    )
 
     assert response is not None
     assert response.rejection_reason == "ambiguous_feature_request"

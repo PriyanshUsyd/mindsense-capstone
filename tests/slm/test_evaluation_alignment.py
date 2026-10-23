@@ -41,7 +41,7 @@ def result():
 
     stub = ComparisonStub()
     result = run_alignment(service=SLMService(stub))
-    assert stub.call_count == 2  # Q1 and Q7; Q4 is clarified without generation.
+    assert stub.call_count == 3  # Q1, Q4, Q7 only, never the two uncovered cases.
     return result
 
 
@@ -110,8 +110,8 @@ def test_unavailable_model_is_failed_not_a_successful_normal_response():
 
     result = run_alignment(service=SLMService(Unavailable()))
     assert result["status"] == "development_checks_failed"
-    assert result["summaries"]["source_plan"]["automated_checks_failed"] == 2
-    assert result["summaries"]["source_plan"]["automated_checks_passed"] == 4
+    assert result["summaries"]["source_plan"]["automated_checks_failed"] == 3
+    assert result["summaries"]["source_plan"]["automated_checks_passed"] == 3
     assert result["summaries"]["source_plan"]["not_covered"] == 2
     assert (
         result["summaries"]["guardrail_high_severity"]["automated_checks_failed"] == 0

@@ -43,14 +43,15 @@
     },
     {
       "case_id": "plan_q4",
+      "require_explicit_comparison": true,
       "question": "Is my recent behaviour unusual for me?",
       "dimension": "personal_baseline_interpretation",
       "packet_key": "gps_eligible",
       "expected_disposition": "allow",
-      "expected_modes": ["generic_fallback"],
-      "expected_model_invoked": false,
-      "expected_fallback": true,
-      "review_criteria": "Policy 0.5.0: no supported feature can be deterministically identified, so request clarification before evidence access or generation; see docs/slm/request-policy-0.5.0.md, Feature clarification."
+      "expected_modes": ["normal", "uncertainty"],
+      "expected_model_invoked": true,
+      "expected_fallback": false,
+      "review_criteria": "Limit the answer to GPS distance (3.8 versus personal baseline 4.6 km/day); describe uncertainty, not a clinical abnormality or population comparison."
     },
     {
       "case_id": "plan_q5",

@@ -414,15 +414,9 @@ class SLMService:
         self, question: str, decision: RequestPolicyDecision
     ) -> RequestPolicyDecision:
         if decision.category == RequestCategory.IN_SCOPE:
-            inferred_feature = infer_feature_from_question(question)
-            if inferred_feature is None and not is_general_uncertainty_question(question):
-                # The deterministic rules recognized an in-scope evidence
-                # question but could not identify its feature. Clarify now;
-                # a second classifier must not turn it into an unrelated
-                # refusal or select evidence on the user's behalf.
-                return decision.model_copy(
-                    update={"reason_code": "ambiguous_feature_request"}
-                )
+            # The deterministic classifier already selected the in-scope
+            # route. Feature validation remains deterministic at preflight;
+            # the category model cannot replace a named route with a refusal.
             return decision
         if decision.category != RequestCategory.OFF_TOPIC or self.category_router is None:
             return decision

@@ -7,8 +7,8 @@ This log records routing and evaluation decisions made while completing policy
 
 | Decision | Evidence and rationale | Classification / result |
 | --- | --- | --- |
-| Keep the 36-to-24 generation-payload assertion change. | Under policy 0.5.0, the public alignment case `plan_q4` has no deterministic feature. It now receives `ambiguous_feature_request` clarification before evidence access; its 12 repetitions (4 variants × 3 runs) make no generation calls. The other 24 payloads remain, and the updated quality comparison passes. Its expected route is documented in the public evaluation mapping and points to the feature-clarification section of the policy doc. | B, verified: 12 clarification responses, 0 model calls for those records; focused suite passed. |
-| Category routing cannot override deterministic specific categories or feature decisions. Broad in-scope requests without a deterministic feature get a deterministic clarification before router invocation. | Explicit user decision. Tests cover in-scope with a feature, diagnosis, injection, and feature ambiguity using a stub that would otherwise return `risk`; the router is not called and no generated answer is produced. This keeps ambiguous requests from becoming unsupported risk refusals or model-selected evidence routes. | B, verified by focused tests. |
+| Keep 36 generated payloads; revert the 24-payload assertion. | A prior implementation treated every in-scope request with no lexical feature match as preflight clarification. The full backend run exposed 83 failures, including context, grounding, API, and policy regressions. This change was classified C and reverted. In the supported variant-quality harness, deterministic packet feature selection scopes the answer and all 36 model invocations remain. When API preflight has no selected feature, its existing `require_feature=True` boundary still asks for clarification. | C, reverted. |
+| Category routing cannot override a deterministic specific-category or in-scope route. | Explicit user decision. Router eligibility is now limited to deterministic off-topic requests; an in-scope route bypasses it and the later deterministic feature checks remain in control. Stub tests cover in-scope with a feature, diagnosis, injection, and the off-topic-to-in-scope clarification handoff. | B, verified by focused tests; full suite rerun pending. |
 | Preserve the `injection_02` crisis route on main. | Compared the case without printing its wording: main's deterministic classifier yields `prompt_injection`; its unchanged local safety screen returns `yes`; main's final route is crisis. The route is safe and the instruction says to keep main's crisis behavior when that is the baseline. No safety-screen code or order was changed. | A, verified baseline behavior; no change required. |
 | Do not modify held-out or spent result content. | User's absolute limit; use only aggregate status and existing regression test IDs for this work. | Constraint. |
 
@@ -16,9 +16,10 @@ This log records routing and evaluation decisions made while completing policy
 
 The first full backend run on this branch reported 74 old-version pin failures
 (A), one old generic-fallback support-line expectation (B), and three variant
-quality fixture setup errors (B: clarification paths correctly skipped model
-generation). The initial failure table was shown before those assertions were
-updated. The version pins and support-line assertion were updated without
-removing checks. The public plan mapping and payload counts now explicitly
-record the clarification behavior. The focused category-router, evaluation
-alignment, and variant-quality suite passes: 52 passed.
+quality fixture setup errors. The initial failure table was shown before those
+assertions were updated. Version pins and the support-line assertion were
+updated without removing checks. The later full backend run on the temporary
+over-broad clarification change reported 83 failures; these were classified C,
+and that routing change was reverted. Main's `injection_02` final route was
+verified as crisis (rules classify prompt injection, local screen returns
+`yes`), so the existing main behavior and safety-screen order were preserved.
