@@ -90,3 +90,12 @@ The corrected B3 full suite passed: 1,707 passed, 23 skipped, 0 failed, 78
 warnings. Frontend checks also passed: Vitest 97/97; oxlint; TypeScript/Vite production
 build; npm audit (0 vulnerabilities). The prior failing run's 3 C regressions were
 fixed before the passing rerun.
+
+B8 results report records measured train and validation metrics, the full B3
+verification, failure classes, and explicit B7 items not run. The dev-50 spent
+regression suite passed in the full suite. No separate v1-v6/client-v1 spent
+comparison was performed because corresponding before/after snapshots were not
+available; no spent sets were opened, altered, or used for tuning. Grounding
+unit checks passed, but separate independent answer-corpus grounding, 60 x
+three-server stability, and dedicated router latency measurements remain not
+run. Accuracy thresholds remain unmet, so the report labels the work unfinished.
