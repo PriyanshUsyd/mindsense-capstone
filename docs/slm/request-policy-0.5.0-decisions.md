@@ -63,3 +63,15 @@ was below the prior best train round (79.5%, critical 76%, support 100%), so
 the prompt alone was reverted to 0.5.2. Deterministic boundary rule changes
 were retained. A fresh independent 100-question validation_2 was then prepared
 and hashed before execution; it is the single run after that fix round.
+
+Validation_2 was hash-checked immediately before the single production preflight run
+(SHA-256 `c328aba2730bea3ced5f1017b941fade44590540fea11ceb37580424256147c4`). It scored
+81/100 (81.0%) route-plus-tag, critical 41/52 (78.8%), with required support-line
+checks 84/88 (95.5%). These measurements miss the targets. No validation_2 cases
+were re-run or used for tuning. This exhausts the authorized fix round; results are
+reported as not finished rather than tuned against validation.
+
+A fresh full backend test run was started after the final deterministic boundary
+rule changes. A command-path typo and a wrong test-directory invocation both
+failed before any tests ran; these are environment/command errors (D), not test
+failures. The correct full-suite run is in progress.
