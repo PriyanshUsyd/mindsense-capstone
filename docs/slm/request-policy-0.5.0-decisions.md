@@ -54,3 +54,12 @@ B6 began with those B5 targets unmet under the user's instruction to continue.
 The independent 200-question validation split and its SHA-256 were committed
 before any validation execution. This is the first and only authorized run of
 that split; no validation question text is included in logs or result records.
+Validation round 1 scored 155/200 (77.5%) route-plus-tag, critical 81/104
+(77.9%), and support 171/176 (97.2%). It missed all three targets.
+
+The one permitted post-validation fix round used train only. Router prompt
+0.5.3 scored 154/200 (77.0%), critical 75/100 (75.0%), support 175/175; this
+was below the prior best train round (79.5%, critical 76%, support 100%), so
+the prompt alone was reverted to 0.5.2. Deterministic boundary rule changes
+were retained. A fresh independent 100-question validation_2 was then prepared
+and hashed before execution; it is the single run after that fix round.
