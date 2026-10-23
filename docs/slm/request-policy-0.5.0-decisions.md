@@ -23,3 +23,9 @@ over-broad clarification change reported 83 failures; these were classified C,
 and that routing change was reverted. Main's `injection_02` final route was
 verified as crisis (rules classify prompt injection, local screen returns
 `yes`), so the existing main behavior and safety-screen order were preserved.
+
+After reverting that regression and keeping only the deterministic route guard,
+the full backend suite passed: 1,702 passed, 23 skipped, 0 failed (78 warnings).
+The focused router/alignment/variant suite passed 52 tests. Frontend checks
+passed: npm audit reported 0 vulnerabilities, Vitest reported 97 passed,
+oxlint passed, and the production build succeeded.
