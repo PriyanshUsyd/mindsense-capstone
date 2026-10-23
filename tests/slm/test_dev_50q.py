@@ -128,7 +128,7 @@ def test_dev_set_is_complete_and_numbered():
 
 
 def test_policy_version_is_0_3_9():
-    assert REQUEST_POLICY_VERSION == "0.4.0"
+    assert REQUEST_POLICY_VERSION == "0.5.0"
 
 
 @pytest.mark.parametrize(
@@ -137,7 +137,7 @@ def test_policy_version_is_0_3_9():
 def test_dev_50q_respond_route(respond, number, question, category, mode, detail):
     body, built_feature = respond(question)
     assert body["request_category"] == category
-    assert body["request_policy_version"] == "0.4.0"
+    assert body["request_policy_version"] == "0.5.0"
     if mode == ANSWER:
         assert body["response_mode"] in {"normal", "uncertainty"}
         assert body["rejection_reason"] is None

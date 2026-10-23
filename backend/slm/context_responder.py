@@ -16,6 +16,7 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field
 
 from backend.contracts.evidence import EligibilityStatus, EvidencePacket, ResponseMode
+from backend.slm.category_router import OllamaCategoryRouter
 from backend.slm.client import OllamaClient
 from backend.slm.output_grounding import render_grounded_response_option
 from backend.slm.service import SafeSLMResponse, SLMService
@@ -130,9 +131,11 @@ class PacketContextResponder:
         *,
         approvals: Sequence[ContextApproval],
         allow_aggregated_summaries: bool = False,
+        category_router: OllamaCategoryRouter | None = None,
     ) -> None:
         self._client = client
-        self._base_service = SLMService(client)
+        self._category_router = category_router
+        self._base_service = SLMService(client, category_router=category_router)
         self._allow_aggregated = allow_aggregated_summaries
         self._approvals: dict[tuple[str, str], ContextApproval] = {}
         for approval in approvals:
@@ -167,9 +170,10 @@ class PacketContextResponder:
         validated = self._validate_context(packet, context_items)
         # A fresh client/service per request prevents context leaking to a later
         # participant or Base call, including after a failed generation.
-        return SLMService(_ContextOllamaClient(self._client, validated)).respond(
-            packet, question
-        )
+        return SLMService(
+            _ContextOllamaClient(self._client, validated),
+            category_router=self._category_router,
+        ).respond(packet, question)
 
     def _validate_context(
         self, packet: EvidencePacket, items: tuple[ContextItem, ...]

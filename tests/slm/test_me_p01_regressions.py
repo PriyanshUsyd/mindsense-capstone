@@ -44,7 +44,7 @@ def _forbid_data_load(monkeypatch):
 
 def test_policy_version_is_current():
     # 0.3.4 (crisis safety net) supersedes 0.3.3; see test_crisis_safety_net.py.
-    assert REQUEST_POLICY_VERSION == "0.4.0"
+    assert REQUEST_POLICY_VERSION == "0.5.0"
 
 
 # --- F1: capability question ---------------------------------------------

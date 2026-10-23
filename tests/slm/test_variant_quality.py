@@ -43,7 +43,7 @@ def result():
     original = service.client.transport
     result = quality.run_quality_comparison(service=service)
     assert service.client.transport is original
-    assert len(original.payloads) == 36
+    assert len(original.payloads) == 24
     return result
 
 
@@ -65,7 +65,7 @@ def test_complete_mapping_runs_all_architectures_without_inflating_coverage(resu
             summary["groups"]["guardrail_privacy_extension"]["unique_executed_cases"]
             == 2
         )
-        assert summary["model_invocations"] == 9
+        assert summary["model_invocations"] == 6
         assert summary["human_quality_pass_rate"] is None
     assert (
         sum(s["first_generation_ms"] is not None for s in result["summaries"].values())
@@ -73,7 +73,7 @@ def test_complete_mapping_runs_all_architectures_without_inflating_coverage(resu
     )
     assert (
         sum(s["subsequent_generation_count"] for s in result["summaries"].values())
-        == 35
+        == 23
     )
 
 
@@ -144,7 +144,7 @@ def test_model_failure_remains_failed_with_complete_records_and_checkpoints(
     assert saved_counts == [24, 48, 72, 96]
     assert result["status"] == "development_checks_failed_human_review_pending"
     for summary in result["summaries"].values():
-        assert summary["groups"]["source_plan"]["automated_passed_runs"] == 3
+        assert summary["groups"]["source_plan"]["automated_passed_runs"] == 4
         assert (
             summary["groups"]["guardrail_high_severity"]["automated_passed_runs"] == 14
         )

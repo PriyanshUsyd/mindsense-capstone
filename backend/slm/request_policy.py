@@ -28,7 +28,7 @@ from enum import Enum
 
 from pydantic import BaseModel, ConfigDict
 
-REQUEST_POLICY_VERSION = "0.4.0"
+REQUEST_POLICY_VERSION = "0.5.0"
 
 _logger = logging.getLogger(__name__)
 
@@ -416,6 +416,31 @@ _CRISIS_PATTERNS = (
         r"\b(?:scared|afraid|frightened|terrified|worried) (?:of|about) what i "
         r"(?:might|could|will|may|would|['’]ll|am going to|['’]m going to) do\b"
         r"|\b(?:don['’]?t|do not) trust myself\b",
+        re.IGNORECASE,
+    ),
+)
+
+# Policy 0.5.0: reports of personal abuse, violence, threats or coercive
+# control route to the deterministic crisis template before any other class.
+# These patterns are intentionally first-person and context-bounded so that
+# general discussion of violence does not become a personal safety finding.
+_ABUSE_VIOLENCE_CRISIS_PATTERNS = (
+    re.compile(
+        r"\b(?:someone|somebody|he|she|they|my (?:partner|ex|boyfriend|girlfriend|"
+        r"husband|wife|parent|family member|carer|housemate))\b.{0,45}\b"
+        r"(?:hurt\w*|hit\w*|grab\w*|chok\w*|threaten\w*|control\w*|abuse\w*)\b"
+        r".{0,25}\bme\b",
+        re.IGNORECASE | re.DOTALL,
+    ),
+    re.compile(
+        r"\b(?:i do not feel|i don't feel|i dont feel|i no longer feel|"
+        r"i am not feeling|i'm not feeling|not feeling|feel|feeling)\s+"
+        r"(?:safe|unsafe)\s+(?:at|in)\s+(?:my )?home\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\b(?:i am|i'm|i was|i've been|i have been)\s+(?:being )?"
+        r"(?:hurt|hit|grabbed|choked|threatened|controlled|abused)\b",
         re.IGNORECASE,
     ),
 )
@@ -2057,6 +2082,14 @@ def classify_request(question: str) -> RequestPolicyDecision:
             disposition=RequestDisposition.CRISIS,
             category=RequestCategory.CRISIS_SELF_HARM,
             reason_code="crisis_language_detected",
+        )
+    if any(
+        pattern.search(crisis_text) for pattern in _ABUSE_VIOLENCE_CRISIS_PATTERNS
+    ):
+        return RequestPolicyDecision(
+            disposition=RequestDisposition.CRISIS,
+            category=RequestCategory.CRISIS_SELF_HARM,
+            reason_code="abuse_violence_safety_detected",
         )
     # Policy 0.3.7: current emotional distress, with the crisis rules and
     # before diagnosis, so "I feel very depressed" is not a diagnosis refusal.

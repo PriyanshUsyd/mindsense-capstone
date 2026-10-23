@@ -41,7 +41,7 @@ def result():
 
     stub = ComparisonStub()
     result = run_alignment(service=SLMService(stub))
-    assert stub.call_count == 3  # Q1, Q4, Q7 only, never the two uncovered cases.
+    assert stub.call_count == 2  # Q1 and Q7; Q4 is clarified without generation.
     return result
 
 
@@ -85,7 +85,7 @@ def test_original_sixteen_are_preserved_and_separated_by_tier(result):
 
 def test_full_responses_and_versions_exported_without_invented_human_ratings(result):
     assert result["execution_backend"] == "injected_service_not_verified_live"
-    assert result["provenance"]["request_policy_version"] == "0.4.0"
+    assert result["provenance"]["request_policy_version"] == "0.5.0"
     assert result["provenance"]["prompt_version"] == "0.4.13"
     assert result["provenance"]["output_grounding_version"] == "0.2.0"
     assert all(len(h) == 64 for h in result["provenance"]["sha256_raw_bytes"].values())
@@ -98,7 +98,7 @@ def test_full_responses_and_versions_exported_without_invented_human_ratings(res
         if record["response"] is not None:
             assert record["response"]["text"]
             assert record["evidence_packet"]["identity"]["contract_version"] == "1.0.0"
-            assert record["response"]["request_policy_version"] == "0.4.0"
+            assert record["response"]["request_policy_version"] == "0.5.0"
     assert result["status"] == "development_checks_passed_joint_review_pending"
     json.dumps(result)  # Complete export must be JSON serialisable.
 
@@ -110,8 +110,8 @@ def test_unavailable_model_is_failed_not_a_successful_normal_response():
 
     result = run_alignment(service=SLMService(Unavailable()))
     assert result["status"] == "development_checks_failed"
-    assert result["summaries"]["source_plan"]["automated_checks_failed"] == 3
-    assert result["summaries"]["source_plan"]["automated_checks_passed"] == 3
+    assert result["summaries"]["source_plan"]["automated_checks_failed"] == 2
+    assert result["summaries"]["source_plan"]["automated_checks_passed"] == 4
     assert result["summaries"]["source_plan"]["not_covered"] == 2
     assert (
         result["summaries"]["guardrail_high_severity"]["automated_checks_failed"] == 0

@@ -30,7 +30,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 def test_policy_version_is_0_3_9():
-    assert REQUEST_POLICY_VERSION == "0.4.0"
+    assert REQUEST_POLICY_VERSION == "0.5.0"
 
 
 def _crisis(question: str) -> bool:
@@ -230,7 +230,7 @@ def test_respond_routes_without_loading_data(client, question, mode, category):
     assert body["response_mode"] == mode
     assert body["request_category"] == category
     assert body["model_invoked"] is False
-    assert body["request_policy_version"] == "0.4.0"
+    assert body["request_policy_version"] == "0.5.0"
 
 
 # --- POST-HOC regressions from the spent client v1 set ------------------------

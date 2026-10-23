@@ -7,7 +7,7 @@
 # The question's routing is unchanged.
 
 template_id: app_info_uncertain_evidence
-template_version: "1.2.0"
+template_version: "1.3.0"
 response_mode: refusal
 allowed_claim_ids:
   - uncertainty_disclosure
@@ -24,6 +24,7 @@ text: >
   but your recent pattern is not clearly different enough from your usual to
   report a change. It is not a sign that anything is wrong, and it is not a
   diagnosis.
+  If you need support, you can speak with a GP or mental-health professional. In Australia, call Lifeline on 13 11 14; if you or someone else is in immediate danger, call Triple Zero (000).
 
 review_note: >
   Added 2026-10-10 after the 50-question dev test on rc-eval-2. Requires

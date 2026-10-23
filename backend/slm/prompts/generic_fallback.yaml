@@ -12,7 +12,7 @@
 # of the two templates fires; the SLM never chooses between them itself.
 
 template_id: generic_fallback
-template_version: "1.1.0"
+template_version: "1.2.0"
 response_mode: generic_fallback
 allowed_claim_ids:
   - not_enough_data
@@ -30,6 +30,7 @@ text: >
   treatment advice. If you'd like, try asking about one of your tracked
   patterns (like your GPS movement or phone unlock activity) over a recent
   time period.
+  If you need support, you can speak with a GP or mental-health professional. In Australia, call Lifeline on 13 11 14; if you or someone else is in immediate danger, call Triple Zero (000).
 
 review_note: >
   ROLE-OWNER DRAFT COMPLETE on 2026-08-30. The wording is deliberately

@@ -23,6 +23,7 @@ from backend.slm.client import (
     SLMTimeoutError,
     SLMUnavailableError,
 )
+from backend.slm.category_router import OllamaCategoryRouter, RouterLabel
 from backend.slm.prompt_loader import (
     DEFAULT_APP_INFORMATION_TEMPLATES,
     DEFAULT_CAPABILITY_TEMPLATE,
@@ -43,6 +44,7 @@ from backend.slm.request_policy import (
     RequestDisposition,
     RequestPolicyDecision,
     classify_request,
+    infer_feature_from_question,
     is_general_uncertainty_question,
     request_scope_rejection,
 )
@@ -133,9 +135,11 @@ class SLMService:
         crisis_fallback: LoadedFallbackPrompt | None = None,
         insufficient_data_template: LoadedFallbackPrompt | None = None,
         safety_screen: OllamaSafetyScreen | None = None,
+        category_router: OllamaCategoryRouter | None = None,
     ) -> None:
         self.client = client
         self.safety_screen = safety_screen
+        self.category_router = category_router
         # Deterministic yes/no results only, keyed by a hash of the question,
         # so /respond screens once across preflight and generation.
         self._screen_cache: OrderedDict[str, SafetyScreenLabel] = OrderedDict()
@@ -211,8 +215,8 @@ class SLMService:
         }:
             return self._insufficient_data_response(request_decision)
 
-        scope_reason = request_scope_rejection(
-            question, feature_id=packet.feature_window.feature_id
+        scope_reason = self._scope_rejection(
+            question, request_decision, feature_id=packet.feature_window.feature_id
         )
         if scope_reason:
             return self._scope_response(request_decision, scope_reason)
@@ -300,6 +304,12 @@ class SLMService:
         decision, screen = self._classify(question)
         if decision.disposition != RequestDisposition.ALLOW:
             return _stamp(self._policy_response(decision), screen)
+        if decision.reason_code in {
+            "unsupported_time_window",
+            "ambiguous_feature_request",
+            "feature_request_mismatch",
+        }:
+            return _stamp(self._scope_response(decision, decision.reason_code), screen)
         if not feature_id and is_general_uncertainty_question(question):
             return _stamp(
                 self._template_response(
@@ -309,8 +319,11 @@ class SLMService:
                 ),
                 screen,
             )
-        scope_reason = request_scope_rejection(
-            question, feature_id=feature_id, require_feature=require_feature
+        scope_reason = self._scope_rejection(
+            question,
+            decision,
+            feature_id=feature_id,
+            require_feature=require_feature,
         )
         if scope_reason:
             return _stamp(self._scope_response(decision, scope_reason), screen)
@@ -383,17 +396,186 @@ class SLMService:
         if decision.disposition == RequestDisposition.CRISIS:
             return decision, SafetyScreenLabel.NOT_RUN
         if self.safety_screen is None:
-            return decision, SafetyScreenLabel.SKIPPED
-        label = self._screen(question.strip())
-        if label in {SafetyScreenLabel.NO, SafetyScreenLabel.ERROR}:
-            return decision, label
-        return (
-            RequestPolicyDecision(
+            screen_label = SafetyScreenLabel.SKIPPED
+        else:
+            screen_label = self._screen(question.strip())
+            if screen_label in {SafetyScreenLabel.YES, SafetyScreenLabel.UNCLEAR}:
+                return (
+                    RequestPolicyDecision(
+                        disposition=RequestDisposition.CRISIS,
+                        category=RequestCategory.CRISIS_SELF_HARM,
+                        reason_code="safety_screen_flagged",
+                    ),
+                    screen_label,
+                )
+        return self._route_uncertain_request(question, decision), screen_label
+
+    def _route_uncertain_request(
+        self, question: str, decision: RequestPolicyDecision
+    ) -> RequestPolicyDecision:
+        if decision.category == RequestCategory.IN_SCOPE:
+            inferred_feature = infer_feature_from_question(question)
+            if inferred_feature is None and not is_general_uncertainty_question(question):
+                # The deterministic rules recognized an in-scope evidence
+                # question but could not identify its feature. Clarify now;
+                # a second classifier must not turn it into an unrelated
+                # refusal or select evidence on the user's behalf.
+                return decision.model_copy(
+                    update={"reason_code": "ambiguous_feature_request"}
+                )
+            return decision
+        if decision.category != RequestCategory.OFF_TOPIC or self.category_router is None:
+            return decision
+        label = self.category_router.route(question)
+        if label is None:
+            return decision
+        return self._decision_from_router_label(question, decision, label)
+
+    @staticmethod
+    def _decision_from_router_label(
+        question: str,
+        rule_decision: RequestPolicyDecision,
+        label: RouterLabel,
+    ) -> RequestPolicyDecision:
+        if label == RouterLabel.CRISIS:
+            return RequestPolicyDecision(
                 disposition=RequestDisposition.CRISIS,
                 category=RequestCategory.CRISIS_SELF_HARM,
-                reason_code="safety_screen_flagged",
+                reason_code="category_router_crisis",
+            )
+
+        refusal_routes = {
+            RouterLabel.INJECTION: (
+                RequestCategory.PROMPT_INJECTION, "category_router_injection"
             ),
-            label,
+            RouterLabel.SENSITIVE: (
+                RequestCategory.SENSITIVE_DATA_REQUEST, "category_router_sensitive"
+            ),
+            RouterLabel.DIAGNOSIS: (
+                RequestCategory.DIAGNOSIS_SEEKING, "category_router_diagnosis"
+            ),
+            RouterLabel.TREATMENT: (
+                RequestCategory.TREATMENT_ADVICE_SEEKING, "category_router_treatment"
+            ),
+            RouterLabel.RISK: (
+                RequestCategory.RISK_PREDICTION_SEEKING, "category_router_risk"
+            ),
+            RouterLabel.CAUSE: (
+                RequestCategory.CAUSAL_INFERENCE_SEEKING, "category_router_cause"
+            ),
+            RouterLabel.CLINICAL_SCORE: (
+                RequestCategory.CLINICAL_SCORE_REQUEST,
+                "category_router_clinical_score",
+            ),
+            RouterLabel.CAPABILITY: (
+                RequestCategory.CAPABILITY_QUESTION, "capability_question_detected"
+            ),
+            RouterLabel.APP_INFO: (
+                RequestCategory.APP_INFORMATION, "app_info_uncertain_evidence"
+            ),
+        }
+        route_priorities = {
+            RequestCategory.PROMPT_INJECTION: 1,
+            RequestCategory.SENSITIVE_DATA_REQUEST: 2,
+            RequestCategory.DIAGNOSIS_SEEKING: 3,
+            RequestCategory.TREATMENT_ADVICE_SEEKING: 4,
+            RequestCategory.RISK_PREDICTION_SEEKING: 5,
+            RequestCategory.CAUSAL_INFERENCE_SEEKING: 6,
+            RequestCategory.CLINICAL_SCORE_REQUEST: 7,
+            RequestCategory.CAPABILITY_QUESTION: 8,
+            RequestCategory.APP_INFORMATION: 8,
+            RequestCategory.OFF_TOPIC: 8,
+        }
+        if label in refusal_routes:
+            category, reason = refusal_routes[label]
+            candidate = RequestPolicyDecision(
+                disposition=RequestDisposition.REFUSE,
+                category=category,
+                reason_code=reason,
+                support_line=True,
+            )
+            if rule_decision.disposition == RequestDisposition.REFUSE:
+                current_priority = route_priorities.get(rule_decision.category, 8)
+                candidate_priority = route_priorities.get(candidate.category, 8)
+                if current_priority < candidate_priority:
+                    return rule_decision
+            return candidate
+
+        if label == RouterLabel.TIME_WINDOW:
+            return RequestPolicyDecision(
+                disposition=RequestDisposition.ALLOW,
+                category=RequestCategory.IN_SCOPE,
+                reason_code="unsupported_time_window",
+            )
+        if label == RouterLabel.FEATURE_UNCLEAR:
+            return RequestPolicyDecision(
+                disposition=RequestDisposition.ALLOW,
+                category=RequestCategory.IN_SCOPE,
+                reason_code="ambiguous_feature_request",
+            )
+        if label == RouterLabel.UNTRACKED:
+            return RequestPolicyDecision(
+                disposition=RequestDisposition.REFUSE,
+                category=RequestCategory.OFF_TOPIC,
+                reason_code="untracked_measure_request",
+                support_line=True,
+            )
+        if label == RouterLabel.OFF_TOPIC:
+            return RequestPolicyDecision(
+                disposition=RequestDisposition.REFUSE,
+                category=RequestCategory.OFF_TOPIC,
+                reason_code="off_topic_request_detected",
+                support_line=True,
+            )
+
+        expected_feature = (
+            "gps_distance"
+            if label == RouterLabel.IN_SCOPE_GPS
+            else "unlock_count"
+            if label == RouterLabel.IN_SCOPE_UNLOCKS
+            else None
+        )
+        if expected_feature is not None:
+            inferred_feature = infer_feature_from_question(question)
+            if inferred_feature != expected_feature:
+                return RequestPolicyDecision(
+                    disposition=RequestDisposition.ALLOW,
+                    category=RequestCategory.IN_SCOPE,
+                    reason_code=(
+                        "ambiguous_feature_request"
+                        if inferred_feature is None
+                        else "feature_request_mismatch"
+                    ),
+                )
+            scope_reason = request_scope_rejection(question)
+            if scope_reason:
+                return RequestPolicyDecision(
+                    disposition=RequestDisposition.ALLOW,
+                    category=RequestCategory.IN_SCOPE,
+                    reason_code=scope_reason,
+                )
+            return RequestPolicyDecision(
+                disposition=RequestDisposition.ALLOW,
+                category=RequestCategory.IN_SCOPE,
+            )
+        return rule_decision
+
+    @staticmethod
+    def _scope_rejection(
+        question: str,
+        decision: RequestPolicyDecision,
+        *,
+        feature_id: str | None = None,
+        require_feature: bool = False,
+    ) -> str | None:
+        if decision.reason_code in {
+            "unsupported_time_window",
+            "ambiguous_feature_request",
+            "feature_request_mismatch",
+        }:
+            return decision.reason_code
+        return request_scope_rejection(
+            question, feature_id=feature_id, require_feature=require_feature
         )
 
     def _screen(self, question: str) -> SafetyScreenLabel:
