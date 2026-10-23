@@ -49,3 +49,8 @@ scores with no answer generation. B5 thresholds (critical 100%, overall 95%)
 remain unmet. The decisions to strengthen capability, causal, private-record,
 time-window, and untracked-measure boundaries are generalized rule changes;
 the train questions were not copied into rules, prompts, or tests.
+
+B6 began with those B5 targets unmet under the user's instruction to continue.
+The independent 200-question validation split and its SHA-256 were committed
+before any validation execution. This is the first and only authorized run of
+that split; no validation question text is included in logs or result records.
