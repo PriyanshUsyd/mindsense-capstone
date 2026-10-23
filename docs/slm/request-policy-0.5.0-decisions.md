@@ -36,3 +36,16 @@ dataset and Ollama runtime. Local-demo GPS and unlock packets both report
 eligible status, attached statistical evidence, and the normal response mode.
 The captured backend log contained no `BootstrapCacheStale` or
 `bootstrap_cache_unusable` warning.
+
+B5 used the fresh `train.json` split only. Two diagnostic runs called the
+category router directly: round 1 was 141/200 (70.5%) with critical 87/100;
+round 2 with router prompt 0.5.1 was 151/200 (75.5%) with critical 91/100 and
+support-line checks 175/175. Router prompt 0.5.2 round 3 scored 145/200
+(72.5%) and critical 87/100, so it did not improve the direct-label result.
+Production preflight round 4 was 151/200 (75.5%), critical 73/100, support
+170/175; the fifth run after general deterministic boundary fixes scored
+159/200 (79.5%), critical 76/100, support 175/175. These are route-plus-tag
+scores with no answer generation. B5 thresholds (critical 100%, overall 95%)
+remain unmet. The decisions to strengthen capability, causal, private-record,
+time-window, and untracked-measure boundaries are generalized rule changes;
+the train questions were not copied into rules, prompts, or tests.

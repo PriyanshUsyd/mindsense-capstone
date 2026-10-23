@@ -1246,7 +1246,8 @@ _PROHIBITED_PATTERNS: tuple[
                 r"affect(?:s|ed|ing)?|impact(?:s|ed|ing)?|influenc(?:e|es|ed|ing)|"
                 r"responsible for|to blame|account(?:s|ed)? for|contribut(?:e|es|ed|"
                 r"ing) to|explain(?:s|ed)? (?:why|the (?:drop|change|rise|increase|"
-                r"decrease|dip|fall|difference))|(?:stopping|stopped|stops|keeping|"
+                r"decrease|dip|fall|difference))|creat(?:e|es|ed|ing)|produc(?:e|es|ed|ing)|"
+                r"(?:stopping|stopped|stops|keeping|"
                 r"kept|keeps|making|made|makes) me (?:from )?"
                 # Only a behaviour or feeling ("making me move less"), not a
                 # request someone made ("made me promise").
@@ -1272,7 +1273,8 @@ _PROHIBITED_PATTERNS: tuple[
             ),
             # Policy 0.3.3 (dev Q50): only the person's own data is described.
             re.compile(
-                r"\b(?:another|other|different) (?:participant|person|user|student)s?\b"
+                r"\b(?:another|other|different) (?:participant|person|user|student|"
+                r"individual)s?\b|\bindividual(?:['’]s|s)?\b"
                 r"|\bother people\b|\b(?:someone|somebody|everyone|anyone) else\b",
                 re.IGNORECASE,
             ),
@@ -1429,6 +1431,15 @@ _CAPABILITY_PATTERNS = (
         r"|\bcan (?:you|u) only (?:talk|answer|help|do)\b"
         r"|\bdo (?:you|u) do anything (?:besides|else|other than|apart from|except)\b"
         r"|\bwhat(?:['’]s| is) possible (?:here|with (?:you|this app|mindsense))\b",
+        re.IGNORECASE,
+    ),
+    # Questions about the assistant's access or actions are capabilities even
+    # when the object contains an in-scope feature word. Comparison verbs are
+    # intentionally excluded so evidence questions remain in scope.
+    re.compile(
+        r"\b(?:can|could|do|does|are|is) (?:you|the app|this app|mindsense|"
+        r"the assistant|the chatbot)\b.{0,50}\b(?:access|read|monitor|record|"
+        r"contact|book|remember|change|listen|use the camera|use the microphone)\b",
         re.IGNORECASE,
     ),
 )
@@ -1881,7 +1892,7 @@ _EXPLICIT_WINDOW_PATTERNS = (
         re.IGNORECASE,
     ),
     re.compile(
-        r"\b(?:last|past|previous|next|this)\s+(?:[\w-]+\s+){0,5}"
+        r"\b(?:last|past|previous|prior|next|this)\s+(?:[\w-]+\s+){0,5}"
         r"(?:hours?|days?|weeks?|months?|years?|fortnights?|quarters?|terms?|semesters?)\b",
         re.IGNORECASE,
     ),
@@ -2072,6 +2083,16 @@ def normalise_informal_spelling(text: str) -> str:
     return text
 
 
+_UNTRACKED_MEASURE_PATTERNS = (
+    re.compile(
+        r"\b(?:sleep(?:ing)? duration|sleep quality|steps?|heart rate|"
+        r"calories|calorie intake|water intake|body weight|workouts?|"
+        r"exercise sessions?|screen[- ]time duration)\b",
+        re.IGNORECASE,
+    ),
+)
+
+
 def classify_request(question: str) -> RequestPolicyDecision:
     """Classify one untrusted question without inspecting participant data."""
 
@@ -2138,6 +2159,14 @@ def classify_request(question: str) -> RequestPolicyDecision:
             disposition=RequestDisposition.REFUSE,
             category=RequestCategory.APP_INFORMATION,
             reason_code=app_information,
+        )
+
+    if any(pattern.search(clean_question) for pattern in _UNTRACKED_MEASURE_PATTERNS):
+        return RequestPolicyDecision(
+            disposition=RequestDisposition.REFUSE,
+            category=RequestCategory.OFF_TOPIC,
+            reason_code="untracked_measure_request",
+            support_line=True,
         )
 
     if not clean_question or not _is_in_scope(clean_question):
