@@ -75,3 +75,13 @@ A fresh full backend test run was started after the final deterministic boundary
 rule changes. A command-path typo and a wrong test-directory invocation both
 failed before any tests ran; these are environment/command errors (D), not test
 failures. The correct full-suite run is in progress.
+
+B3 full-suite run after the general boundary changes: 3 failures, 1,704 passed,
+23 skipped. The failures were classified C: (1) the generic unsupported "steps"
+case received the new `untracked_measure_request` reason instead of main's
+`off_topic_request_detected`; (2-3) sensor and phone-monitor questions were
+captured by the broad capability pattern before the existing app-information
+rule. The fix narrows untracked measures by removing the generic `steps` token
+and restores app-information precedence over capability. Focused post-fix suite:
+136 passed, 2 skipped. This preserves refusal behavior and the safety screen.
+The full suite must pass again before B3 can be marked complete.

@@ -2085,7 +2085,7 @@ def normalise_informal_spelling(text: str) -> str:
 
 _UNTRACKED_MEASURE_PATTERNS = (
     re.compile(
-        r"\b(?:sleep(?:ing)? duration|sleep quality|steps?|heart rate|"
+        r"\b(?:sleep(?:ing)? duration|sleep quality|heart rate|"
         r"calories|calorie intake|water intake|body weight|workouts?|"
         r"exercise sessions?|screen[- ]time duration)\b",
         re.IGNORECASE,
@@ -2146,19 +2146,20 @@ def classify_request(question: str) -> RequestPolicyDecision:
             support_line=True,
         )
 
-    if any(pattern.search(clean_question) for pattern in _CAPABILITY_PATTERNS):
-        return RequestPolicyDecision(
-            disposition=RequestDisposition.REFUSE,
-            category=RequestCategory.CAPABILITY_QUESTION,
-            reason_code="capability_question_detected",
-        )
-
     app_information = app_information_reason(clean_question)
     if app_information:
         return RequestPolicyDecision(
             disposition=RequestDisposition.REFUSE,
             category=RequestCategory.APP_INFORMATION,
             reason_code=app_information,
+        )
+
+
+    if any(pattern.search(clean_question) for pattern in _CAPABILITY_PATTERNS):
+        return RequestPolicyDecision(
+            disposition=RequestDisposition.REFUSE,
+            category=RequestCategory.CAPABILITY_QUESTION,
+            reason_code="capability_question_detected",
         )
 
     if any(pattern.search(clean_question) for pattern in _UNTRACKED_MEASURE_PATTERNS):
