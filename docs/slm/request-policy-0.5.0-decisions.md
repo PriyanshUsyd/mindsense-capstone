@@ -29,3 +29,10 @@ the full backend suite passed: 1,702 passed, 23 skipped, 0 failed (78 warnings).
 The focused router/alignment/variant suite passed 52 tests. Frontend checks
 passed: npm audit reported 0 vulnerabilities, Vitest reported 97 passed,
 oxlint passed, and the production build succeeded.
+
+B4 verified the existing synthetic bootstrap cache without rebuilding it.
+Ollama 0.40.8 has `phi4-mini:3.8b`; `/health` and `/models` report the synthetic
+dataset and Ollama runtime. Local-demo GPS and unlock packets both report
+eligible status, attached statistical evidence, and the normal response mode.
+The captured backend log contained no `BootstrapCacheStale` or
+`bootstrap_cache_unusable` warning.
