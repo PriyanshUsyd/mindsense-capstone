@@ -85,3 +85,8 @@ rule. The fix narrows untracked measures by removing the generic `steps` token
 and restores app-information precedence over capability. Focused post-fix suite:
 136 passed, 2 skipped. This preserves refusal behavior and the safety screen.
 The full suite must pass again before B3 can be marked complete.
+
+The corrected B3 full suite passed: 1,707 passed, 23 skipped, 0 failed, 78
+warnings. Frontend checks also passed: Vitest 97/97; oxlint; TypeScript/Vite production
+build; npm audit (0 vulnerabilities). The prior failing run's 3 C regressions were
+fixed before the passing rerun.
