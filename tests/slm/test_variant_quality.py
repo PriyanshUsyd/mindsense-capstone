@@ -43,7 +43,9 @@ def result():
     original = service.client.transport
     result = quality.run_quality_comparison(service=service)
     assert service.client.transport is original
-    assert len(original.payloads) == 36
+    # Twelve plan_q4 clarification runs return before answer generation:
+    # 3 repetitions x 4 variants. See docs/slm/request-policy-0.6.0.md.
+    assert len(original.payloads) == 24
     return result
 
 
@@ -65,7 +67,7 @@ def test_complete_mapping_runs_all_architectures_without_inflating_coverage(resu
             summary["groups"]["guardrail_privacy_extension"]["unique_executed_cases"]
             == 2
         )
-        assert summary["model_invocations"] == 9
+        assert summary["model_invocations"] == 6
         assert summary["human_quality_pass_rate"] is None
     assert (
         sum(s["first_generation_ms"] is not None for s in result["summaries"].values())
@@ -73,7 +75,7 @@ def test_complete_mapping_runs_all_architectures_without_inflating_coverage(resu
     )
     assert (
         sum(s["subsequent_generation_count"] for s in result["summaries"].values())
-        == 35
+        == 23
     )
 
 
@@ -86,14 +88,28 @@ def test_trace_confirms_context_reaches_model_and_deterministic_cases_do_not(res
         expected = quality.EXPECTED_CONTEXT[VariantKind(record["variant"])]
         contexts = record["trace"]["model_call_context_ids"]
         assert contexts == ([expected] if record["response"]["model_invoked"] else [])
-        assert (
-            record["trace"]["packet_id"]
-            == record["evidence_packet"]["identity"]["packet_id"]
-        )
+        if record["trace"].get("preflight_only"):
+            assert record["trace"]["packet_id"] is None
+        else:
+            assert (
+                record["trace"]["packet_id"]
+                == record["evidence_packet"]["identity"]["packet_id"]
+            )
         if record["group"].startswith("guardrail_"):
             assert not record["response"]["model_invoked"]
             assert not record["trace"]["retrieval_attempted"]
             assert not record["trace"]["tool_selection_attempted"]
+
+
+def test_plan_q4_clarification_never_calls_answer_generation(result):
+    rows = [r for r in result["records"] if r["case"]["case_id"] == "plan_q4"]
+    assert len(rows) == 12
+    for record in rows:
+        assert record["response"]["request_category"] == "in_scope"
+        assert record["response"]["response_mode"] == "generic_fallback"
+        assert record["response"]["rejection_reason"] == "ambiguous_feature_request"
+        assert record["response"]["model_invoked"] is False
+        assert record["trace"]["model_call_context_ids"] == []
 
 
 def test_export_preserves_evidence_and_human_review_is_not_fabricated(result):
@@ -144,7 +160,7 @@ def test_model_failure_remains_failed_with_complete_records_and_checkpoints(
     assert saved_counts == [24, 48, 72, 96]
     assert result["status"] == "development_checks_failed_human_review_pending"
     for summary in result["summaries"].values():
-        assert summary["groups"]["source_plan"]["automated_passed_runs"] == 3
+        assert summary["groups"]["source_plan"]["automated_passed_runs"] == 4
         assert (
             summary["groups"]["guardrail_high_severity"]["automated_passed_runs"] == 14
         )

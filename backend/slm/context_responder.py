@@ -16,9 +16,9 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field
 
 from backend.contracts.evidence import EligibilityStatus, EvidencePacket, ResponseMode
-from backend.slm.category_router import OllamaCategoryRouter
 from backend.slm.client import OllamaClient
 from backend.slm.output_grounding import render_grounded_response_option
+from backend.slm.request_classifier import OllamaRequestClassifier
 from backend.slm.service import SafeSLMResponse, SLMService
 from backend.slm.variants import (
     ContextDataClass,
@@ -131,11 +131,13 @@ class PacketContextResponder:
         *,
         approvals: Sequence[ContextApproval],
         allow_aggregated_summaries: bool = False,
-        category_router: OllamaCategoryRouter | None = None,
+        request_classifier: OllamaRequestClassifier | None = None,
     ) -> None:
         self._client = client
-        self._category_router = category_router
-        self._base_service = SLMService(client, category_router=category_router)
+        self._request_classifier = request_classifier
+        self._base_service = SLMService(
+            client, request_classifier=request_classifier
+        )
         self._allow_aggregated = allow_aggregated_summaries
         self._approvals: dict[tuple[str, str], ContextApproval] = {}
         for approval in approvals:
@@ -172,7 +174,7 @@ class PacketContextResponder:
         # participant or Base call, including after a failed generation.
         return SLMService(
             _ContextOllamaClient(self._client, validated),
-            category_router=self._category_router,
+            request_classifier=self._request_classifier,
         ).respond(packet, question)
 
     def _validate_context(

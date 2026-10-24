@@ -116,8 +116,8 @@ def create_packet_variant_runner(
             client,
             approvals=approvals,
             allow_aggregated_summaries=allow_aggregated_summaries,
-            category_router=(
-                preflight_service.category_router
+            request_classifier=(
+                preflight_service.request_classifier
                 if preflight_service is not None
                 else None
             ),

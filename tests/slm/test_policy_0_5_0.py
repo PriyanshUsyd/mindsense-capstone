@@ -34,7 +34,7 @@ def test_personal_abuse_violence_or_home_safety_routes_to_crisis(question):
     decision = classify_request(question)
     response = SLMService(MustNotGenerate()).preflight_response(question)
 
-    assert REQUEST_POLICY_VERSION == "0.5.1"
+    assert REQUEST_POLICY_VERSION == "0.6.0"
     assert decision.disposition == RequestDisposition.CRISIS
     assert decision.category == RequestCategory.CRISIS_SELF_HARM
     assert decision.reason_code == "abuse_violence_safety_detected"

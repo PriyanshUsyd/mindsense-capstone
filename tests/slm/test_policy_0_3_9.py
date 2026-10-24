@@ -33,7 +33,7 @@ from backend.slm.service import SLMService
 
 
 def test_policy_version_is_0_3_9():
-    assert REQUEST_POLICY_VERSION == "0.5.1"
+    assert REQUEST_POLICY_VERSION == "0.6.0"
 
 
 def _category(question: str) -> RequestCategory:
@@ -169,7 +169,7 @@ def test_help_seeking_with_an_address_never_repeats_it(client):
     assert body["response_mode"] == "crisis_aware_fallback"
     assert body["rejection_reason"] == "help_seeking_detected"
     assert body["model_invoked"] is False
-    assert body["request_policy_version"] == "0.5.1"
+    assert body["request_policy_version"] == "0.6.0"
     for part in ("27", "Placeholder", "Glebe"):
         assert part not in body["text"]
 

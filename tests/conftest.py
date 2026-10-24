@@ -6,6 +6,7 @@ import pytest
 
 from backend.slm import safety_screen
 from backend.slm import category_router
+from backend.slm import request_classifier
 from backend.slm.request_policy import (
     RequestCategory,
     classify_request,
@@ -55,6 +56,47 @@ class _NetworkFreeCategoryRouterTransport:
         return {"message": {"content": json.dumps({"category": label})}}
 
 
+class _NetworkFreeRequestClassifierTransport:
+    """Maps deterministic fixture inputs to a high-confidence model label."""
+
+    def post_json(self, endpoint, payload, timeout_seconds):
+        schema = payload["format"]
+        assert set(schema["properties"]) == {"label", "confidence"}
+        assert schema["properties"]["confidence"]["minimum"] == 0
+        assert schema["properties"]["confidence"]["maximum"] == 1
+        message = json.loads(payload["messages"][1]["content"])["message"]
+        decision = classify_request(message)
+        feature = infer_feature_from_question(message)
+        if decision.disposition.value == "crisis":
+            label = "crisis"
+        elif decision.category == RequestCategory.IN_SCOPE:
+            label = {
+                "gps_distance": "in_scope_gps",
+                "unlock_count": "in_scope_unlocks",
+                None: "feature_unclear",
+            }[feature]
+        elif decision.reason_code == "untracked_measure_request":
+            label = "untracked"
+        else:
+            label = {
+                RequestCategory.DIAGNOSIS_SEEKING: "diagnosis",
+                RequestCategory.TREATMENT_ADVICE_SEEKING: "treatment",
+                RequestCategory.CAUSAL_INFERENCE_SEEKING: "cause",
+                RequestCategory.RISK_PREDICTION_SEEKING: "risk",
+                RequestCategory.PROMPT_INJECTION: "injection",
+                RequestCategory.SENSITIVE_DATA_REQUEST: "sensitive",
+                RequestCategory.CAPABILITY_QUESTION: "capability",
+                RequestCategory.CLINICAL_SCORE_REQUEST: "clinical_score",
+                RequestCategory.APP_INFORMATION: "app_info",
+                RequestCategory.OFF_TOPIC: "off_topic",
+            }.get(decision.category, "off_topic")
+        return {
+            "message": {
+                "content": json.dumps({"label": label, "confidence": 0.99})
+            }
+        }
+
+
 @pytest.fixture(autouse=True, scope="session")
 def _network_free_safety_screen():
     # Session scope so module-scoped fixtures that build a service also get it.
@@ -66,5 +108,10 @@ def _network_free_safety_screen():
             category_router,
             "UrllibLoopbackTransport",
             _NetworkFreeCategoryRouterTransport,
+        )
+        patch.setattr(
+            request_classifier,
+            "UrllibLoopbackTransport",
+            _NetworkFreeRequestClassifierTransport,
         )
         yield

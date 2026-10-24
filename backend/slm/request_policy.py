@@ -28,7 +28,7 @@ from enum import Enum
 
 from pydantic import BaseModel, ConfigDict
 
-REQUEST_POLICY_VERSION = "0.5.1"
+REQUEST_POLICY_VERSION = "0.6.0"
 
 _logger = logging.getLogger(__name__)
 
@@ -1089,6 +1089,10 @@ _PROHIBITED_PATTERNS: tuple[
                 re.IGNORECASE,
             ),
             re.compile(
+                r"\b(?:choose|select) (?:a |the )?(?:clinical )?treatment\b",
+                re.IGNORECASE,
+            ),
+            re.compile(
                 # Emotional or clinical goals only: "what can I do to get more
                 # movement?" is a feature question and stays in scope.
                 r"\bwhat (?:should|can|could|do) i (?:do|try|take) (?:to|so (?:that )?i) "
@@ -1956,6 +1960,16 @@ _UNLOCK_FEATURE_PATTERNS = (
     re.compile(r"\bunlock(?:s|ed|ing)?\b", re.IGNORECASE),
     re.compile(r"\bphone (?:use|usage|activity)\b", re.IGNORECASE),
     re.compile(r"\bscreen time\b", re.IGNORECASE),
+    # Broader everyday terms for phone interaction counts. These identify the
+    # evidence family only; existing deterministic scope and evidence gates
+    # still decide whether a response can be generated.
+    re.compile(
+        r"\b(?:phone|device) (?:opening|openings|interaction|interactions|"
+        r"checks?|checking)\b|\bscreen check(?:s|ing)?\b|"
+        r"\bphone use measure\b|"
+        r"\bopen(?:ed|ing)? (?:my |the )?device\b",
+        re.IGNORECASE,
+    ),
     re.compile(r"\bpick(?:s|ed|ing)?[- ]?up(?:s)?\b", re.IGNORECASE),
     # Policy 0.3.3 (dev Q16): everyday wording for phone use.
     re.compile(r"\b(?:on|use|used|using) my phone\b", re.IGNORECASE),
@@ -2217,9 +2231,6 @@ def request_scope_rejection(
     Unknown feature IDs remain the API/Statistics owner's validation concern.
     """
 
-    window_text = _RATE_PHRASES.sub(" ", _OBSERVED_WINDOW_PHRASES.sub(" ", question))
-    if any(pattern.search(window_text) for pattern in _EXPLICIT_WINDOW_PATTERNS):
-        return "unsupported_time_window"
     feature_text = _normalise_feature_typos(question)
     matches_unlock = any(
         pattern.search(feature_text) for pattern in _UNLOCK_FEATURE_PATTERNS
@@ -2232,6 +2243,23 @@ def request_scope_rejection(
     inferred = (
         "unlock_count" if matches_unlock else "gps_distance" if matches_gps else None
     )
+    # A date is an unsupported comparison window only for a supported feature
+    # request (or a caller that has already supplied a feature). Otherwise a
+    # date in an off-topic or untracked request must not turn that request into
+    # an in-scope clarification.
+    window_text = _RATE_PHRASES.sub(" ", _OBSERVED_WINDOW_PHRASES.sub(" ", question))
+    has_untracked_measure = any(
+        pattern.search(feature_text) for pattern in _UNTRACKED_MEASURE_PATTERNS
+    )
+    if (
+        (
+            inferred is not None
+            or feature_id in {"gps_distance", "unlock_count"}
+            or (_is_in_scope(question) and not has_untracked_measure)
+        )
+        and any(pattern.search(window_text) for pattern in _EXPLICIT_WINDOW_PATTERNS)
+    ):
+        return "unsupported_time_window"
     if feature_id in {"gps_distance", "unlock_count"} and inferred not in {
         None,
         feature_id,
@@ -2305,11 +2333,10 @@ _UNTRACKED_MEASURE_PATTERNS = (
 )
 
 
-def classify_request(question: str) -> RequestPolicyDecision:
-    """Classify one untrusted question without inspecting participant data."""
+def classify_crisis_request(question: str) -> RequestPolicyDecision | None:
+    """Run only deterministic crisis rules, before the local safety screen."""
 
-    clean_question = question.strip()
-    crisis_text = normalise_informal_spelling(clean_question)
+    crisis_text = normalise_informal_spelling(question.strip())
     if any(pattern.search(crisis_text) for pattern in _CRISIS_PATTERNS):
         return RequestPolicyDecision(
             disposition=RequestDisposition.CRISIS,
@@ -2347,6 +2374,16 @@ def classify_request(question: str) -> RequestPolicyDecision:
             category=RequestCategory.CRISIS_SELF_HARM,
             reason_code="location_help_detected",
         )
+    return None
+
+
+def classify_request(question: str) -> RequestPolicyDecision:
+    """Apply the full deterministic guard without inspecting participant data."""
+
+    clean_question = question.strip()
+    crisis_decision = classify_crisis_request(clean_question)
+    if crisis_decision is not None:
+        return crisis_decision
     if _SUBSTITUTE_FOR_PROFESSIONAL.search(
         clean_question
     ) and not _TREATMENT_CHANGE.search(clean_question):

@@ -12,7 +12,6 @@ import json
 import threading
 from collections import OrderedDict
 from dataclasses import dataclass
-from enum import Enum
 from pathlib import Path
 from typing import Any
 
@@ -24,30 +23,12 @@ from backend.slm.client import (
     OllamaClientConfig,
     UrllibLoopbackTransport,
 )
+from backend.slm.request_classifier import ClassifierLabel as RouterLabel
 
 DEFAULT_CATEGORY_ROUTER_TIMEOUT_SECONDS = 30.0
 DEFAULT_CATEGORY_ROUTER_PROMPT = (
     Path(__file__).resolve().parent / "prompts" / "request_router_0_5_0.yaml"
 )
-
-
-class RouterLabel(str, Enum):
-    CRISIS = "crisis"
-    DIAGNOSIS = "diagnosis"
-    TREATMENT = "treatment"
-    CAUSE = "cause"
-    RISK = "risk"
-    CLINICAL_SCORE = "clinical_score"
-    INJECTION = "injection"
-    SENSITIVE = "sensitive"
-    APP_INFO = "app_info"
-    CAPABILITY = "capability"
-    TIME_WINDOW = "time_window"
-    FEATURE_UNCLEAR = "feature_unclear"
-    UNTRACKED = "untracked"
-    IN_SCOPE_GPS = "in_scope_gps"
-    IN_SCOPE_UNLOCKS = "in_scope_unlocks"
-    OFF_TOPIC = "off_topic"
 
 
 class CategoryRouterPrompt(BaseModel):

@@ -8,6 +8,7 @@
 provider: ollama
 selection_status: selected
 model_tag: "phi4-mini:3.8b"   # final model and default; never a floating latest tag
+classifier_model_tag: "phi4-mini:3.8b" # initial 0.6.0 comparison baseline
 model_size_gb: 2.5
 context_window_tokens: 131072  # 128K
 license: MIT

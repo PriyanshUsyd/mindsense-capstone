@@ -48,7 +48,7 @@
   ],
   "expected_planned_records": 180,
   "expected_executions": 168,
-  "expected_model_calls": 24,
+  "expected_model_calls": 12,
   "order": "Fixed listed cases; Z first when (case_index + repetition - 1) is even, F first otherwise.",
   "warmup": "None discarded; first actual call per condition and load metrics retained separately.",
   "timing": "Service wall time, not HTTP/UI; subsequent calls are not automatically cold-free.",
@@ -61,7 +61,7 @@
   "human_review": "Not assessed until actual independent reviewers supply ratings.",
   "limitations": [
     "Constrained template and response-option copying in both conditions.",
-    "Three distinct generation fixtures; source-plan Q1/Q7 share one.",
+    "Two distinct generation fixtures; source-plan Q1/Q7 share one. Unspecified-feature clarifications bypass answer generation.",
     "Deterministic safety routes do not demonstrate model learning.",
     "No CES, held-out, multi-turn or product configuration changes."
   ]
