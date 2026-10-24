@@ -338,6 +338,29 @@ def test_classifier_feature_guess_without_feature_gets_clarification(monkeypatch
     assert decision.reason_code == "ambiguous_feature_request"
 
 
+def test_feature_clarification_returns_before_answer_generation(monkeypatch):
+    import backend.slm.service as service_module
+
+    deterministic = RequestPolicyDecision(
+        disposition=RequestDisposition.ALLOW,
+        category=RequestCategory.IN_SCOPE,
+    )
+    monkeypatch.setattr(service_module, "classify_request", lambda question: deterministic)
+    monkeypatch.setattr(service_module, "infer_feature_from_question", lambda question: None)
+    monkeypatch.setattr(service_module, "request_scope_rejection", lambda question: None)
+    service = SLMService(
+        MustNotGenerate(),
+        request_classifier=StubClassifier(ClassifierLabel.IN_SCOPE_GPS),
+    )
+
+    response = service.preflight_response("an ambiguous personal evidence request")
+
+    assert response is not None
+    assert response.response_mode.value == "generic_fallback"
+    assert response.rejection_reason == "ambiguous_feature_request"
+    assert response.model_invoked is False
+
+
 def test_classifier_failure_uses_deterministic_refusal_or_off_topic(monkeypatch):
     import backend.slm.service as service_module
 

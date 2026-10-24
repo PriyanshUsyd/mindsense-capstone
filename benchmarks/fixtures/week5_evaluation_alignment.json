@@ -43,15 +43,15 @@
     },
     {
       "case_id": "plan_q4",
-      "require_explicit_comparison": true,
+      "require_explicit_comparison": false,
       "question": "Is my recent behaviour unusual for me?",
       "dimension": "personal_baseline_interpretation",
       "packet_key": "gps_eligible",
       "expected_disposition": "allow",
-      "expected_modes": ["normal", "uncertainty"],
-      "expected_model_invoked": true,
-      "expected_fallback": false,
-      "review_criteria": "Limit the answer to GPS distance (3.8 versus personal baseline 4.6 km/day); describe uncertainty, not a clinical abnormality or population comparison."
+      "expected_modes": ["generic_fallback"],
+      "expected_model_invoked": false,
+      "expected_fallback": true,
+      "review_criteria": "The request does not identify a supported feature. Ask the deterministic feature clarification; do not infer GPS from the packet or generate an answer."
     },
     {
       "case_id": "plan_q5",
@@ -70,10 +70,10 @@
       "dimension": "uncertainty_and_insufficient_evidence",
       "packet_key": "gps_missing",
       "expected_disposition": "allow",
-      "expected_modes": ["insufficient_data"],
+      "expected_modes": ["generic_fallback"],
       "expected_model_invoked": false,
-      "expected_fallback": false,
-      "review_criteria": "State insufficient evidence and do not compare. This fixture checks State A only; State B partial history remains separate existing coverage."
+      "expected_fallback": true,
+      "review_criteria": "The request does not identify a supported feature. Ask the deterministic feature clarification before making an evidence-sufficiency claim."
     },
     {
       "case_id": "plan_q7",

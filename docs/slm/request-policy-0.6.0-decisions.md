@@ -71,14 +71,14 @@ measurement was run before the v4 scoring preregistration commit.
 
 - Compared `docs/evaluation/pass-threshold-v4.md` with preregistration commit
   `760cb377063583b1523b74dfdafcda6e8893391c` as requested.
-- The working-copy change replaced the registered ìobserved route and
-  user-facing response tagî pair with `request_category` and `response_mode`,
+- The working-copy change replaced the registered ‚Äúobserved route and
+  user-facing response tag‚Äù pair with `request_category` and `response_mode`,
   then added a fixed practice-v2 category-to-route mapping. Those fields and
   mapping could change which records count as strict matches. This was not
   safe to classify as wording-only, so restored the committed preregistration
   verbatim. From this review onward, this file is frozen.
 
-## Step 3 ó clean local model comparison
+## Step 3 ‚Äî clean local model comparison
 
 - Discarded the earlier partial phi4 run (170/200) without using or reporting
   its scores. Restarted the runner from the beginning and completed all 200
@@ -96,7 +96,7 @@ measurement was run before the v4 scoring preregistration commit.
 - Per-category and latency details are preserved in the temporary run output;
   raw question wording was not written there.
 
-## Step 4 ó train-only tuning, iteration 1
+## Step 4 ‚Äî train-only tuning, iteration 1
 
 - Changed only general classifier definitions/tie-breaks and deterministic
   feature recognition/scope routing, with the mandatory feature gate retained.
@@ -119,7 +119,7 @@ measurement was run before the v4 scoring preregistration commit.
   Per-category counts and route details are in the temp output file
   `%TEMP%\\mindsense-0.6.0-train-phi4-tune1.json`; no raw wording is stored.
 
-## Step 4 ó train-only tuning summary
+## Step 4 ‚Äî train-only tuning summary
 
 - Ran successive complete, train-only 200-item iterations. Every retained
   change kept the deterministic feature gate, crisis route, safety screen,
@@ -145,7 +145,7 @@ measurement was run before the v4 scoring preregistration commit.
   was used for tuning. Do not describe the classifier as meeting all train
   thresholds.
 
-## Step 4 ó final retained train configuration
+## Step 4 ‚Äî final retained train configuration
 
 - The best measured configuration is the isolated cause-category refinement
   with the previously measured time-window definitions, plus the deterministic
@@ -161,9 +161,9 @@ measurement was run before the v4 scoring preregistration commit.
 - No qwen comparison is available because qwen3 is not installed and pulling
   it is prohibited by the local-only network restriction.
 
-## Step 5 ó validation_3 registration (before any validation measurement)
+## Step 5 ‚Äî validation_3 registration (before any validation measurement)
 
-- Authored a fresh 150-item set spanning all 16 routing categories, with 8ñ10
+- Authored a fresh 150-item set spanning all 16 routing categories, with 8‚Äì10
   items per category and 70 items in the seven critical categories.
 - Committed `tests/evaluation/practice_v2/validation_3.json` and its SHA-256
   record (`d696565d37eab937440f70578ec9f1ec36af4f25917412a419a2e25a94e1b4d4`)
@@ -194,3 +194,10 @@ measurement was run before the v4 scoring preregistration commit.
   pairs against every available, hash-verified practice/spent file checked.
   The v3 set is now eligible for its single run; its final hash is recorded in
   `tests/evaluation/practice_v2/validation_3.sha256`.
+
+## Full-suite decision: preflight clarifications (2026-10-24)
+
+- The full backend suite initially reported 1,875 passed, 23 skipped, and four failures in `tests/slm/test_prompting_comparison.py`. The four failures traced to the benchmark calling `SLMService.respond()` directly and bypassing deterministic API preflight for plan_q4, plan_q6, and the supplemental partial-history case.
+- Classified as B (intended safer policy behavior), based on `docs/slm/request-policy-0.6.0.md`: when the deterministic feature check cannot select a supported feature, the service returns a clarification without answer generation. The cases were already expected to clarify in the alignment manifest; the prompting harness did not mirror that application flow.
+- Updated the prompting harness to run `preflight_response(..., require_feature=True)` before `respond()`. Updated the pre-registered protocol's expected answer-generation calls from 24 to 12 to account for the three clarification paths across both prompt conditions and three repetitions. Added an assertion over all 18 clarification rows (three paths x two conditions x three repetitions) that they return `ambiguous_feature_request`, invoke no answer model, and make no answer transport calls. Existing response-safety checks remain enabled.
+- Focused verification after the change: prompting comparison, variant quality, evaluation alignment, request classifier, and privacy tests: 63 passed. Frontend tests: 97 passed; oxlint and production build passed. Full backend suite is being rerun; no final full-suite status claimed yet.

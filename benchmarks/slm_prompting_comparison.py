@@ -216,10 +216,10 @@ def load_public_cases() -> list[dict]:
             "case": {
                 "case_id": partial.case_id,
                 "question": partial.question,
-                "expected_modes": [m.value for m in partial.expected_response_modes],
                 "expected_disposition": "allow",
-                "expected_model_invoked": True,
-                "expected_fallback": False,
+                "expected_modes": ["generic_fallback"],
+                "expected_model_invoked": False,
+                "expected_fallback": True,
             },
         }
     )
@@ -366,7 +366,9 @@ def assess(
     row["evidence_packet"] = packet.model_dump(mode="json")
     before, started = len(observer.calls), perf_counter()
     try:
-        response = service.respond(packet, case["question"])
+        response = service.preflight_response(
+            case["question"], require_feature=True
+        ) or service.respond(packet, case["question"])
         row["response"] = response.model_dump(mode="json")
     except Exception as exc:  # noqa: BLE001 - preserve each failed case as evaluation evidence
         row["execution_status"] = "execution_error"

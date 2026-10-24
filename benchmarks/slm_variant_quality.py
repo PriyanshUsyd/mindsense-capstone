@@ -87,6 +87,30 @@ class PacketVariantReviewService:
         self.observer = observer
         self.traces: list[dict] = []
 
+    def preflight_response(
+        self, question: str, *, feature_id: str | None = None,
+        require_feature: bool = False
+    ):
+        started = perf_counter()
+        response = self.service.preflight_response(
+            question, feature_id=feature_id, require_feature=require_feature
+        )
+        if response is not None:
+            self.traces.append(
+                {
+                    "packet_id": None,
+                    "execution_error": None,
+                    "context_references": [],
+                    "tool_trace": [],
+                    "retrieval_attempted": False,
+                    "tool_selection_attempted": False,
+                    "wall_latency_ms": round((perf_counter() - started) * 1000, 3),
+                    "model_call_context_ids": [],
+                    "preflight_only": True,
+                }
+            )
+        return response
+
     def respond(self, packet, question):
         if packet.identity.participant_ref != "synthetic-only":
             raise ValueError("quality review accepts fixed synthetic packets only")

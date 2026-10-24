@@ -42,9 +42,9 @@ def test_fixed_cases_repeats_exclusions_and_human_fields(result):
     assert sum(r["execution_status"] == "not_covered" for r in result["records"]) == 12
     for condition in ("Z", "F"):
         summary = result["summaries"][condition]
-        assert summary["model_calls"] == 12
+        assert summary["model_calls"] == 6
         assert (
-            summary["valid_schema_calls"] == summary["grounding_accepted_calls"] == 12
+            summary["valid_schema_calls"] == summary["grounding_accepted_calls"] == 6
         )
         assert summary["benign_controls"] == 15
         assert summary["benign_unexpected_refusals"] == 0
@@ -60,13 +60,26 @@ def test_fixed_cases_repeats_exclusions_and_human_fields(result):
     assert result["paired_comparison"]["identical_response_text"] == 84
 
 
+def test_unspecified_feature_clarifications_bypass_answer_generation(result):
+    rows = [
+        row for row in result["records"]
+        if row["case"]["case_id"] in {"plan_q4", "plan_q6", "partial_history"}
+    ]
+    assert len(rows) == 18
+    for row in rows:
+        assert row["response"]["response_mode"] == "generic_fallback"
+        assert row["response"]["rejection_reason"] == "ambiguous_feature_request"
+        assert row["response"]["model_invoked"] is False
+        assert row["model_calls"] == []
+
+
 def test_actual_condition_prompts_reach_transport_and_are_recorded():
     transports = {c: GroundedTransport() for c in ("Z", "F")}
     result = comparison.run_comparison(transport_factory=transports.get)
     z, f = (result["conditions"][c]["prompt_sha256"] for c in ("Z", "F"))
     assert z != f
     for condition, transport in transports.items():
-        assert len(transport.payloads) == 12
+        assert len(transport.payloads) == 6
         for payload in transport.payloads:
             system = payload["messages"][0]["content"]
             assert (comparison.DEMO_MARKER in system) == (condition == "F")
@@ -97,13 +110,13 @@ def test_order_is_balanced_and_first_calls_are_separated(result):
             )
             == 1
         )
-        assert result["summaries"][condition]["subsequent_calls_n"] == 11
+        assert result["summaries"][condition]["subsequent_calls_n"] == 5
     orders = [
         call["global_call_order"]
         for row in result["records"]
         for call in row["model_calls"]
     ]
-    assert orders == list(range(1, 25))
+    assert orders == list(range(1, 13))
 
 
 def test_invalid_outputs_are_preserved_without_selective_retry():
@@ -122,10 +135,10 @@ def test_invalid_outputs_are_preserved_without_selective_retry():
     assert len(result["records"]) == 180
     assert checkpoints[:3] == [2, 4, 6]
     assert checkpoints[-1] == 180
-    assert len(transports["F"].payloads) == 12
+    assert len(transports["F"].payloads) == 6
     assert result["summaries"]["F"]["valid_schema_calls"] == 0
-    assert result["summaries"]["F"]["unexpected_fallbacks"] == 12
-    assert len(result["paired_comparison"]["z_pass_f_fail"]) == 12
+    assert result["summaries"]["F"]["unexpected_fallbacks"] == 6
+    assert len(result["paired_comparison"]["z_pass_f_fail"]) == 6
     calls = [
         c for r in result["records"] if r["condition"] == "F" for c in r["model_calls"]
     ]
@@ -141,7 +154,7 @@ def test_transport_failure_keeps_all_attempts_and_no_human_pass():
     assert result["status"] == "development_checks_failed"
     assert len(result["records"]) == 180
     for summary in result["summaries"].values():
-        assert summary["model_calls"] == summary["unexpected_fallbacks"] == 12
+        assert summary["model_calls"] == summary["unexpected_fallbacks"] == 6
         assert summary["groups"]["guardrail_high_severity"]["automated_passed"] == 42
         assert summary["groups"]["off_topic"]["automated_passed"] == 15
         assert summary["human_quality_pass_rate"] is None
@@ -164,9 +177,9 @@ def test_wrong_but_schema_valid_draft_is_not_a_pass():
     result = comparison.run_comparison(
         transport_factory=lambda c: WrongPacket() if c == "F" else GroundedTransport()
     )
-    assert result["summaries"]["F"]["valid_schema_calls"] == 12
+    assert result["summaries"]["F"]["valid_schema_calls"] == 6
     assert result["summaries"]["F"]["grounding_accepted_calls"] == 0
-    assert result["summaries"]["F"]["unexpected_fallbacks"] == 12
+    assert result["summaries"]["F"]["unexpected_fallbacks"] == 6
     assert result["status"] == "development_checks_failed"
 
 

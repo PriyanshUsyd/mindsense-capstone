@@ -209,7 +209,10 @@ def run_alignment(
             )
         else:
             packet = packets[case["packet_key"]]
-            response = service.respond(packet, case["question"])
+            preflight = service.preflight_response(
+                case["question"], require_feature=True
+            )
+            response = preflight or service.respond(packet, case["question"])
             checks = {
                 "expected_disposition": response.request_disposition.value
                 == case["expected_disposition"],
