@@ -28,7 +28,7 @@ from enum import Enum
 
 from pydantic import BaseModel, ConfigDict
 
-REQUEST_POLICY_VERSION = "0.5.0"
+REQUEST_POLICY_VERSION = "0.5.1"
 
 _logger = logging.getLogger(__name__)
 
@@ -672,6 +672,68 @@ _HELP_ADVICE_FRAME = re.compile(
 )
 
 
+# Policy 0.5.1: the person gives where they are staying (a place, street,
+# suburb or postcode) and asks for a nearby service (a pharmacy, clinic, GP,
+# hospital, shelter and so on). MindSense cannot look up places, so this gets
+# the fixed crisis support template, which never repeats the address. Both
+# halves are required: a street alone, or a service alone, is not enough.
+_LOCATION_CUE = re.compile(
+    r"\b(?:staying|crashing|sleeping|living|stuck|based|kipping|dossing) "
+    r"(?:at|with|on|in|near|round|around|over)\b"
+    r"|\b(?:i['’]?m|i am|we['’]re|we are) (?:at|on|in) (?!(?:a|the) (?:moment|"
+    r"mood|state|bit|lot|while|way)\b)\w+"
+    r"(?=.{0,40}\b(?:road|street|avenue|lane|drive|crescent|parade|terrace|"
+    r"highway|boulevard|suburb|postcode|town|village|estate)\b)"
+    r"|\b[a-z]+ (?:road|street|avenue|lane|drive|crescent|parade|terrace|"
+    r"highway|boulevard)\b"
+    r"|\b(?:postcode|post code|zip code)\b"
+    r"|(?<![\d.:/$])\b\d{4}\b(?![\d.:/%])(?=.*\b(?:near|nearby|round|around|"
+    r"close|local)\b)",
+    re.IGNORECASE | re.DOTALL,
+)
+_NEARBY_SERVICE = re.compile(
+    r"\b(?:is there|are there|where(?:['’]s| is| are)?|find|any|nearest|closest|"
+    r"nearby|near (?:here|me|there|by)|round (?:here|there)|around (?:here|"
+    r"there)|close by|local|late|late-night|all-night|open|24 ?(?:hour|hr|/7))\b"
+    r".{0,40}\b(?:pharmac(?:y|ies)|chemists?|drug ?stores?|clinics?|gps?|"
+    r"doctors?|surgery|surgeries|hospitals?|a ?& ?e|emergency (?:room|department)|"
+    r"urgent care|medical (?:centres?|centers?)|walk-in|shelters?|refuges?|"
+    r"hostels?|police(?: station)?|food ?banks?|services?)\b",
+    re.IGNORECASE | re.DOTALL,
+)
+
+
+# Policy 0.5.1: using MindSense instead of, or as a replacement for, a GP,
+# doctor or therapist is a capability question (the capability text says it
+# is not a substitute for a GP). Checked before the prohibited routes,
+# because a therapist word would otherwise reach the treatment refusal,
+# unless the question also asks to start, stop or change a treatment.
+_SUBSTITUTE_FOR_PROFESSIONAL = re.compile(
+    r"\b(?:use|using|rely on|relying on|go to|talk to|turn to|ask|trust) (?:you|u|"
+    r"it|this|mindsense|the app|this app|the chatbot|this thing)\b.{0,30}"
+    r"\b(?:instead of|rather than|in place of|over|as a replacement for|as a "
+    r"substitute for)\b"
+    r"|\b(?:instead of|rather than|in place of) (?:going to |seeing |talking to "
+    r"|asking |booking )?(?:a |an |my |the )?(?:gp|doctor|dr|therapist|"
+    r"psychologist|psychiatrist|counsell?or|professional|clinician)\b"
+    r"|\b(?:replace|replaces|replacing|substitute for|a substitute for|a "
+    r"replacement for|stand in for)\b.{0,25}\b(?:gp|doctor|dr|therapist|"
+    r"psychologist|psychiatrist|counsell?or|professional|clinician|therapy)\b",
+    re.IGNORECASE | re.DOTALL,
+)
+_TREATMENT_CHANGE = re.compile(
+    r"\b(?:start|stop|quit|take|taking|switch|come off|increase|decrease|reduce|"
+    r"dose|dosage)\b",
+    re.IGNORECASE,
+)
+
+
+def _is_location_help(text: str) -> bool:
+    """True for a stated location together with a request for a nearby service."""
+
+    return bool(_LOCATION_CUE.search(text) and _NEARBY_SERVICE.search(text))
+
+
 def _is_help_seeking(text: str) -> bool:
     """True for a request for a crisis line, support or someone to talk to."""
 
@@ -1058,6 +1120,33 @@ _PROHIBITED_PATTERNS: tuple[
                 r"taking|increase|decrease|reduce|raise|up|lower|change|switch|"
                 r"dose|dosage|worth it|work for me|better)\b",
                 re.IGNORECASE | re.DOTALL,
+            ),
+            # Policy 0.5.1: comparing or choosing between therapies, therapy
+            # types, counselling or medication ("is X the same as Y", "which
+            # one", "does it matter"), and what to ask a GP or doctor for.
+            # Checked with the other prohibited routes, before any feature
+            # clarification. Using the app instead of a GP is a capability
+            # question, so "instead of" / "rather than" are left out.
+            re.compile(
+                r"^(?=.*\b(?:therap(?:y|ies|ist|ists)|psychotherapy|counsell?(?:ing|ors?)|"
+                r"cbt|dbt|emdr|act therapy|talk(?:ing)? therapy|group therapy|"
+                r"psycholog(?:ist|ists)|psychiatr(?:ist|ists)|medications?|medicines?|"
+                r"meds|antidepressants?|ssris?)\b)"
+                r"(?=.*(?:\b(?:vs\.?|versus|compared (?:to|with)|difference|differ\w*|"
+                r"same (?:thing|as)|matters?|which (?:one|is|type|kind|should|would)|"
+                r"what (?:type|kind) of|choos\w*|pick|prefer\w*|best|better|right "
+                r"(?:one|for me)|go for)\b|\bor\b))"
+                r"(?!.*\b(?:instead of|rather than|in place of|replace\w*|"
+                r"substitute)\b)",
+                re.IGNORECASE | re.DOTALL,
+            ),
+            re.compile(
+                r"\b(?:ask|tell|request|get)\b(?: (?:my|the|a|an|your))? (?:gp|doctor|"
+                r"dr|psychiatrist|psychologist|nurse|pharmacist)\b(?: \w+){0,2} (?:for|"
+                r"about|to (?:prescribe|refer|give|put me on))\b"
+                r"|\bwhat (?:should|do|can|could|would) i (?:ask|tell|request from) "
+                r"(?:my |the |a |an )?(?:gp|doctor|dr|psychiatrist|psychologist)\b",
+                re.IGNORECASE,
             ),
             # "Should I see / ask / start ...?" and "what should I do about".
             re.compile(
@@ -1505,6 +1594,21 @@ _CAPABILITY_PATTERNS = (
         r"|\bwhat(?:['’]s| is) possible (?:here|with (?:you|this app|mindsense))\b",
         re.IGNORECASE,
     ),
+    # Policy 0.5.1: what the app or assistant is, whether to use it instead of
+    # (or as a replacement for) a GP, doctor or therapist, and whether it is a
+    # person or a bot. The capability text says it is not a substitute for a
+    # GP. Checked before feature clarification.
+    re.compile(
+        r"\bwhat (?:exactly )?(?:is|are) (?:this|mindsense|you|u|this (?:app|thing|"
+        r"tool|chatbot|bot|assistant|service|site|website))(?: exactly| actually|"
+        r" even| for)?\s*(?:$|[?.!,;:—–-]|\b(?:and|so|then|am i|should i|do i|is it)\b)"
+        r"|\bwhat (?:am i|are we) (?:talking|speaking|chatting) (?:to|with)\b"
+        r"|\b(?:are|r) (?:you|u) (?:a |an )?(?:person|human|real person)"
+        r" or (?:a |an )?(?:bot|chatbot|ai|robot|machine|computer|program)\b"
+        r"|\b(?:am i|are we) (?:talking|speaking|chatting) (?:to|with) (?:a |an )?"
+        r"(?:real )?(?:person|human|bot|chatbot|ai|robot|machine|computer)\b",
+        re.IGNORECASE,
+    ),
     # Questions about the assistant's access or actions are capabilities even
     # when the object contains an in-scope feature word. Comparison verbs are
     # intentionally excluded so evidence questions remain in scope.
@@ -1521,6 +1625,42 @@ _CAPABILITY_PATTERNS = (
 # disposition, so no participant data is loaded and no model is called. The
 # reason code selects the template in SLMService.
 _APP_INFORMATION_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
+    # Policy 0.5.1: whether the person's data or chats are used for training,
+    # shared, sold, kept or deleted, in any wording. Answered by
+    # `app_info_data_storage`, whose sentences were checked against the code:
+    # no training or fine-tuning code, loopback-only model and API calls, no
+    # browser storage of chats, and deletion handled by the research team.
+    (
+        "app_info_data_storage",
+        re.compile(
+            r"\b(?:train|trains|training|trained|fine[- ]?tun\w*|improve the "
+            r"(?:model|ai))\b.{0,30}\b(?:on|with|using|from)?\b.{0,10}\b(?:my|our|"
+            r"user|people['’]?s?|your users['’]?) ?(?:data|information|info|chats?|"
+            r"messages|questions|conversations?|answers?|history)\b"
+            r"|\b(?:my|our) (?:data|information|info|chats?|messages|questions|"
+            r"conversations?|answers?|history)\b.{0,40}\b(?:used|use|using)\b.{0,15}"
+            r"\b(?:to train|for training|to improve|for (?:ai|model)|train\w*)\b"
+            r"|\b(?:is|are|does|do|will|would|could|can)\b.{0,30}\b(?:data|information|"
+            r"info|chats?|messages|questions|conversations?|answers?)\b.{0,15}"
+            r"\b(?:used (?:to|for) (?:train\w*|anything|ai|research|advertis\w*|"
+            r"marketing)|sold|shared|sell|share|selling|sharing|passed on|given "
+            r"(?:to|away)|handed over)\b"
+            r"|\b(?:sell|sells|selling|sold|share|shares|sharing|pass(?:es)? on|give "
+            r"away|hand over)\b.{0,20}\b(?:my|our|user|people['’]?s?) (?:data|"
+            r"information|info|chats?|messages|questions|details)\b"
+            r"|\bhow long\b.{0,30}\b(?:kept|keep|stored|store|retain\w*|held|hold|"
+            r"saved|save)\b"
+            r"|\b(?:keep|kept|retain\w*|store|stored|hold)\b.{0,15}\b(?:my|our) "
+            r"(?:data|information|info|chats?|messages|questions)\b.{0,25}"
+            r"\b(?:after|once|when|if|forever|for how long)\b"
+            r"|\b(?:get|have|make|can)\b.{0,15}\b(?:it|this|that|them|everything|"
+            r"all of it|all that|my (?:data|information|info|stuff|account))\b"
+            r"(?: \w+){0,2}? (?:deleted|removed|erased|wiped)\b"
+            r"|\b(?:deleted|removed|erased|wiped)\b.{0,30}\b(?:if|when|once|after) i "
+            r"(?:stop|quit|leave|finish|withdraw|uninstall)\b",
+            re.IGNORECASE | re.DOTALL,
+        ),
+    ),
     # Policy 0.3.9: whether MindSense tracks the person in the background or
     # uses the camera or microphone, listens or records. Answered by
     # `app_info_sensors`. Tracking words count only with a background cue or
@@ -2199,6 +2339,21 @@ def classify_request(question: str) -> RequestPolicyDecision:
             disposition=RequestDisposition.CRISIS,
             category=RequestCategory.CRISIS_SELF_HARM,
             reason_code="help_seeking_detected",
+        )
+    # Policy 0.5.1: a stated location with a request for a nearby service.
+    if _is_location_help(crisis_text):
+        return RequestPolicyDecision(
+            disposition=RequestDisposition.CRISIS,
+            category=RequestCategory.CRISIS_SELF_HARM,
+            reason_code="location_help_detected",
+        )
+    if _SUBSTITUTE_FOR_PROFESSIONAL.search(
+        clean_question
+    ) and not _TREATMENT_CHANGE.search(clean_question):
+        return RequestPolicyDecision(
+            disposition=RequestDisposition.REFUSE,
+            category=RequestCategory.CAPABILITY_QUESTION,
+            reason_code="capability_question_detected",
         )
 
     for category, reason_code, patterns in _PROHIBITED_PATTERNS:

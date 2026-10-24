@@ -43,6 +43,7 @@ from backend.slm.request_policy import (
     RequestCategory,
     RequestDisposition,
     RequestPolicyDecision,
+    app_information_reason,
     classify_request,
     infer_feature_from_question,
     is_general_uncertainty_question,
@@ -427,7 +428,17 @@ class SLMService:
         label = self.category_router.route(question)
         if label is None:
             return decision
-        return self._decision_from_router_label(question, decision, label)
+        routed = self._decision_from_router_label(question, decision, label)
+        # Policy 0.5.1: when a specific refusal or information rule matched
+        # (anything but the generic off-topic fallback), the router may swap
+        # it only for another refusal or the crisis route, never for feature
+        # clarification, a time-window message or an answer.
+        if (
+            routed.disposition == RequestDisposition.ALLOW
+            and decision.reason_code != "off_topic_request_detected"
+        ):
+            return decision
+        return routed
 
     @staticmethod
     def _decision_from_router_label(
@@ -468,8 +479,12 @@ class SLMService:
             RouterLabel.CAPABILITY: (
                 RequestCategory.CAPABILITY_QUESTION, "capability_question_detected"
             ),
+            # Policy 0.5.1: the matching app-information text, else the
+            # general description of what MindSense uses, never a text about
+            # a different app topic.
             RouterLabel.APP_INFO: (
-                RequestCategory.APP_INFORMATION, "app_info_uncertain_evidence"
+                RequestCategory.APP_INFORMATION,
+                app_information_reason(question) or "app_info_data_use",
             ),
         }
         route_priorities = {

@@ -16,8 +16,14 @@
 # clearing is the session chat memory described above. The study data is
 # read from local files, not changed, so MindSense cannot delete it.
 
+# 1.4.0 (policy 0.5.1): also answers whether data is used for training,
+# shared, sold or kept. Verified against the code: there is no training or
+# fine-tuning code, and the model is a fixed local model pinned by digest.
+# Sharing or selling is not claimed either way (the whole-device check above
+# is still outstanding); those questions go to the research team.
+
 template_id: app_info_data_storage
-template_version: "1.3.0"
+template_version: "1.4.0"
 response_mode: refusal
 allowed_claim_ids:
   - non_diagnostic_boundary
@@ -31,11 +37,12 @@ text: >
   In this study version, MindSense runs on this computer. Your questions are
   answered by a model running locally, not by an online service, and the
   app doesn't save your chats: they are kept only while the app is open,
-  and cleared when you end the session, close or refresh the page. The
-  study data it summarises is kept on
-  this computer. MindSense can't delete or change that study data. To ask
-  for your data to be removed, or about how the study stores or keeps it,
-  please contact the research team.
+  and cleared when you end the session, close or refresh the page. It
+  doesn't use your data or your chats to train or change its model: it
+  uses a fixed, pre-built model on this computer. The study data it
+  summarises is kept on this computer. MindSense can't delete or change that
+  study data. To ask for your data to be removed, or about how the study
+  stores, keeps or shares it, please contact the research team.
   If you need support, you can speak with a GP or mental-health professional. In Australia, call Lifeline on 13 11 14; if you or someone else is in immediate danger, call Triple Zero (000).
 
 review_note: >
