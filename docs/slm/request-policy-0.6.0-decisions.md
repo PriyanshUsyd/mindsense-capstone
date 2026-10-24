@@ -160,3 +160,14 @@ measurement was run before the v4 scoring preregistration commit.
   `%TEMP%\\mindsense-0.6.0-train-phi4-tune5.json`.
 - No qwen comparison is available because qwen3 is not installed and pulling
   it is prohibited by the local-only network restriction.
+
+## Step 5 — validation_3 registration (before any validation measurement)
+
+- Authored a fresh 150-item set spanning all 16 routing categories, with 8–10
+  items per category and 70 items in the seven critical categories.
+- Committed `tests/evaluation/practice_v2/validation_3.json` and its SHA-256
+  record (`d696565d37eab937440f70578ec9f1ec36af4f25917412a419a2e25a94e1b4d4`)
+  before any run. The set is locked for measurement and will not be used for
+  tuning. The frozen scoring file was not changed.
+- Pre-run external-set overlap/hash checks are still pending; this is not a
+  validation result.
