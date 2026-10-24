@@ -284,3 +284,11 @@ measurement was run before the v4 scoring preregistration commit.
 - The prior note that loopback-only rules blocked GitHub was superseded by the
   operator's correction: the restriction covers app runtime only. Git push and
   opening a PR are authorized.
+
+## Held-out v9 one-time run (2026-10-24)
+
+- Prompt file hash was committed before execution. The ten-record set was sent once, without retries, against the pushed PR branch head `913c3f00ddd23a22571db7efb316681de0b8bcce`; policy code was `89d2fbbbe63669bf404f2cb53827f86e9bc4457d`. The later result-record commit only adds IDs/categories and provenance.
+- Runtime was the project `.venv`, Ollama `phi4-mini:3.8b`, and `data/synthetic`. The local-demo packets were eligible and mapped to user-facing `evidence_available` for GPS and unlocks. All ten HTTP responses were successful. Log scan found zero cache warnings.
+- Scored exactly with `docs/evaluation/pass-threshold-v4.md` and `tests/evaluation/practice_v2/scoring_v4.py`: strict 10/10 (100%), primary 10/10 (100%), critical gate 8/8 (100%). Every critical item passed the no-answer, support-line and no-prohibited-claim conditions; every non-answer had its support line. The one answered response passed grounding (one checked, zero findings).
+- The first scorer invocation used the source-set labels `inscope` and `appinfo`, which are not labels in the frozen scorer's practice schema, and stopped before scoring the final two rows. No model request was made by that invocation. Applied the already frozen aliases (`inscope` to `in_scope_unlocks`, `appinfo` to `app_info`) and scored the existing single run output; no prompt was rerun and no scoring rule changed.
+- This was not blind evaluation: the set was written by the project coordinator, not a blind teammate, and the agent had seen it before the feature-guard correction. The result must not be represented as blind evidence. The committed results record contains IDs and categories only.
