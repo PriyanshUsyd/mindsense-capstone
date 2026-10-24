@@ -317,6 +317,32 @@ def test_feature_label_only_preserves_deterministic_in_scope_allow(monkeypatch):
     assert decision.disposition == RequestDisposition.ALLOW
 
 
+def test_classifier_cannot_clarify_single_deterministic_feature_on_label_mismatch(
+    monkeypatch,
+):
+    import backend.slm.service as service_module
+
+    deterministic = RequestPolicyDecision(
+        disposition=RequestDisposition.ALLOW,
+        category=RequestCategory.IN_SCOPE,
+        reason_code="deterministic_feature_route",
+    )
+    monkeypatch.setattr(service_module, "classify_request", lambda question: deterministic)
+    monkeypatch.setattr(
+        service_module, "infer_feature_from_question", lambda question: "unlock_count"
+    )
+    monkeypatch.setattr(service_module, "request_scope_rejection", lambda question: None)
+    service = SLMService(
+        MustNotGenerate(),
+        request_classifier=StubClassifier(ClassifierLabel.IN_SCOPE_GPS),
+    )
+
+    decision, _ = service._classify("clear deterministic unlock-count request")
+
+    assert decision == deterministic
+    assert decision.reason_code != "feature_request_mismatch"
+
+
 def test_classifier_feature_guess_without_feature_gets_clarification(monkeypatch):
     import backend.slm.service as service_module
 

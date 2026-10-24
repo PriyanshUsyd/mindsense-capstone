@@ -473,11 +473,6 @@ class SLMService:
             ClassifierLabel.IN_SCOPE_GPS,
             ClassifierLabel.IN_SCOPE_UNLOCKS,
         }:
-            expected_feature = (
-                "gps_distance"
-                if classification.label == ClassifierLabel.IN_SCOPE_GPS
-                else "unlock_count"
-            )
             inferred_feature = infer_feature_from_question(question)
             if deterministic.disposition != RequestDisposition.ALLOW:
                 return deterministic
@@ -487,12 +482,10 @@ class SLMService:
                     category=RequestCategory.IN_SCOPE,
                     reason_code="ambiguous_feature_request",
                 )
-            if inferred_feature != expected_feature:
-                return RequestPolicyDecision(
-                    disposition=RequestDisposition.ALLOW,
-                    category=RequestCategory.IN_SCOPE,
-                    reason_code="feature_request_mismatch",
-                )
+            # A single feature found by the deterministic feature check is
+            # authoritative. The router may not turn that clear request into
+            # a clarification merely because its feature label disagrees.
+            # Keep the check above for absent/ambiguous deterministic evidence.
             if scope_reason:
                 return RequestPolicyDecision(
                     disposition=RequestDisposition.ALLOW,

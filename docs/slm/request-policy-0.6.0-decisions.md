@@ -250,3 +250,37 @@ measurement was run before the v4 scoring preregistration commit.
   passed. The frozen `pass-threshold-v4.md` remains unchanged.
 - The user’s loopback-only network limit prevents push and opening the PR from
   this environment. No external network call was attempted.
+
+## v3-19 single-feature guard correction (2026-10-24)
+
+- The post-hoc spent-set route for `v3#v3-19` showed an Ollama in-scope answer
+  on main becoming a `feature_request_mismatch` non-answer on 0.6.0. Inspection
+  showed that a router feature label disagreeing with the single feature found
+  deterministically caused the clarification.
+- Removed that mismatch clarification. A deterministic feature result is
+  authoritative when exactly one feature is found; the classifier cannot
+  override it. Added a regression test for a deterministic unlock route paired
+  with a conflicting GPS classifier label. Focused classifier suite passed:
+  24 passed.
+- Reverified hashes before loading v1-v4, client v1, v6 and v7; reran all 152
+  prompts on demo and Ollama against the synthetic dataset. v5 remains offline;
+  v8 remains skipped because there is no committed hash document. No in-scope
+  answer was lost; critical-safe totals were 96/98 on main and 96/98 after the
+  fix on each runtime. Spent grounding re-check covered 24 answered responses,
+  zero findings. The two demo-only crisis route misses remain unchanged from
+  main.
+- Classification: C regression in the feature clarification guard, fixed to
+  match deterministic feature routing on main while retaining model-off
+  clarification when no feature is found. No safety or privacy check was
+  weakened.
+
+## Step 2 verification (2026-10-24)
+
+- Full backend suite: 1,881 passed, 23 skipped, 78 warnings. Dedicated privacy
+  and transport suite: 70 passed, 1 warning. Frontend Vitest: 97 passed in six
+  files; oxlint and production build passed; offline npm audit found zero
+  vulnerabilities. The privacy/security CI workflow installs and runs pip-audit;
+  no local package download was attempted.
+- The prior note that loopback-only rules blocked GitHub was superseded by the
+  operator's correction: the restriction covers app runtime only. Git push and
+  opening a PR are authorized.
