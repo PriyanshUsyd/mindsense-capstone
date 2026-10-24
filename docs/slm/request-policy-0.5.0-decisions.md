@@ -99,3 +99,27 @@ available; no spent sets were opened, altered, or used for tuning. Grounding
 unit checks passed, but separate independent answer-corpus grounding, 60 x
 three-server stability, and dedicated router latency measurements remain not
 run. Accuracy thresholds remain unmet, so the report labels the work unfinished.
+
+## 2026-10-24 — final pre-merge check
+
+- **CI Stage 4.** The npm audit step failed on a new high advisory for
+  `undici` 8.0.0–8.12.1 (GHSA-4qv8-2p9j-2685, GHSA-f72v-6w45-q472,
+  GHSA-xjj6-f33q-929c), pulled in by `jsdom@30.0.1` (`^8.9.0`). Privacy tests
+  and both pip-audits passed. The lockfile entry alone was moved to the first
+  fixed version, 8.12.2. `main` has the same lockfile, so it is affected too.
+- **v6-19.** On #114 with Ollama the router's in-scope label met no
+  deterministic feature match and got `ambiguous_feature_request`
+  (clarification, no model call). The feature rule held, so no router change
+  was made; the existing router handoff test already covers it.
+- **dev-50 #13/#14.** The general-limits template (deterministic, no model)
+  said "not an explanation of what caused it" on main and on #114. It now
+  passes through the safety gate's prohibited-assertion scan and the wording
+  was changed (template 1.1.0). Pre-existing on main.
+- **Abuse family.** v6-03 named a body part ("my arm") rather than "me", and
+  "bruise" was not a listed verb. The family was widened (see the policy
+  doc). v6-03 is a post-hoc regression only.
+- **Validation critical IDs.** validation 043, 050, 095 and validation_2 022,
+  023, 025, 052 were all **answered** (a numeric evidence answer with no
+  support line) on both runtimes, not only missing the support line. The
+  causal and sensitive families were widened; all seven now refuse with the
+  support line. Post-hoc: these splits are spent.

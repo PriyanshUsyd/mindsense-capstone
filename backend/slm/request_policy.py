@@ -424,13 +424,58 @@ _CRISIS_PATTERNS = (
 # control route to the deterministic crisis template before any other class.
 # These patterns are intentionally first-person and context-bounded so that
 # general discussion of violence does not become a personal safety finding.
+# Post-practice-v2 (2026-10-24): the family covers any physical or threat verb
+# against "me" or a part of the person's body ("grabbed my arm", "slapped my
+# face"), being left bruised or marked, and fear of a partner or family
+# member. Everyday senses ("hit me up", "grabbed me a coffee", "pushed me to
+# walk more", "hit with deadlines") are excluded.
+_ABUSE_PERSON = (
+    r"(?:someone|somebody|he|she|they|a (?:man|guy|woman|stranger)|"
+    r"my (?:partner|ex|ex-partner|boyfriend|bf|girlfriend|gf|husband|wife|"
+    r"fianc[eé]e?|spouse|parents?|mum|mom|dad|mother|father|"
+    r"step-?(?:mum|mom|dad|mother|father)|brother|sister|family member|carer|"
+    r"housemate|flatmate|roommate))"
+)
+_ABUSE_VERB = (
+    r"(?:hurt\w*|hit|hits|hitting|grab\w*|chok\w*|strangl\w*|throttl\w*|"
+    r"push\w*|shov\w*|slap\w*|smack\w*|punch\w*|kick\w*|beat|beats|beating|"
+    r"beaten|bruis\w*|pinn\w*|restrain\w*|attack\w*|assault\w*|threaten\w*|"
+    r"control\w*|abus\w*)"
+)
+_ABUSE_TARGET = (
+    r"(?:me|my (?:arms?|wrists?|neck|throat|face|head|hair|body|legs?|back|"
+    r"shoulders?|chest|stomach|hands?|cheek|eyes?|jaw|ribs))"
+)
+_ABUSE_EVERYDAY_SENSE = (
+    r"(?!\s+me\s+(?:up\b|a\b|an\b|some\b|to\s+(?!the\b)\w+|into\s+\w+ing\b))"
+)
 _ABUSE_VIOLENCE_CRISIS_PATTERNS = (
     re.compile(
-        r"\b(?:someone|somebody|he|she|they|my (?:partner|ex|boyfriend|girlfriend|"
-        r"husband|wife|parent|family member|carer|housemate))\b.{0,45}\b"
-        r"(?:hurt\w*|hit\w*|grab\w*|chok\w*|threaten\w*|control\w*|abuse\w*)\b"
-        r".{0,25}\bme\b",
+        rf"\b{_ABUSE_PERSON}\b.{{0,45}}\b{_ABUSE_VERB}\b{_ABUSE_EVERYDAY_SENSE}"
+        rf".{{0,25}}\b{_ABUSE_TARGET}\b",
         re.IGNORECASE | re.DOTALL,
+    ),
+    # Left bruised or marked by someone.
+    re.compile(
+        rf"\b{_ABUSE_PERSON}\b.{{0,45}}\b(?:left|leaves|leaving|gave|gives|"
+        r"giving)\b(?: me)?(?: with)?(?: a| some)? (?:bruises?|marks?|black eyes?|"
+        r"a black eye)\b",
+        re.IGNORECASE | re.DOTALL,
+    ),
+    # Fear of a partner or family member, or of what they will do.
+    re.compile(
+        r"\b(?:scared|afraid|frightened|terrified|fearful) (?:of|to go home to|"
+        r"to be (?:around|near|alone with)|to (?:leave|tell)) "
+        r"(?:my (?:partner|ex|ex-partner|boyfriend|bf|girlfriend|gf|husband|wife|"
+        r"fianc[eé]e?|spouse|parents?|mum|mom|dad|mother|father|"
+        r"step-?(?:mum|mom|dad|mother|father)|carer)\b"
+        r"|(?:him|her)\b(?=\s*(?:$|[.!?,;]|when\b|and\b|now\b|lately\b|"
+        r"sometimes\b|at home\b)))"
+        rf"|\b(?:scared|afraid|frightened|terrified) (?:of )?what {_ABUSE_PERSON} "
+        r"(?:might|will|could|would|['’]ll|is going to|['’]s going to) do\b"
+        rf"|\b{_ABUSE_PERSON} (?:\w+ ){{0,2}}(?:scares?|scared|frightens?|"
+        r"frightened|terrifies|terrified|intimidates?|intimidated) me\b",
+        re.IGNORECASE,
     ),
     re.compile(
         r"\b(?:i do not feel|i don't feel|i dont feel|i no longer feel|"
@@ -439,8 +484,10 @@ _ABUSE_VIOLENCE_CRISIS_PATTERNS = (
         re.IGNORECASE,
     ),
     re.compile(
-        r"\b(?:i am|i'm|i was|i've been|i have been)\s+(?:being )?"
-        r"(?:hurt|hit|grabbed|choked|threatened|controlled|abused)\b",
+        r"\b(?:i am|i'm|i was|i've been|i have been|i got)\s+(?:being )?"
+        r"(?:hurt|hit|grabbed|choked|strangled|pushed|shoved|slapped|punched|"
+        r"kicked|beaten|bruised|threatened|controlled|abused|assaulted|attacked)\b"
+        r"(?!\s+(?:to|into|with|up)\b)",
         re.IGNORECASE,
     ),
 )
@@ -1257,6 +1304,23 @@ _PROHIBITED_PATTERNS: tuple[
                 r"anxious|tired|lazy|sad|low|down|stressed|worse|lonely))\b",
                 re.IGNORECASE | re.DOTALL,
             ),
+            # Post-practice-v2 (2026-10-24): an explaining or originating verb
+            # ("explain", "be behind", "bring about", "trigger", "led to")
+            # that links a behaviour to a feeling or wellbeing, in either
+            # order ("is my mood explained by ..."). A feeling word is
+            # required, so "explain my GPS distance" keeps its evidence route.
+            re.compile(
+                r"^(?!.*\b(?:baseline|compar\w*|evidence|missing (?:days|data)|"
+                r"data quality|uncertain\w*)\b)"
+                r"(?=.*\b(?:mood|moods|feel\w*|wellbeing|well-being|sad\w*|distress\w*|"
+                r"depress\w*|anxi\w*|stress\w*|emotion\w*|mental (?:health|state)|"
+                r"lonel\w*|unhapp\w*|happ(?:y|ier|iness)|upset|struggl\w*|"
+                r"exhaust\w*|tired\w*)\b)"
+                r".*\b(?:explain(?:s|ed|ing)?|(?:be|is|are|was|were|been) behind|"
+                r"br(?:ing|ings|inging|ought) (?:about|on)|g(?:ive|ives|ave|iving) "
+                r"rise to|trigger(?:s|ed|ing)?|led to|leads? to|leading to)\b",
+                re.IGNORECASE | re.DOTALL,
+            ),
         ),
     ),
     (
@@ -1272,10 +1336,16 @@ _PROHIBITED_PATTERNS: tuple[
                 re.IGNORECASE,
             ),
             # Policy 0.3.3 (dev Q50): only the person's own data is described.
+            # Post-practice-v2 (2026-10-24): another account, profile or
+            # device, and a specific, named or particular person.
             re.compile(
                 r"\b(?:another|other|different) (?:participant|person|user|student|"
-                r"individual)s?\b|\bindividual(?:['’]s|s)?\b"
-                r"|\bother people\b|\b(?:someone|somebody|everyone|anyone) else\b",
+                r"individual|account|profile|login|device|phone)s?\b"
+                r"|\bindividual(?:['’]s|s)?\b"
+                r"|\bother people\b|\b(?:someone|somebody|everyone|anyone) else\b"
+                r"|\b(?:a |one |that |this )?(?:specific|particular|certain|named|"
+                r"given|real|identifiable) (?:person|people|participant|user|"
+                r"student|individual|someone)(?:['’]s|s)?\b",
                 re.IGNORECASE,
             ),
             # Policy 0.3.8: a home or street address, or where the person
@@ -1305,10 +1375,12 @@ _PROHIBITED_PATTERNS: tuple[
                 r"^(?!.*\b(?:delete|remove|erase|wipe|destroy|purge|get rid of)\b)"
                 r".*(?:"
                 r"\b(?:show|see|view|export|download|send|give|get|access|share|pull|"
-                r"list|dump|copy|open|display|print|email|extract|hand over)\b.{0,30}"
+                r"list|dump|copy|open|display|print|email|extract|hand over|expose|"
+                r"reveal|leak|disclose)\b.{0,30}"
                 r"\b(?:(?:raw|exact|precise|full|detailed|all|underlying|actual|"
                 r"individual) (?:gps|location|position|geo-?location|movement) "
-                r"(?:data|readings?|records?|details?|info(?:rmation)?)"
+                r"(?:data|readings?|records?|details?|info(?:rmation)?|locations?|"
+                r"positions?|places|whereabouts)"
                 r"|(?:gps|location|position|geo-?location) (?:history|log|logs|points?|"
                 r"pings?|coordinates|co-ordinates|trail|trace|tracks?|file|export|"
                 r"fixes|records?))\b"

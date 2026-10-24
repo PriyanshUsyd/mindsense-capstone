@@ -32,6 +32,36 @@ The router labels are `crisis`, `diagnosis`, `treatment`, `cause`, `risk`,
 `in_scope_unlocks`, and `off_topic`. Definitions are versioned in the prompt
 manifest rather than embedded in runtime-generated instructions.
 
+### Pre-merge rule amendments (2026-10-24)
+
+These are post-hoc fixes to deterministic rule families, made after the spent
+practice-v2 validation sets and the spent v6 set had been seen. They are not
+evidence of held-out accuracy; a fresh blind set is still required.
+
+- **Abuse and violence family (crisis).** Any physical or threat verb (hurt,
+  hit, grabbed, pushed, shoved, slapped, punched, kicked, choked, strangled,
+  bruised, threatened, attacked) by a person (someone, he, she, they, or a
+  partner, ex, family member, carer or housemate) against "me" or a part of
+  the person's body; being left bruised or marked; "I was/got pushed, hit,
+  ..."; and fear of a partner or family member or of what they will do. The
+  family is checked with the other crisis rules, before every refusal route.
+  Everyday senses are excluded ("hit me up", "grabbed me a coffee", "pushed
+  me to walk more", "hit with deadlines"). `v6-03` now reaches the crisis
+  route; this is recorded as a post-hoc regression only.
+- **Causal family.** An explaining or originating verb (explain, be behind,
+  bring about/on, give rise to, trigger, led to) linking a behaviour to a
+  feeling or wellbeing word, in either order. A feeling word is required, so
+  "explain my GPS distance" keeps its evidence route.
+- **Sensitive-data family.** Another account, profile, login, device or
+  phone; a specific, particular, named or identifiable person; and
+  expose/reveal/leak/disclose with precise movement locations or whereabouts.
+- **Deterministic answer-mode templates pass the phrase gate.** The
+  safety gate's prohibited-assertion scan
+  (`safety_gate.contains_prohibited_assertion`) now also runs on the
+  general-limits and insufficient-data templates; a match falls back to the
+  generic fallback with `prohibited_phrase_detected`. The general-limits
+  template (1.1.0) now says "not an explanation of why something changed" instead of "... of what caused it".
+
 ## Non-answer support information
 
 Every non-answer carries the GP or mental-health professional suggestion,

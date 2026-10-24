@@ -49,7 +49,11 @@ from backend.slm.request_policy import (
     request_scope_rejection,
 )
 from backend.slm.response_health import ResponseHealthReport, check_response_health
-from backend.slm.safety_gate import validate_draft
+from backend.slm.safety_gate import (
+    PROHIBITED_PHRASE_DETECTED,
+    contains_prohibited_assertion,
+    validate_draft,
+)
 from backend.slm.safety_screen import OllamaSafetyScreen, SafetyScreenLabel
 
 FALLBACK_REASON_EVIDENCE_SOURCE_UNAVAILABLE = "evidence_source_unavailable"
@@ -649,6 +653,14 @@ class SLMService:
     ) -> SafeSLMResponse:
         """Deterministic allowed-route text: no model call, no participant data."""
 
+        if contains_prohibited_assertion(template.manifest.text):
+            # Same phrase gate as a model draft: an answer-mode template with
+            # causal or clinical wording falls back instead of reaching the user.
+            return self._fallback(
+                str(PROHIBITED_PHRASE_DETECTED),
+                request_decision=decision,
+                model_invoked=False,
+            )
         return SafeSLMResponse(
             response_mode=template.manifest.response_mode,
             text=template.manifest.text,
