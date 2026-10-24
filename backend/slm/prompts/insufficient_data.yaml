@@ -2,7 +2,7 @@
 # not an SLM-generated explanation and not one of the two failure fallbacks.
 
 template_id: insufficient_data
-template_version: "1.0.0"
+template_version: "1.1.0"
 response_mode: insufficient_data
 allowed_claim_ids:
   - not_enough_data
@@ -17,6 +17,7 @@ text: >
   There is not enough data yet to compare this activity with your personal
   baseline. MindSense will not guess or make a comparison until the required
   observation history and data-quality checks are complete.
+  If you need support, you can speak with a GP or mental-health professional. In Australia, call Lifeline on 13 11 14; if you or someone else is in immediate danger, call Triple Zero (000).
 
 review_note: >
   WEEK 5 DEVELOPMENT TEMPLATE. Statistics and UI leads should confirm the

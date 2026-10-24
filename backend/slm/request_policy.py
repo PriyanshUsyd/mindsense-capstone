@@ -28,7 +28,7 @@ from enum import Enum
 
 from pydantic import BaseModel, ConfigDict
 
-REQUEST_POLICY_VERSION = "0.4.0"
+REQUEST_POLICY_VERSION = "0.5.0"
 
 _logger = logging.getLogger(__name__)
 
@@ -416,6 +416,78 @@ _CRISIS_PATTERNS = (
         r"\b(?:scared|afraid|frightened|terrified|worried) (?:of|about) what i "
         r"(?:might|could|will|may|would|['’]ll|am going to|['’]m going to) do\b"
         r"|\b(?:don['’]?t|do not) trust myself\b",
+        re.IGNORECASE,
+    ),
+)
+
+# Policy 0.5.0: reports of personal abuse, violence, threats or coercive
+# control route to the deterministic crisis template before any other class.
+# These patterns are intentionally first-person and context-bounded so that
+# general discussion of violence does not become a personal safety finding.
+# Post-practice-v2 (2026-10-24): the family covers any physical or threat verb
+# against "me" or a part of the person's body ("grabbed my arm", "slapped my
+# face"), being left bruised or marked, and fear of a partner or family
+# member. Everyday senses ("hit me up", "grabbed me a coffee", "pushed me to
+# walk more", "hit with deadlines") are excluded.
+_ABUSE_PERSON = (
+    r"(?:someone|somebody|he|she|they|a (?:man|guy|woman|stranger)|"
+    r"my (?:partner|ex|ex-partner|boyfriend|bf|girlfriend|gf|husband|wife|"
+    r"fianc[eé]e?|spouse|parents?|mum|mom|dad|mother|father|"
+    r"step-?(?:mum|mom|dad|mother|father)|brother|sister|family member|carer|"
+    r"housemate|flatmate|roommate))"
+)
+_ABUSE_VERB = (
+    r"(?:hurt\w*|hit|hits|hitting|grab\w*|chok\w*|strangl\w*|throttl\w*|"
+    r"push\w*|shov\w*|slap\w*|smack\w*|punch\w*|kick\w*|beat|beats|beating|"
+    r"beaten|bruis\w*|pinn\w*|restrain\w*|attack\w*|assault\w*|threaten\w*|"
+    r"control\w*|abus\w*)"
+)
+_ABUSE_TARGET = (
+    r"(?:me|my (?:arms?|wrists?|neck|throat|face|head|hair|body|legs?|back|"
+    r"shoulders?|chest|stomach|hands?|cheek|eyes?|jaw|ribs))"
+)
+_ABUSE_EVERYDAY_SENSE = (
+    r"(?!\s+me\s+(?:up\b|a\b|an\b|some\b|to\s+(?!the\b)\w+|into\s+\w+ing\b))"
+)
+_ABUSE_VIOLENCE_CRISIS_PATTERNS = (
+    re.compile(
+        rf"\b{_ABUSE_PERSON}\b.{{0,45}}\b{_ABUSE_VERB}\b{_ABUSE_EVERYDAY_SENSE}"
+        rf".{{0,25}}\b{_ABUSE_TARGET}\b",
+        re.IGNORECASE | re.DOTALL,
+    ),
+    # Left bruised or marked by someone.
+    re.compile(
+        rf"\b{_ABUSE_PERSON}\b.{{0,45}}\b(?:left|leaves|leaving|gave|gives|"
+        r"giving)\b(?: me)?(?: with)?(?: a| some)? (?:bruises?|marks?|black eyes?|"
+        r"a black eye)\b",
+        re.IGNORECASE | re.DOTALL,
+    ),
+    # Fear of a partner or family member, or of what they will do.
+    re.compile(
+        r"\b(?:scared|afraid|frightened|terrified|fearful) (?:of|to go home to|"
+        r"to be (?:around|near|alone with)|to (?:leave|tell)) "
+        r"(?:my (?:partner|ex|ex-partner|boyfriend|bf|girlfriend|gf|husband|wife|"
+        r"fianc[eé]e?|spouse|parents?|mum|mom|dad|mother|father|"
+        r"step-?(?:mum|mom|dad|mother|father)|carer)\b"
+        r"|(?:him|her)\b(?=\s*(?:$|[.!?,;]|when\b|and\b|now\b|lately\b|"
+        r"sometimes\b|at home\b)))"
+        rf"|\b(?:scared|afraid|frightened|terrified) (?:of )?what {_ABUSE_PERSON} "
+        r"(?:might|will|could|would|['’]ll|is going to|['’]s going to) do\b"
+        rf"|\b{_ABUSE_PERSON} (?:\w+ ){{0,2}}(?:scares?|scared|frightens?|"
+        r"frightened|terrifies|terrified|intimidates?|intimidated) me\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\b(?:i do not feel|i don't feel|i dont feel|i no longer feel|"
+        r"i am not feeling|i'm not feeling|not feeling|feel|feeling)\s+"
+        r"(?:safe|unsafe)\s+(?:at|in)\s+(?:my )?home\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\b(?:i am|i'm|i was|i've been|i have been|i got)\s+(?:being )?"
+        r"(?:hurt|hit|grabbed|choked|strangled|pushed|shoved|slapped|punched|"
+        r"kicked|beaten|bruised|threatened|controlled|abused|assaulted|attacked)\b"
+        r"(?!\s+(?:to|into|with|up)\b)",
         re.IGNORECASE,
     ),
 )
@@ -1221,7 +1293,8 @@ _PROHIBITED_PATTERNS: tuple[
                 r"affect(?:s|ed|ing)?|impact(?:s|ed|ing)?|influenc(?:e|es|ed|ing)|"
                 r"responsible for|to blame|account(?:s|ed)? for|contribut(?:e|es|ed|"
                 r"ing) to|explain(?:s|ed)? (?:why|the (?:drop|change|rise|increase|"
-                r"decrease|dip|fall|difference))|(?:stopping|stopped|stops|keeping|"
+                r"decrease|dip|fall|difference))|creat(?:e|es|ed|ing)|produc(?:e|es|ed|ing)|"
+                r"(?:stopping|stopped|stops|keeping|"
                 r"kept|keeps|making|made|makes) me (?:from )?"
                 # Only a behaviour or feeling ("making me move less"), not a
                 # request someone made ("made me promise").
@@ -1229,6 +1302,23 @@ _PROHIBITED_PATTERNS: tuple[
                 r"check\w*|unlock\w*|pick\w*|mov\w*|travel\w*|walk\w*|sleep\w*|"
                 r"scroll\w*|withdraw\w*|isolat\w*|avoid\w*|less|more|so|restless|"
                 r"anxious|tired|lazy|sad|low|down|stressed|worse|lonely))\b",
+                re.IGNORECASE | re.DOTALL,
+            ),
+            # Post-practice-v2 (2026-10-24): an explaining or originating verb
+            # ("explain", "be behind", "bring about", "trigger", "led to")
+            # that links a behaviour to a feeling or wellbeing, in either
+            # order ("is my mood explained by ..."). A feeling word is
+            # required, so "explain my GPS distance" keeps its evidence route.
+            re.compile(
+                r"^(?!.*\b(?:baseline|compar\w*|evidence|missing (?:days|data)|"
+                r"data quality|uncertain\w*)\b)"
+                r"(?=.*\b(?:mood|moods|feel\w*|wellbeing|well-being|sad\w*|distress\w*|"
+                r"depress\w*|anxi\w*|stress\w*|emotion\w*|mental (?:health|state)|"
+                r"lonel\w*|unhapp\w*|happ(?:y|ier|iness)|upset|struggl\w*|"
+                r"exhaust\w*|tired\w*)\b)"
+                r".*\b(?:explain(?:s|ed|ing)?|(?:be|is|are|was|were|been) behind|"
+                r"br(?:ing|ings|inging|ought) (?:about|on)|g(?:ive|ives|ave|iving) "
+                r"rise to|trigger(?:s|ed|ing)?|led to|leads? to|leading to)\b",
                 re.IGNORECASE | re.DOTALL,
             ),
         ),
@@ -1246,9 +1336,16 @@ _PROHIBITED_PATTERNS: tuple[
                 re.IGNORECASE,
             ),
             # Policy 0.3.3 (dev Q50): only the person's own data is described.
+            # Post-practice-v2 (2026-10-24): another account, profile or
+            # device, and a specific, named or particular person.
             re.compile(
-                r"\b(?:another|other|different) (?:participant|person|user|student)s?\b"
-                r"|\bother people\b|\b(?:someone|somebody|everyone|anyone) else\b",
+                r"\b(?:another|other|different) (?:participant|person|user|student|"
+                r"individual|account|profile|login|device|phone)s?\b"
+                r"|\bindividual(?:['’]s|s)?\b"
+                r"|\bother people\b|\b(?:someone|somebody|everyone|anyone) else\b"
+                r"|\b(?:a |one |that |this )?(?:specific|particular|certain|named|"
+                r"given|real|identifiable) (?:person|people|participant|user|"
+                r"student|individual|someone)(?:['’]s|s)?\b",
                 re.IGNORECASE,
             ),
             # Policy 0.3.8: a home or street address, or where the person
@@ -1278,10 +1375,12 @@ _PROHIBITED_PATTERNS: tuple[
                 r"^(?!.*\b(?:delete|remove|erase|wipe|destroy|purge|get rid of)\b)"
                 r".*(?:"
                 r"\b(?:show|see|view|export|download|send|give|get|access|share|pull|"
-                r"list|dump|copy|open|display|print|email|extract|hand over)\b.{0,30}"
+                r"list|dump|copy|open|display|print|email|extract|hand over|expose|"
+                r"reveal|leak|disclose)\b.{0,30}"
                 r"\b(?:(?:raw|exact|precise|full|detailed|all|underlying|actual|"
                 r"individual) (?:gps|location|position|geo-?location|movement) "
-                r"(?:data|readings?|records?|details?|info(?:rmation)?)"
+                r"(?:data|readings?|records?|details?|info(?:rmation)?|locations?|"
+                r"positions?|places|whereabouts)"
                 r"|(?:gps|location|position|geo-?location) (?:history|log|logs|points?|"
                 r"pings?|coordinates|co-ordinates|trail|trace|tracks?|file|export|"
                 r"fixes|records?))\b"
@@ -1404,6 +1503,15 @@ _CAPABILITY_PATTERNS = (
         r"|\bcan (?:you|u) only (?:talk|answer|help|do)\b"
         r"|\bdo (?:you|u) do anything (?:besides|else|other than|apart from|except)\b"
         r"|\bwhat(?:['’]s| is) possible (?:here|with (?:you|this app|mindsense))\b",
+        re.IGNORECASE,
+    ),
+    # Questions about the assistant's access or actions are capabilities even
+    # when the object contains an in-scope feature word. Comparison verbs are
+    # intentionally excluded so evidence questions remain in scope.
+    re.compile(
+        r"\b(?:can|could|do|does|are|is) (?:you|the app|this app|mindsense|"
+        r"the assistant|the chatbot)\b.{0,50}\b(?:access|read|monitor|record|"
+        r"contact|book|remember|change|listen|use the camera|use the microphone)\b",
         re.IGNORECASE,
     ),
 )
@@ -1856,7 +1964,7 @@ _EXPLICIT_WINDOW_PATTERNS = (
         re.IGNORECASE,
     ),
     re.compile(
-        r"\b(?:last|past|previous|next|this)\s+(?:[\w-]+\s+){0,5}"
+        r"\b(?:last|past|previous|prior|next|this)\s+(?:[\w-]+\s+){0,5}"
         r"(?:hours?|days?|weeks?|months?|years?|fortnights?|quarters?|terms?|semesters?)\b",
         re.IGNORECASE,
     ),
@@ -2047,6 +2155,16 @@ def normalise_informal_spelling(text: str) -> str:
     return text
 
 
+_UNTRACKED_MEASURE_PATTERNS = (
+    re.compile(
+        r"\b(?:sleep(?:ing)? duration|sleep quality|heart rate|"
+        r"calories|calorie intake|water intake|body weight|workouts?|"
+        r"exercise sessions?|screen[- ]time duration)\b",
+        re.IGNORECASE,
+    ),
+)
+
+
 def classify_request(question: str) -> RequestPolicyDecision:
     """Classify one untrusted question without inspecting participant data."""
 
@@ -2057,6 +2175,14 @@ def classify_request(question: str) -> RequestPolicyDecision:
             disposition=RequestDisposition.CRISIS,
             category=RequestCategory.CRISIS_SELF_HARM,
             reason_code="crisis_language_detected",
+        )
+    if any(
+        pattern.search(crisis_text) for pattern in _ABUSE_VIOLENCE_CRISIS_PATTERNS
+    ):
+        return RequestPolicyDecision(
+            disposition=RequestDisposition.CRISIS,
+            category=RequestCategory.CRISIS_SELF_HARM,
+            reason_code="abuse_violence_safety_detected",
         )
     # Policy 0.3.7: current emotional distress, with the crisis rules and
     # before diagnosis, so "I feel very depressed" is not a diagnosis refusal.
@@ -2092,6 +2218,15 @@ def classify_request(question: str) -> RequestPolicyDecision:
             support_line=True,
         )
 
+    app_information = app_information_reason(clean_question)
+    if app_information:
+        return RequestPolicyDecision(
+            disposition=RequestDisposition.REFUSE,
+            category=RequestCategory.APP_INFORMATION,
+            reason_code=app_information,
+        )
+
+
     if any(pattern.search(clean_question) for pattern in _CAPABILITY_PATTERNS):
         return RequestPolicyDecision(
             disposition=RequestDisposition.REFUSE,
@@ -2099,12 +2234,12 @@ def classify_request(question: str) -> RequestPolicyDecision:
             reason_code="capability_question_detected",
         )
 
-    app_information = app_information_reason(clean_question)
-    if app_information:
+    if any(pattern.search(clean_question) for pattern in _UNTRACKED_MEASURE_PATTERNS):
         return RequestPolicyDecision(
             disposition=RequestDisposition.REFUSE,
-            category=RequestCategory.APP_INFORMATION,
-            reason_code=app_information,
+            category=RequestCategory.OFF_TOPIC,
+            reason_code="untracked_measure_request",
+            support_line=True,
         )
 
     if not clean_question or not _is_in_scope(clean_question):

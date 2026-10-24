@@ -312,6 +312,7 @@ def create_app(
             # Preserve PR #39's packet-summary setting. This is configuration,
             # not a certificate of personal-data/privacy acceptance.
             allow_aggregated_summaries=True,
+            preflight_service=request_service,
         )
         request = VariantRequest(
             variant=variant,

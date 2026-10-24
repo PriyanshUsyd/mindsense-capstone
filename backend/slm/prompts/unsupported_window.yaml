@@ -1,5 +1,5 @@
 template_id: unsupported_window
-template_version: "1.0.0"
+template_version: "1.1.0"
 response_mode: generic_fallback
 allowed_claim_ids:
   - non_diagnostic_boundary
@@ -12,6 +12,9 @@ text: >
   I can't provide the specific time range requested. This version can explain
   only the observed window supplied with the evidence. Please ask about GPS
   distance or phone unlock count in the observed window.
+  If you need support, you can speak with a GP or mental-health professional.
+  In Australia, call Lifeline on 13 11 14; if you or someone else is in
+  immediate danger, call Triple Zero (000).
 review_note: >
   Week 8 SLM guardrail draft. Does not select, recompute or imply support for
   a calendar window. Requires normal Integration, UI and Evaluation review

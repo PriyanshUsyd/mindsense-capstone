@@ -98,6 +98,7 @@ class PacketVariantReviewService:
                 packet,
                 retriever=ApprovedPacketRetriever(),
                 allow_aggregated_summaries=True,
+                preflight_service=self.service,
             )
         )
         request = VariantRequest(

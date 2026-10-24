@@ -258,6 +258,7 @@ class VariantRunner:
         retriever: Retriever | None = None,
         tool_selector: ToolSelector | None = None,
         tools: Sequence[LocalContextTool] = (),
+        preflight_service: SLMService | None = None,
     ) -> None:
         self._responder = responder
         self._retriever = retriever
@@ -273,6 +274,7 @@ class VariantRunner:
                 raise VariantConfigurationError("tool_registry_invalid")
             registry[name] = tool
         self._tools = registry
+        self._preflight_service = preflight_service
 
     def run(self, request: VariantRequest) -> VariantRunRecord:
         started = perf_counter()
@@ -348,9 +350,22 @@ class VariantRunner:
                 raise
             return fallback_service.context_unavailable_response(request.question)
 
-    @staticmethod
-    def _may_prepare_context(request: VariantRequest) -> bool:
+    def _may_prepare_context(self, request: VariantRequest) -> bool:
         """Never retrieve or call tools before deterministic preflight gates."""
+
+        if self._preflight_service is not None:
+            if self._preflight_service.preflight_response(
+                request.question,
+                feature_id=request.packet.feature_window.feature_id,
+                require_feature=True,
+            ) is not None:
+                return False
+            if not self._preflight_service.check_response_health(request.packet).healthy:
+                return False
+            return request.packet.baseline.eligibility_status not in {
+                EligibilityStatus.INELIGIBLE_INSUFFICIENT_WINDOW,
+                EligibilityStatus.INELIGIBLE_INSUFFICIENT_BASELINE,
+            }
 
         decision = classify_request(request.question)
         if decision.disposition != RequestDisposition.ALLOW:

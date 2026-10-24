@@ -9,6 +9,7 @@ from itertools import islice
 
 from backend.contracts.evidence import EvidencePacket
 from backend.slm.client import OllamaClient
+from backend.slm.service import SLMService
 from backend.slm.context_responder import (
     ContextApproval,
     PacketContextResponder,
@@ -87,6 +88,7 @@ def create_packet_variant_runner(
     *,
     retriever: Retriever,
     allow_aggregated_summaries: bool = False,
+    preflight_service: SLMService | None = None,
 ) -> VariantRunner:
     """Bind the known source before execution, without invoking retrieval.
 
@@ -114,8 +116,14 @@ def create_packet_variant_runner(
             client,
             approvals=approvals,
             allow_aggregated_summaries=allow_aggregated_summaries,
+            category_router=(
+                preflight_service.category_router
+                if preflight_service is not None
+                else None
+            ),
         ),
         retriever=retriever,
         tool_selector=PacketToolSelector(),
         tools=(PacketSummaryTool(retriever),),
+        preflight_service=preflight_service,
     )

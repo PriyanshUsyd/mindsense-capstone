@@ -3,7 +3,7 @@
 # model is called for this route.
 
 template_id: capability
-template_version: "1.1.0"
+template_version: "1.2.0"
 response_mode: refusal
 allowed_claim_ids:
   - non_diagnostic_boundary
@@ -21,6 +21,7 @@ text: >
   baseline. I can't diagnose conditions, explain
   what caused a change, or give treatment advice. Try asking, for example,
   "How has my phone-unlock activity changed recently?"
+  If you need support, you can speak with a GP or mental-health professional. In Australia, call Lifeline on 13 11 14; if you or someone else is in immediate danger, call Triple Zero (000).
 
 review_note: >
   Added 2026-10-10 after ME-P01 on rc-eval-1, where "What can you help me

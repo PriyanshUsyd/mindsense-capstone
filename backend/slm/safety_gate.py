@@ -118,6 +118,14 @@ _UNCERTAINTY_DISCLOSURE_PATTERN = re.compile(
 )
 
 
+def contains_prohibited_assertion(text: str) -> bool:
+    """True if answer-mode text makes a causal, diagnostic, treatment or risk
+    assertion. Also applied to deterministic answer-mode templates, so a
+    template cannot reach the user with wording a model draft would lose."""
+
+    return any(pattern.search(text) for pattern in _PROHIBITED_ASSERTION_PATTERNS)
+
+
 def validate_draft(
     packet: EvidencePacket, draft: AssistantDraft
 ) -> tuple[bool, SafetyGateRejection | None]:
@@ -161,8 +169,8 @@ def validate_draft(
     ) and not _INSUFFICIENT_HISTORY_PATTERN.search(draft.text):
         return False, INSUFFICIENT_HISTORY_DISCLOSURE_MISSING
 
-    if draft.response_mode in _MODEL_EXPLANATION_MODES and any(
-        pattern.search(draft.text) for pattern in _PROHIBITED_ASSERTION_PATTERNS
+    if draft.response_mode in _MODEL_EXPLANATION_MODES and (
+        contains_prohibited_assertion(draft.text)
     ):
         return False, PROHIBITED_PHRASE_DETECTED
 

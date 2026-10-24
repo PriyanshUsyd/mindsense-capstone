@@ -16,7 +16,7 @@
 # text repeats app_info_data_use 1.0.0.
 
 template_id: app_info_sensors
-template_version: "1.0.0"
+template_version: "1.1.0"
 response_mode: refusal
 allowed_claim_ids:
   - non_diagnostic_boundary
@@ -36,6 +36,7 @@ text: >
   patterns. Answers give summary patterns, not the places you went. It can't
   diagnose conditions, explain what caused a change, or give treatment
   advice.
+  If you need support, you can speak with a GP or mental-health professional. In Australia, call Lifeline on 13 11 14; if you or someone else is in immediate danger, call Triple Zero (000).
 
 review_note: >
   Added 2026-10-21 for request policy 0.3.9. Privacy lead must confirm the

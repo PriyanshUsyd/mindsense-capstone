@@ -1,5 +1,6 @@
-# AUSTRALIA-SPECIFIC DRAFT. Resource details were checked on 2026-08-30
-# against Lifeline Australia and Suicide Call Back Service official pages.
+# AUSTRALIA-SPECIFIC DRAFT. Lifeline and Suicide Call Back Service details
+# were checked on 2026-08-30. 1800RESPECT was confirmed on 2026-10-23
+# against its official contact page.
 # Human/client and study-safety approval is still required before any real
 # participant interaction (Week 7 pilot at the latest).
 #
@@ -18,7 +19,7 @@
 # lead, plus the applicable University of Sydney ethics/safety process.
 
 template_id: crisis_aware_fallback
-template_version: "1.1.0"
+template_version: "1.2.0"
 response_mode: crisis_aware_fallback
 allowed_claim_ids:
   - non_diagnostic_boundary
@@ -36,6 +37,8 @@ text: >
   a day, 7 days a week in Australia, call Lifeline on 13 11 14, text
   0477 13 11 14, or use online chat at lifeline.org.au. You can also call
   Suicide Call Back Service on 1300 659 467 for free 24/7 phone counselling.
+  For domestic, family or sexual violence support, call 1800RESPECT on
+  1800 737 732, available 24/7, if it is safe for you to contact them.
   This message is shown automatically when certain words are detected. It
   is a safety default, not a diagnosis or assessment of your situation.
 
@@ -43,7 +46,9 @@ review_note: >
   AUSTRALIA-SPECIFIC RESOURCE-VERIFIED DRAFT; NOT APPROVED FOR PARTICIPANT
   USE. Details checked on 2026-08-30 against https://www.lifeline.org.au/
   get-help/national-services/lifeline-crisis-support and
-  https://www.suicidecallbackservice.org.au/. The client and Evaluation
+  https://www.suicidecallbackservice.org.au/. 1800RESPECT call access
+  (1800 737 732, 24/7) was confirmed at https://1800respect.org.au/FAQ.
+  The client and Evaluation
   lead must approve the complete wording and facilitator escalation flow,
   and the team must add the correct University of Sydney support pathway
   if required by the study protocol, before the Week 7 pilot.

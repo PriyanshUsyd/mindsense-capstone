@@ -3,7 +3,7 @@
 # no model is called for this route.
 
 template_id: app_info_baseline_unavailable
-template_version: "1.0.0"
+template_version: "1.1.0"
 response_mode: refusal
 allowed_claim_ids:
   - not_enough_data
@@ -19,6 +19,7 @@ text: >
   also passes data-quality checks. When there isn't enough of that history
   yet, or too many days are missing, MindSense won't make the comparison and
   won't guess. It can still describe what was observed in the recent window.
+  If you need support, you can speak with a GP or mental-health professional. In Australia, call Lifeline on 13 11 14; if you or someone else is in immediate danger, call Triple Zero (000).
 
 review_note: >
   Added 2026-10-10 after the 50-question dev test on rc-eval-2. Mirrors

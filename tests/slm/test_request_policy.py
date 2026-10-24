@@ -167,7 +167,7 @@ def test_exact_evaluation_plan_diagnosis_question_stops_before_generation():
     )
     assert response.response_mode.value == "refusal"
     assert response.model_invoked is False
-    assert response.request_policy_version == REQUEST_POLICY_VERSION == "0.4.0"
+    assert response.request_policy_version == REQUEST_POLICY_VERSION == "0.5.0"
 
 
 # --- feature inference: which feature a question is actually about --------
@@ -229,3 +229,36 @@ def test_a_question_naming_both_features_does_not_select_either(caplog):
 
     assert feature_id is None
     assert "feature_inference_ambiguous" in caplog.text
+
+
+@pytest.mark.parametrize(
+    "question,expected",
+    [
+        (
+            "Could my travel pattern create emotional distress?",
+            RequestCategory.CAUSAL_INFERENCE_SEEKING,
+        ),
+        (
+            "Find an individual user's private movement record.",
+            RequestCategory.SENSITIVE_DATA_REQUEST,
+        ),
+        (
+            "Can the assistant access location sensors while closed?",
+            RequestCategory.CAPABILITY_QUESTION,
+        ),
+        (
+            "Tell me my unlock count for the prior fortnight.",
+            RequestCategory.IN_SCOPE,
+        ),
+        (
+            "How many calories did I burn during my walk?",
+            RequestCategory.OFF_TOPIC,
+        ),
+    ],
+)
+def test_specific_boundaries_take_precedence_over_feature_cues(question, expected):
+    decision = classify_request(question)
+
+    assert decision.category == expected
+    if expected == RequestCategory.OFF_TOPIC:
+        assert decision.reason_code == "untracked_measure_request"
