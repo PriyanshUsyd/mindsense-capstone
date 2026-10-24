@@ -179,3 +179,13 @@ measurement was run before the v4 scoring preregistration commit.
   remaining collision with validation_2 (validation item ID only); rewrote
   that item and regenerated the SHA-256 again. The final overlap scan must be
   clean before the first validation_3 run.
+
+- Final validation_3 SHA-256 `c30ff9980681174757bcfff51451e32f2fb43bf4b23a2e145dbf0bf61904cfb3`
+  matched the committed sidecar. A five-word shingle comparison was performed
+  after hash verification and before any model run. The final set had zero
+  five-word-overlapping question IDs against practice v1 (300 items),
+  practice-v2 train (200), the hash-verified v1-v4, v6-v7 and client v1 sets,
+  and the committed-hash v2 validation and validation_2 sets. The check emitted
+  counts and IDs only, never source question wording.
+- v5 remains unavailable as previously directed. v8 exists locally but has no
+  committed hash document in this checkout, so it was not read or used.
