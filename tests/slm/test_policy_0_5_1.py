@@ -91,7 +91,7 @@ IN_SCOPE_CONTROLS = [
 
 
 def test_policy_version_is_0_5_1():
-    assert REQUEST_POLICY_VERSION == "0.5.1"
+    assert REQUEST_POLICY_VERSION == "0.6.0"
 
 
 @pytest.mark.parametrize("question", TREATMENT)

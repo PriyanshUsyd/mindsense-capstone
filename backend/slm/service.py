@@ -44,10 +44,16 @@ from backend.slm.request_policy import (
     RequestDisposition,
     RequestPolicyDecision,
     app_information_reason,
+    classify_crisis_request,
     classify_request,
     infer_feature_from_question,
     is_general_uncertainty_question,
     request_scope_rejection,
+)
+from backend.slm.request_classifier import (
+    ClassifierLabel,
+    OllamaRequestClassifier,
+    RequestClassification,
 )
 from backend.slm.response_health import ResponseHealthReport, check_response_health
 from backend.slm.safety_gate import (
@@ -141,10 +147,14 @@ class SLMService:
         insufficient_data_template: LoadedFallbackPrompt | None = None,
         safety_screen: OllamaSafetyScreen | None = None,
         category_router: OllamaCategoryRouter | None = None,
+        request_classifier: OllamaRequestClassifier | None = None,
     ) -> None:
         self.client = client
         self.safety_screen = safety_screen
+        # `category_router` remains as a compatibility seam for existing
+        # injected test doubles; the Ollama runtime uses the v0.6 classifier.
         self.category_router = category_router
+        self.request_classifier = request_classifier
         # Deterministic yes/no results only, keyed by a hash of the question,
         # so /respond screens once across preflight and generation.
         self._screen_cache: OrderedDict[str, SafetyScreenLabel] = OrderedDict()
@@ -390,16 +400,16 @@ class SLMService:
     def _classify(
         self, question: str
     ) -> tuple[RequestPolicyDecision, SafetyScreenLabel]:
-        """Rules first; then, unless already crisis, the local safety screen.
+        """Crisis rules, safety screen, local classifier, then deterministic guard.
 
         The screen can only add a crisis route: yes or unclear goes to the
-        crisis template. A timeout or error keeps the rules-only decision
-        (every refusal still carries the support line) and is logged as error.
+        crisis template. It is unchanged by policy 0.6.0. Classifier failures
+        fail closed after deterministic high-priority guards are applied.
         """
 
-        decision = classify_request(question)
-        if decision.disposition == RequestDisposition.CRISIS:
-            return decision, SafetyScreenLabel.NOT_RUN
+        crisis_decision = classify_crisis_request(question)
+        if crisis_decision is not None:
+            return crisis_decision, SafetyScreenLabel.NOT_RUN
         if self.safety_screen is None:
             screen_label = SafetyScreenLabel.SKIPPED
         else:
@@ -413,7 +423,131 @@ class SLMService:
                     ),
                     screen_label,
                 )
+        if self.request_classifier is not None:
+            classification = self.request_classifier.classify(question)
+            deterministic = classify_request(question)
+            return (
+                self._guard_classifier_decision(
+                    question, deterministic, classification
+                ),
+                screen_label,
+            )
+        decision = classify_request(question)
         return self._route_uncertain_request(question, decision), screen_label
+
+    def _guard_classifier_decision(
+        self,
+        question: str,
+        deterministic: RequestPolicyDecision,
+        classification: RequestClassification | None,
+    ) -> RequestPolicyDecision:
+        """Keep every answer behind deterministic rules and feature checks."""
+
+        # Crisis is normally returned before the safety screen. Retain this
+        # guard in case a future deterministic family adds a crisis decision.
+        if deterministic.disposition == RequestDisposition.CRISIS:
+            return deterministic
+
+        # These deterministic rules have explicit precedence in the 0.6.0
+        # guard. Time-window checks are text-only and run before any data load.
+        if deterministic.category in {
+            RequestCategory.PROMPT_INJECTION,
+            RequestCategory.SENSITIVE_DATA_REQUEST,
+        }:
+            return deterministic
+        scope_reason = request_scope_rejection(question)
+        if scope_reason == "unsupported_time_window":
+            return RequestPolicyDecision(
+                disposition=RequestDisposition.ALLOW,
+                category=RequestCategory.IN_SCOPE,
+                reason_code=scope_reason,
+            )
+
+        if classification is None:
+            return self._classifier_failure_fallback(question, deterministic)
+
+        model_decision = self._decision_from_router_label(
+            question, deterministic, classification.label
+        )
+        if classification.label in {
+            ClassifierLabel.IN_SCOPE_GPS,
+            ClassifierLabel.IN_SCOPE_UNLOCKS,
+        }:
+            expected_feature = (
+                "gps_distance"
+                if classification.label == ClassifierLabel.IN_SCOPE_GPS
+                else "unlock_count"
+            )
+            inferred_feature = infer_feature_from_question(question)
+            if deterministic.disposition != RequestDisposition.ALLOW:
+                return deterministic
+            if inferred_feature is None:
+                return RequestPolicyDecision(
+                    disposition=RequestDisposition.ALLOW,
+                    category=RequestCategory.IN_SCOPE,
+                    reason_code="ambiguous_feature_request",
+                )
+            if inferred_feature != expected_feature:
+                return RequestPolicyDecision(
+                    disposition=RequestDisposition.ALLOW,
+                    category=RequestCategory.IN_SCOPE,
+                    reason_code="feature_request_mismatch",
+                )
+            if scope_reason:
+                return RequestPolicyDecision(
+                    disposition=RequestDisposition.ALLOW,
+                    category=RequestCategory.IN_SCOPE,
+                    reason_code=scope_reason,
+                )
+            # The model can agree with an answer route but cannot select the
+            # feature or bypass the existing deterministic in-scope decision.
+            return deterministic
+
+        if classification.label == ClassifierLabel.FEATURE_UNCLEAR:
+            if deterministic.disposition == RequestDisposition.ALLOW:
+                if is_general_uncertainty_question(question):
+                    return deterministic
+                if infer_feature_from_question(question) is None:
+                    return RequestPolicyDecision(
+                        disposition=RequestDisposition.ALLOW,
+                        category=RequestCategory.IN_SCOPE,
+                        reason_code="ambiguous_feature_request",
+                    )
+                return deterministic
+            if (
+                deterministic.category == RequestCategory.OFF_TOPIC
+                and deterministic.reason_code == "off_topic_request_detected"
+                and infer_feature_from_question(question) is None
+            ):
+                return RequestPolicyDecision(
+                    disposition=RequestDisposition.ALLOW,
+                    category=RequestCategory.IN_SCOPE,
+                    reason_code="ambiguous_feature_request",
+                )
+            return deterministic
+
+        return model_decision
+
+    def _classifier_failure_fallback(
+        self, question: str, deterministic: RequestPolicyDecision
+    ) -> RequestPolicyDecision:
+        """Use a matching deterministic refusal, otherwise fail closed."""
+
+        if deterministic.disposition == RequestDisposition.REFUSE:
+            return deterministic
+        scope_reason = request_scope_rejection(question)
+        if scope_reason:
+            return RequestPolicyDecision(
+                disposition=RequestDisposition.ALLOW,
+                category=RequestCategory.IN_SCOPE,
+                reason_code=scope_reason,
+            )
+        return RequestPolicyDecision(
+            disposition=RequestDisposition.REFUSE,
+            category=RequestCategory.OFF_TOPIC,
+            reason_code="off_topic_request_detected",
+            support_line=True,
+        )
 
     def _route_uncertain_request(
         self, question: str, decision: RequestPolicyDecision

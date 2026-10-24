@@ -13,7 +13,7 @@ from backend.slm.client import (
     OllamaClient,
     OllamaClientConfig,
 )
-from backend.slm.category_router import OllamaCategoryRouter
+from backend.slm.request_classifier import OllamaRequestClassifier
 from backend.slm.safety_screen import OllamaSafetyScreen
 from backend.slm.service import SLMService
 
@@ -73,9 +73,22 @@ def default_model_tag(manifest_path: Path = MODEL_MANIFEST_PATH) -> str:
     return tag
 
 
+def default_classifier_model_tag(manifest_path: Path = MODEL_MANIFEST_PATH) -> str:
+    """Return the selected classifier tag, restricted to manifest candidates."""
+
+    parsed = yaml.safe_load(manifest_path.read_text(encoding="utf-8"))
+    if not isinstance(parsed, dict):
+        raise TypeError("model manifest must contain a mapping")
+    tag = parsed.get("classifier_model_tag", parsed.get("model_tag"))
+    if not isinstance(tag, str) or tag not in listed_model_tags(manifest_path):
+        raise ValueError("classifier_model_tag must name a comparison candidate")
+    return tag
+
+
 def create_local_service(
     *,
     model_tag: str | None = None,
+    classifier_model_tag: str | None = None,
     endpoint: str = "http://127.0.0.1:11434/api/chat",
     timeout_seconds: float | None = None,
 ) -> SLMService:
@@ -88,17 +101,29 @@ def create_local_service(
             f"model_tag must be one of the pinned comparison candidates: {allowed_tags}"
         )
 
-    config = OllamaClientConfig(
+    response_config = OllamaClientConfig(
         model_tag=selected_model_tag,
         endpoint=endpoint,
         timeout_seconds=(
             configured_timeout_seconds() if timeout_seconds is None else timeout_seconds
         ),
     )
-    # Policy 0.3.5: the Ollama runtime screens every non-crisis message with
-    # the same pinned model before routing; the demo stub does not.
+    selected_classifier_tag = classifier_model_tag or default_classifier_model_tag()
+    if selected_classifier_tag not in allowed_tags:
+        raise ValueError(
+            "classifier_model_tag must be one of the pinned comparison candidates: "
+            f"{allowed_tags}"
+        )
+    classifier_config = OllamaClientConfig(
+        model_tag=selected_classifier_tag,
+        endpoint=endpoint,
+        timeout_seconds=response_config.timeout_seconds,
+        seed=response_config.seed,
+    )
+    # The safety screen remains on the answer model. Classification is a
+    # separately selectable, manifest-pinned local model.
     return SLMService(
-        OllamaClient(config),
-        safety_screen=OllamaSafetyScreen(config),
-        category_router=OllamaCategoryRouter(config),
+        OllamaClient(response_config),
+        safety_screen=OllamaSafetyScreen(response_config),
+        request_classifier=OllamaRequestClassifier(classifier_config),
     )

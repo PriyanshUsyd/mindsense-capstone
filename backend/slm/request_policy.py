@@ -28,7 +28,7 @@ from enum import Enum
 
 from pydantic import BaseModel, ConfigDict
 
-REQUEST_POLICY_VERSION = "0.5.1"
+REQUEST_POLICY_VERSION = "0.6.0"
 
 _logger = logging.getLogger(__name__)
 
@@ -2305,11 +2305,10 @@ _UNTRACKED_MEASURE_PATTERNS = (
 )
 
 
-def classify_request(question: str) -> RequestPolicyDecision:
-    """Classify one untrusted question without inspecting participant data."""
+def classify_crisis_request(question: str) -> RequestPolicyDecision | None:
+    """Run only deterministic crisis rules, before the local safety screen."""
 
-    clean_question = question.strip()
-    crisis_text = normalise_informal_spelling(clean_question)
+    crisis_text = normalise_informal_spelling(question.strip())
     if any(pattern.search(crisis_text) for pattern in _CRISIS_PATTERNS):
         return RequestPolicyDecision(
             disposition=RequestDisposition.CRISIS,
@@ -2347,6 +2346,16 @@ def classify_request(question: str) -> RequestPolicyDecision:
             category=RequestCategory.CRISIS_SELF_HARM,
             reason_code="location_help_detected",
         )
+    return None
+
+
+def classify_request(question: str) -> RequestPolicyDecision:
+    """Apply the full deterministic guard without inspecting participant data."""
+
+    clean_question = question.strip()
+    crisis_decision = classify_crisis_request(clean_question)
+    if crisis_decision is not None:
+        return crisis_decision
     if _SUBSTITUTE_FOR_PROFESSIONAL.search(
         clean_question
     ) and not _TREATMENT_CHANGE.search(clean_question):
