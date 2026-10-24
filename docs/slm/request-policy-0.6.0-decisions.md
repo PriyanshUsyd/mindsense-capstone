@@ -80,9 +80,9 @@ measurement was run before the v4 scoring preregistration commit.
 
 ## Step 3 — clean local model comparison
 
-- Discarded the earlier partial phi4 run (170/200) without using or reporting
-  its scores. Restarted the runner from the beginning and completed all 200
-  train items in `%TEMP%\\mindsense-0.6.0-train-phi4-final.json`.
+- Restarted the runner from the beginning and completed all 200 train items
+  in `%TEMP%\\mindsense-0.6.0-train-phi4-final.json`. The incomplete run was
+  discarded; none of its partial progress or scores is reported.
 - The complete phi4 preflight-only run measured strict 146/200 (73%), primary
   160/200 (80%), and critical gate 87/87 (100%). The train file SHA-256 was
   `9d0dae06cdf5fe9c6c7cd9d89c5d08f6c21c1dd0610c217f83070d607d773554`.
@@ -131,7 +131,7 @@ measurement was run before the v4 scoring preregistration commit.
   treatment-refusal fix 160/200, 174/200, 87/87; iteration 3 161/200,
   175/200, 87/87; isolated cause-category refinement with earlier
   time-window wording 163/200, 177/200, 87/87; broader time-window wording
-  156/200, 170/200, 87/87; final additional time-window/treatment examples
+  (complete run: strict 156/200, primary 85%, critical 87/87); final additional time-window/treatment examples
   160/200, 174/200, 87/87.
 - Reverted the last prompt experiment because it regressed three strict/primary
   cases, including two answer-eligible feature requests. Also restored the
@@ -200,4 +200,53 @@ measurement was run before the v4 scoring preregistration commit.
 - The full backend suite initially reported 1,875 passed, 23 skipped, and four failures in `tests/slm/test_prompting_comparison.py`. The four failures traced to the benchmark calling `SLMService.respond()` directly and bypassing deterministic API preflight for plan_q4, plan_q6, and the supplemental partial-history case.
 - Classified as B (intended safer policy behavior), based on `docs/slm/request-policy-0.6.0.md`: when the deterministic feature check cannot select a supported feature, the service returns a clarification without answer generation. The cases were already expected to clarify in the alignment manifest; the prompting harness did not mirror that application flow.
 - Updated the prompting harness to run `preflight_response(..., require_feature=True)` before `respond()`. Updated the pre-registered protocol's expected answer-generation calls from 24 to 12 to account for the three clarification paths across both prompt conditions and three repetitions. Added an assertion over all 18 clarification rows (three paths x two conditions x three repetitions) that they return `ambiguous_feature_request`, invoke no answer model, and make no answer transport calls. Existing response-safety checks remain enabled.
-- Focused verification after the change: prompting comparison, variant quality, evaluation alignment, request classifier, and privacy tests: 63 passed. Frontend tests: 97 passed; oxlint and production build passed. Full backend suite is being rerun; no final full-suite status claimed yet.
+- Focused verification after the change: prompting comparison, variant quality, evaluation alignment, request classifier, and privacy tests: 63 passed. Frontend tests: 97 passed; oxlint and production build passed. The final full backend rerun passed: 1,880 passed, 23 skipped, 78 warnings.
+
+## Step 3 clean restart and Step 6 results (2026-10-24)
+
+- Restarted the train classifier runner from its beginning and completed all
+  200 phi4 items. The clean run is in `%TEMP%\\mindsense-0.6.0-step3-phi4-clean.json`.
+  It reproduced strict 163/200 (81.5%), primary 177/200 (88.5%), and critical
+  gate 87/87 (100%); median/p95 latency was 1,900.4/12,447.5 ms. The train
+  SHA-256 matched `9d0dae06cdf5fe9c6c7cd9d89c5d08f6c21c1dd0610c217f83070d607d773554`.
+  Primary remains three prompts below the Step 4 target. No held-out prompts
+  were used for tuning.
+- `ollama show qwen3:4b` returned model not found. No pull was attempted; the
+  loopback-only restriction prevents registry access. Qwen has no measured
+  accuracy or latency, and phi4 is not claimed as a comparative winner.
+- The first spent-set verifier invocation had a mistyped expected SHA for v7;
+  it reported a mismatch before parsing or using the file. Checked
+  `docs/evaluation/results/held-out-v7-hash.md`, reran SHA-256, and confirmed
+  the committed hash matched before using v7.
+- A first validation grounding-check invocation omitted
+  `MINDSENSE_DATASET_DIR=data/synthetic`; its comparison against the default
+  dataset was invalid (environment error, class D). Re-ran the same check
+  against `data/synthetic`: 15 answered validation responses, zero findings.
+  The spent-set re-check also used `data/synthetic`: 23 answered responses
+  across both runtimes, zero findings.
+- Re-ran each available, hash-verified spent set once on the demo and Ollama
+  for main `4cc0beb` and policy 0.6.0. v1-v4, client v1, v6, and v7 matched
+  their committed hashes. v5 not re-checked (file held offline by another
+  member). v8 was skipped because no committed hash document is present. All
+  wording and responses stayed in temporary files; only IDs and aggregate
+  routes were added to the results document.
+- The spent-set critical safety score was 96/98 on both main and 0.6.0 for
+  both runtimes. No critical response was answered; all critical responses
+  had a support line. Demo had two crisis routes outside the crisis template
+  on both main and 0.6.0; Ollama had zero of 28. The no-crisis-miss demo
+  criterion therefore remains unmet.
+- Route differences: 12 on demo and 63 on Ollama. No demo in-scope answer was
+  lost; on Ollama, `v3#v3-19` changed from an answer on main to a safe
+  feature-mismatch clarification, so the no-lost-answer criterion remains
+  unmet. The full ID-only route table is in
+  `docs/evaluation/results/validation-3-results.md`.
+- Stability ran 60 train questions against three fresh Ollama-backed servers:
+  180 responses, 120 pairwise route comparisons, zero route changes. All
+  servers were terminated by the runner.
+- `npm audit --offline` passed with zero vulnerabilities. `pip-audit` was not
+  installed and no wheel was cached; no package or registry access was used.
+  Full backend tests passed (1,880 passed, 23 skipped, 78 warnings); frontend
+  Vitest passed 97 tests in six files, oxlint passed, and the production build
+  passed. The frozen `pass-threshold-v4.md` remains unchanged.
+- The user’s loopback-only network limit prevents push and opening the PR from
+  this environment. No external network call was attempted.
