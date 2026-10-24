@@ -171,3 +171,11 @@ measurement was run before the v4 scoring preregistration commit.
   tuning. The frozen scoring file was not changed.
 - Pre-run external-set overlap/hash checks are still pending; this is not a
   validation result.
+
+- Pre-run five-word-overlap checking found duplicated five-grams in the first
+  registered draft. No model run occurred. Rewrote only the affected new-set
+  questions without inspecting or printing the collided spent wording,
+  regenerated the SHA-256, and repeated the check. The second scan found one
+  remaining collision with validation_2 (validation item ID only); rewrote
+  that item and regenerated the SHA-256 again. The final overlap scan must be
+  clean before the first validation_3 run.
