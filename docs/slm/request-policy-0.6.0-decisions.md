@@ -144,3 +144,19 @@ measurement was run before the v4 scoring preregistration commit.
 - Step 4 remains incomplete against its primary threshold. No validation set
   was used for tuning. Do not describe the classifier as meeting all train
   thresholds.
+
+## Step 4 — final retained train configuration
+
+- The best measured configuration is the isolated cause-category refinement
+  with the previously measured time-window definitions, plus the deterministic
+  treatment-selection refusal that restored the support line. Its complete
+  200-item run is `%TEMP%\\mindsense-0.6.0-train-phi4-final-tuned.json`.
+- Final measured scores: strict 163/200 (81.5%), primary 177/200 (88.5%),
+  critical gate 87/87 (100%). Median/p95 preflight latency was 1766.8/7710.3
+  ms. The primary threshold is short by 3 prompts; this is not a full Step 4
+  pass. The time-window and treatment-example experiment after this run was
+  measured (160/200 strict, 174/200 primary, 87/87 critical) and reverted
+  because it lost answer-eligible routes and reduced accuracy. Its output is
+  `%TEMP%\\mindsense-0.6.0-train-phi4-tune5.json`.
+- No qwen comparison is available because qwen3 is not installed and pulling
+  it is prohibited by the local-only network restriction.
