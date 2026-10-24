@@ -1956,6 +1956,16 @@ _UNLOCK_FEATURE_PATTERNS = (
     re.compile(r"\bunlock(?:s|ed|ing)?\b", re.IGNORECASE),
     re.compile(r"\bphone (?:use|usage|activity)\b", re.IGNORECASE),
     re.compile(r"\bscreen time\b", re.IGNORECASE),
+    # Broader everyday terms for phone interaction counts. These identify the
+    # evidence family only; existing deterministic scope and evidence gates
+    # still decide whether a response can be generated.
+    re.compile(
+        r"\b(?:phone|device) (?:opening|openings|interaction|interactions|"
+        r"checks?|checking)\b|\bscreen check(?:s|ing)?\b|"
+        r"\bphone use measure\b|"
+        r"\bopen(?:ed|ing)? (?:my |the )?device\b",
+        re.IGNORECASE,
+    ),
     re.compile(r"\bpick(?:s|ed|ing)?[- ]?up(?:s)?\b", re.IGNORECASE),
     # Policy 0.3.3 (dev Q16): everyday wording for phone use.
     re.compile(r"\b(?:on|use|used|using) my phone\b", re.IGNORECASE),
@@ -2217,9 +2227,6 @@ def request_scope_rejection(
     Unknown feature IDs remain the API/Statistics owner's validation concern.
     """
 
-    window_text = _RATE_PHRASES.sub(" ", _OBSERVED_WINDOW_PHRASES.sub(" ", question))
-    if any(pattern.search(window_text) for pattern in _EXPLICIT_WINDOW_PATTERNS):
-        return "unsupported_time_window"
     feature_text = _normalise_feature_typos(question)
     matches_unlock = any(
         pattern.search(feature_text) for pattern in _UNLOCK_FEATURE_PATTERNS
@@ -2232,6 +2239,23 @@ def request_scope_rejection(
     inferred = (
         "unlock_count" if matches_unlock else "gps_distance" if matches_gps else None
     )
+    # A date is an unsupported comparison window only for a supported feature
+    # request (or a caller that has already supplied a feature). Otherwise a
+    # date in an off-topic or untracked request must not turn that request into
+    # an in-scope clarification.
+    window_text = _RATE_PHRASES.sub(" ", _OBSERVED_WINDOW_PHRASES.sub(" ", question))
+    has_untracked_measure = any(
+        pattern.search(feature_text) for pattern in _UNTRACKED_MEASURE_PATTERNS
+    )
+    if (
+        (
+            inferred is not None
+            or feature_id in {"gps_distance", "unlock_count"}
+            or (_is_in_scope(question) and not has_untracked_measure)
+        )
+        and any(pattern.search(window_text) for pattern in _EXPLICIT_WINDOW_PATTERNS)
+    ):
+        return "unsupported_time_window"
     if feature_id in {"gps_distance", "unlock_count"} and inferred not in {
         None,
         feature_id,

@@ -95,3 +95,26 @@ measurement was run before the v4 scoring preregistration commit.
   claimed. Retained phi4 as the only executable local classifier candidate.
 - Per-category and latency details are preserved in the temporary run output;
   raw question wording was not written there.
+
+## Step 4 — train-only tuning, iteration 1
+
+- Changed only general classifier definitions/tie-breaks and deterministic
+  feature recognition/scope routing, with the mandatory feature gate retained.
+  Time-window checks now apply to supported or otherwise in-scope personal
+  evidence; dates on unrelated or unsupported-measure questions no longer
+  create an in-scope clarification. The safety screen and output gates were
+  untouched.
+- A focused suite initially exposed that a general personal-evidence request
+  with an unsupported period still needs the established boundary. Adjusted
+  the condition to preserve that case. The focused test suite then passed
+  (217 passed, 1 dependency deprecation warning).
+- Completed a fresh 200/200 train-only rerun. Strict was 150/200 (75%), primary
+  164/200 (82%), and critical gate 87/87 (100%). This improved the first
+  complete run by 4 strict and 4 primary prompts, but still misses the Step 4
+  accuracy targets.
+- Route changes included safer refusals for dated off-topic/untracked prompts
+  and correct unlock-feature gating for several supported phone-interaction
+  phrasings. Critical gate remained 87/87. Also observed some safe category
+  mismatches including safety-screen crisis routes; the screen was not changed.
+  Per-category counts and route details are in the temp output file
+  `%TEMP%\\mindsense-0.6.0-train-phi4-tune1.json`; no raw wording is stored.
