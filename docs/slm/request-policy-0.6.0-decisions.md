@@ -46,3 +46,34 @@ measurement was run before the v4 scoring preregistration commit.
 - The production runtime now uses the new classifier. The old category-router
   implementation remains as a compatibility test seam; the runtime does not
   call it.
+- A broad repository text search unintentionally scanned locked
+  `validation_2.json` while locating prior scoring metadata. Its output exposed
+  truncated source snippets. No validation set was executed, hashed, used for
+  tuning, or changed; no scoring decision used those snippets. This was a
+  procedural error, not a test failure. Further set searches are restricted to
+  `train.json` or explicitly hash-verified spent-set files.
+- `ollama show qwen3:4b` returned ‚Äúmodel not found‚Äù; `ollama list` contains
+  only `phi4-mini:3.8b`. No pull was attempted because model-registry access is
+  prohibited. Qwen3 is unavailable for the registered local comparison.
+- The train file marks `clinical_score` items critical, but v4 explicitly
+  excludes that category from the critical set. v4 critical scoring will use
+  crisis plus diagnosis, treatment, cause, risk, injection, and sensitive
+  (87 train items), not the legacy `critical` flag (100 items).
+- The first train-run command exited before reading the set or calling Ollama
+  because the runner added the wrong parent directory to `sys.path` (D,
+  environment/command setup). Corrected the root calculation; no response or
+  measurement was produced by the failed invocation.
+- A second setup attempt also exited before reading the set because the
+  scorer module path was not added (D). Added the practice-v2 directory to the
+  runner import path; no question or model measurement was produced.
+
+## Preregistration wording review (before any complete measurement)
+
+- Compared `docs/evaluation/pass-threshold-v4.md` with preregistration commit
+  `760cb377063583b1523b74dfdafcda6e8893391c` as requested.
+- The working-copy change replaced the registered ìobserved route and
+  user-facing response tagî pair with `request_category` and `response_mode`,
+  then added a fixed practice-v2 category-to-route mapping. Those fields and
+  mapping could change which records count as strict matches. This was not
+  safe to classify as wording-only, so restored the committed preregistration
+  verbatim. From this review onward, this file is frozen.

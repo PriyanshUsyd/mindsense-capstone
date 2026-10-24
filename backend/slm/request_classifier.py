@@ -254,6 +254,13 @@ class OllamaRequestClassifier:
                 self._cache.popitem(last=False)
             return result
 
+    def cached_result(self, question: str) -> RequestClassification | None:
+        """Read the already-computed result without making another model call."""
+
+        key = hashlib.sha256(question.strip().encode("utf-8")).hexdigest()
+        with self._lock:
+            return self._cache.get(key)
+
     def _classify_uncached(self, question: str) -> RequestClassification | None:
         started = time.perf_counter()
         first = self._classify_once(question, self._labels)
