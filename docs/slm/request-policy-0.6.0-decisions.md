@@ -189,3 +189,8 @@ measurement was run before the v4 scoring preregistration commit.
   counts and IDs only, never source question wording.
 - v5 remains unavailable as previously directed. v8 exists locally but has no
   committed hash document in this checkout, so it was not read or used.
+
+- Final post-revision overlap scan passed with zero five-word overlap item
+  pairs against every available, hash-verified practice/spent file checked.
+  The v3 set is now eligible for its single run; its final hash is recorded in
+  `tests/evaluation/practice_v2/validation_3.sha256`.
