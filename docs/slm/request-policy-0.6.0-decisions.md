@@ -118,3 +118,29 @@ measurement was run before the v4 scoring preregistration commit.
   mismatches including safety-screen crisis routes; the screen was not changed.
   Per-category counts and route details are in the temp output file
   `%TEMP%\\mindsense-0.6.0-train-phi4-tune1.json`; no raw wording is stored.
+
+## Step 4 — train-only tuning summary
+
+- Ran successive complete, train-only 200-item iterations. Every retained
+  change kept the deterministic feature gate, crisis route, safety screen,
+  output grounding, and safety gate in place. Focused test runs passed after
+  fixes; the detailed final focused run was 115 passed.
+- Measured sequence (strict / primary / critical gate): initial 146/200,
+  160/200, 87/87; tuning iteration 1 150/200, 164/200, 87/87; iteration 2
+  before support-line fix 160/200, 174/200, 86/87; after deterministic
+  treatment-refusal fix 160/200, 174/200, 87/87; iteration 3 161/200,
+  175/200, 87/87; isolated cause-category refinement with earlier
+  time-window wording 163/200, 177/200, 87/87; broader time-window wording
+  156/200, 170/200, 87/87; final additional time-window/treatment examples
+  160/200, 174/200, 87/87.
+- Reverted the last prompt experiment because it regressed three strict/primary
+  cases, including two answer-eligible feature requests. Also restored the
+  better-scoring time-window wording after its broader alternative reduced
+  train accuracy. Final retained configuration matches the complete measured
+  run with strict 163/200 (81.5%), primary 177/200 (88.5%), and critical gate
+  87/87 (100%). Median/p95 preflight latency was 1766.8/7710.3 ms. Strict and
+  critical targets are met; primary =90% is not met (3 additional correct
+  prompts would be needed).
+- Step 4 remains incomplete against its primary threshold. No validation set
+  was used for tuning. Do not describe the classifier as meeting all train
+  thresholds.

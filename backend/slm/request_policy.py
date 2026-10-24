@@ -1089,6 +1089,10 @@ _PROHIBITED_PATTERNS: tuple[
                 re.IGNORECASE,
             ),
             re.compile(
+                r"\b(?:choose|select) (?:a |the )?(?:clinical )?treatment\b",
+                re.IGNORECASE,
+            ),
+            re.compile(
                 # Emotional or clinical goals only: "what can I do to get more
                 # movement?" is a feature question and stays in scope.
                 r"\bwhat (?:should|can|could|do) i (?:do|try|take) (?:to|so (?:that )?i) "

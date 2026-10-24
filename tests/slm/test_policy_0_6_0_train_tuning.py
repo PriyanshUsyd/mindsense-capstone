@@ -2,7 +2,12 @@
 
 import pytest
 
-from backend.slm.request_policy import infer_feature_from_question, request_scope_rejection
+from backend.slm.request_policy import (
+    RequestCategory,
+    classify_request,
+    infer_feature_from_question,
+    request_scope_rejection,
+)
 
 
 @pytest.mark.parametrize(
@@ -34,3 +39,10 @@ def test_supported_feature_with_an_unsupported_window_still_gets_boundary():
         request_scope_rejection("How did my GPS movement change last winter?")
         == "unsupported_time_window"
     )
+
+
+def test_choosing_treatment_from_an_app_report_remains_a_supported_refusal():
+    decision = classify_request("Choose a treatment using my wellbeing report.")
+
+    assert decision.category == RequestCategory.TREATMENT_ADVICE_SEEKING
+    assert decision.support_line is True
