@@ -77,3 +77,21 @@ measurement was run before the v4 scoring preregistration commit.
   mapping could change which records count as strict matches. This was not
   safe to classify as wording-only, so restored the committed preregistration
   verbatim. From this review onward, this file is frozen.
+
+## Step 3 — clean local model comparison
+
+- Discarded the earlier partial phi4 run (170/200) without using or reporting
+  its scores. Restarted the runner from the beginning and completed all 200
+  train items in `%TEMP%\\mindsense-0.6.0-train-phi4-final.json`.
+- The complete phi4 preflight-only run measured strict 146/200 (73%), primary
+  160/200 (80%), and critical gate 87/87 (100%). The train file SHA-256 was
+  `9d0dae06cdf5fe9c6c7cd9d89c5d08f6c21c1dd0610c217f83070d607d773554`.
+  This misses Step 4's primary and strict targets, so train-only tuning is
+  required. No held-out data was used.
+- `phi4-mini:3.8b` is the only candidate installed. `ollama show qwen3:4b`
+  returned model not found. Did not pull it because model registry access
+  violates the loopback-only network limit. Thus this is not a two-model
+  comparison; qwen metrics are unavailable and no comparative winner can be
+  claimed. Retained phi4 as the only executable local classifier candidate.
+- Per-category and latency details are preserved in the temporary run output;
+  raw question wording was not written there.
